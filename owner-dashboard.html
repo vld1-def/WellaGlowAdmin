@@ -1,1 +1,136 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wella Glow | Owner Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;600;700;800&display=swap');
+        :root { --bg: #050505; --card: #111113; --accent: #f43f5e; --emerald: #10b981; }
+        body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
+        .glass-panel { background: rgba(17, 17, 19, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
+        * { font-style: normal !important; }
+        .sidebar-link.active { background: rgba(244, 63, 94, 0.1); color: #f43f5e; border-left: 3px solid #f43f5e; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1e1e21; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex min-h-screen">
 
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-black/50 border-r border-white/5 flex flex-col fixed h-full z-50 hidden lg:flex">
+        <div class="p-8">
+            <h1 class="text-xl font-extrabold text-white tracking-tighter uppercase">Wella Glow</h1>
+            <p class="text-[9px] text-rose-500 font-bold tracking-[0.5em] uppercase opacity-80 mt-1">Admin Pro</p>
+        </div>
+        <nav class="flex-1 px-4 space-y-2">
+            <a href="#" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition">
+                <i class="fa-solid fa-chart-pie"></i> <span class="text-xs font-bold uppercase tracking-widest">Дашборд</span>
+            </a>
+            <a href="admin-calendar.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white rounded-r-xl transition">
+                <i class="fa-solid fa-calendar-check"></i> <span class="text-xs font-bold uppercase tracking-widest">Записи</span>
+            </a>
+            <a href="admin-clients.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white rounded-r-xl transition">
+                <i class="fa-solid fa-users"></i> <span class="text-xs font-bold uppercase tracking-widest">Клієнти</span>
+            </a>
+            <a href="admin-staff.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white rounded-r-xl transition">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="text-xs font-bold uppercase tracking-widest">Персонал</span>
+            </a>
+            <a href="admin-inventory.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white rounded-r-xl transition">
+                <i class="fa-solid fa-boxes-stacked"></i> <span class="text-xs font-bold uppercase tracking-widest">Склад</span>
+            </a>
+        </nav>
+        <div class="p-8 border-t border-white/5">
+            <button onclick="logoutStaff()" class="text-[10px] font-black uppercase text-zinc-600 hover:text-rose-500 transition">Вийти з системи</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 lg:ml-64 p-5 lg:p-10 pb-24">
+        
+        <!-- HEADER -->
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h2 class="text-2xl font-extrabold text-white tracking-tight leading-none">Аналітика студії</h2>
+                <p id="owner-name" class="text-zinc-500 text-[11px] font-bold uppercase tracking-widest mt-2">Вітаємо, Власник</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="glass-panel px-4 py-2 rounded-xl border border-white/5">
+                    <p class="text-[8px] text-zinc-500 uppercase font-black mb-0.5 text-center">Сьогодні</p>
+                    <p id="today-date" class="text-[10px] font-bold text-white uppercase tracking-tighter">---</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- KPI CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+            <div class="glass-panel p-6 rounded-[2rem]">
+                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-3">Виручка (Місяць)</p>
+                <h3 id="stat-revenue" class="text-3xl font-black text-white tracking-tighter leading-none">₴0</h3>
+                <div class="mt-4 h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                    <div id="revenue-progress" class="h-full bg-rose-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="glass-panel p-6 rounded-[2rem]">
+                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-3">Нові клієнти</p>
+                <div class="flex items-baseline justify-between">
+                    <h3 id="stat-new-clients" class="text-3xl font-black text-white tracking-tighter leading-none">0</h3>
+                    <span class="text-emerald-500 text-[10px] font-black">+100%</span>
+                </div>
+            </div>
+
+            <div class="glass-panel p-6 rounded-[2rem]">
+                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-3">Всього візитів</p>
+                <h3 id="stat-visits" class="text-3xl font-black text-white tracking-tighter leading-none">0</h3>
+                <p class="text-[9px] text-zinc-500 font-bold uppercase mt-3 italic-none">За поточний місяць</p>
+            </div>
+
+            <div class="glass-panel p-6 rounded-[2rem]">
+                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-3">Середній чек</p>
+                <h3 id="stat-avg-bill" class="text-3xl font-black text-white tracking-tighter leading-none">₴0</h3>
+                <div class="mt-4 flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-trend-up text-emerald-400 text-[9px]"></i>
+                    <span class="text-[9px] text-emerald-400 font-bold uppercase">Ріст</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CHART & TOP STAFF -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-2 glass-panel p-8 rounded-[3rem]">
+                <div class="flex justify-between items-center mb-10">
+                    <h4 class="text-sm font-black text-white uppercase tracking-widest">Динаміка прибутку (30 днів)</h4>
+                    <select id="chart-filter" class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-zinc-400 outline-none">
+                        <option>Березень</option>
+                    </select>
+                </div>
+                <div class="h-80">
+                    <canvas id="ownerMainChart"></canvas>
+                </div>
+            </div>
+
+            <div class="glass-panel p-8 rounded-[3rem]">
+                <h4 class="text-sm font-black text-white uppercase tracking-widest mb-8 leading-none">Ефективність майстрів</h4>
+                <div id="top-staff-list" class="space-y-6">
+                    <!-- Завантажиться через JS -->
+                    <p class="text-zinc-600 text-[10px] uppercase font-bold animate-pulse text-center py-10">Завантаження...</p>
+                </div>
+                <button onclick="location.href='admin-staff.html'" class="w-full mt-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-[9px] font-black uppercase tracking-widest transition border border-white/5">Детальний звіт</button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/owner-dashboard.js"></script>
+</body>
+</html>
