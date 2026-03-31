@@ -44,6 +44,28 @@ async function loadDashboardStats() {
         document.getElementById('kpi-avg-bill').innerText = `₴${avgBill.toLocaleString()}`;
     }
 
+    const goal = 500;
+    const current = history ? history.length : 0; // кількість записів з бази
+    
+    // Оновлюємо цифру
+    document.getElementById('kpi-total-bookings').innerText = current;
+
+    // ЛОГІКА СЕГМЕНТІВ (4 бари)
+    const bars = document.querySelectorAll('#kpi-bookings-bars div');
+    const percent = (current / goal) * 100;
+
+    bars.forEach((bar, index) => {
+        // Кожен бар відповідає за 25% прогресу
+        // 1-й: 0-25%, 2-й: 26-50%, 3-й: 51-75%, 4-й: 76-100%
+        if (percent > (index * 25)) {
+            bar.classList.remove('bg-zinc-800');
+            bar.classList.add('bg-rose-500');
+        } else {
+            bar.classList.add('bg-zinc-800');
+            bar.classList.remove('bg-rose-500');
+        }
+    });
+
     // Тренд клієнтів
     document.getElementById('kpi-new-clients').innerText = currentNewClients || 0;
     if (prevNewClients > 0) {
