@@ -80,31 +80,48 @@ async function loadDashboardStats() {
 // 3. ТАЙМЛАЙН ЗАПИСІВ НА СЬОГОДНІ
 async function loadTodayTimeline() {
     const today = new Date().toISOString().split('T')[0];
-    const { data: apps } = await window.db
+    
+    // Отримуємо записи з іменами клієнтів та майстрів
+    const { data: apps, error } = await window.db
         .from('appointments')
-        .select('*, staff(name)')
+        .select('*, clients(full_name), staff(name)')
         .eq('appointment_date', today)
         .order('appointment_time', { ascending: true })
         .limit(4);
 
     const container = document.getElementById('today-timeline');
     if (!apps || apps.length === 0) {
-        container.innerHTML = '<p class="text-zinc-600 text-[10px] uppercase font-bold text-center py-10">Записів на сьогодні немає</p>';
+        container.innerHTML = '<p class="text-zinc-600 text-[10px] uppercase font-bold text-center py-10">Записів немає</p>';
         return;
     }
 
-    container.innerHTML = '<div class="timeline-line"></div>' + apps.map((app, index) => `
-        <div class="relative flex justify-between items-start transition hover:translate-x-1" style="opacity: ${1 - index * 0.25}">
-            <div class="flex gap-4">
-                <div class="mt-1.5"><div class="status-dot ${app.status === 'confirmed' ? 'active' : 'waiting'}"></div></div>
+    container.innerHTML = '<div class="timeline-line" style="left: 6px; top: 5px; bottom: 5px; width: 1px; background: rgba(255,255,255,0.08); position: absolute;"></div>' + 
+    apps.map((app, index) => {
+        const isConfirmed = app.status === 'confirmed';
+        const clientName = app.clients?.full_name || 'Гість';
+        
+        return `
+        <div class="relative flex justify-between items-start transition hover:translate-x-1" style="opacity: ${1 - index * 0.2}">
+            <div class="flex gap-5">
+                <!-- Точка зі світінням -->
+                <div class="mt-1.5 shrink-0">
+                    <div class="status-dot ${isConfirmed ? 'active' : 'waiting'} w-3 h-3 rounded-full"></div>
+                </div>
                 <div>
-                    <p class="text-sm font-bold text-white leading-none tracking-tight">${app.service_name}</p>
-                    <p class="text-[10px] text-zinc-500 mt-2 font-medium">${app.appointment_time}</p>
+                    <!-- Ім'я клієнта над послугою -->
+                    <p class="text-[13px] font-extrabold text-white leading-none">${clientName}</p>
+                    <p class="text-[10px] text-zinc-500 mt-2 font-medium tracking-tight">${app.service_name}</p>
+                    <p class="text-[9px] font-bold ${isConfirmed ? 'text-rose-500' : 'text-zinc-600'} mt-2 tracking-widest uppercase italic-none">
+                        ${app.appointment_time.substring(0, 5)}
+                    </p>
                 </div>
             </div>
-            <span class="master-badge">${app.staff?.name || '---'}</span>
+            <span class="master-badge px-3 py-1 bg-white/5 text-zinc-500 text-[8px] font-black uppercase rounded-lg">
+                ${app.staff?.name || '---'}
+            </span>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // 4. ЕФЕКТИВНІСТЬ МАЙСТРІВ
