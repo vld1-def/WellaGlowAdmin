@@ -9,84 +9,118 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;600;700;800&display=swap');
-        :root { --bg: #050505; --card: #111113; --accent: #f43f5e; --emerald: #10b981; }
+        :root { --bg: #050505; --card: #111113; --accent: #f43f5e; }
         body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
         * { font-style: normal !important; }
         .glass-panel { background: rgba(17, 17, 19, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
-        .sidebar-link.active { background: rgba(244, 63, 94, 0.1); color: #f43f5e; border-left: 3px solid #f43f5e; }
+        
+        /* Сяйво точок */
         .status-dot.active { background-color: #ec4899; box-shadow: 0 0 12px 2px rgba(236, 72, 153, 0.6); }
         .status-dot.waiting { background-color: #3f3f46; }
+
+        /* Навігація */
+        .sidebar-link.active { background: rgba(244, 63, 94, 0.1); color: #f43f5e; border-left: 3px solid #f43f5e; }
+        
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #1e1e21; border-radius: 10px; }
     </style>
 </head>
 <body class="flex min-h-screen">
 
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR (ПОВНИЙ СПИСОК) -->
     <aside class="w-16 lg:w-64 bg-black/50 border-r border-white/5 flex flex-col fixed h-full z-50">
         <div class="p-6">
             <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none">Wella Glow</h1>
-            <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] uppercase opacity-80 mt-1">studio</p>
+            <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] mt-1 uppercase">studio</p>
         </div>
-        <nav class="flex-1 px-4 space-y-6 mt-4">
-            <a href="#" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition font-bold">
-                <i class="fa-solid fa-chart-pie w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Дашборд</span>
-            </a>
-            <a href="admin-calendar.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
-                <i class="fa-solid fa-calendar-check w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span>
-            </a>
-            <a href="admin-clients-base.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
-                <i class="fa-solid fa-users w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Клієнти</span>
-            </a>
-            <a href="admin-staff.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
-                <i class="fa-solid fa-users-gear w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span>
-            </a>
+
+        <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto no-scrollbar pb-10">
+            <!-- Аналітика -->
+            <div>
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Аналітика</p>
+                <div class="space-y-1">
+                    <a href="#" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition font-bold">
+                        <i class="fa-solid fa-chart-pie w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Дашборд</span>
+                    </a>
+                    <a href="admin-finance.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
+                        <i class="fa-solid fa-wallet w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Фінанси</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Студія -->
+            <div>
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Студія</p>
+                <div class="space-y-1">
+                    <a href="admin-calendar.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
+                        <i class="fa-solid fa-calendar-check w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span>
+                    </a>
+                    <a href="admin-staff.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
+                        <i class="fa-solid fa-users-gear w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span>
+                    </a>
+                    <a href="admin-inventory.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
+                        <i class="fa-solid fa-boxes-stacked w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Склад</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Клієнти -->
+            <div>
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Клієнти</p>
+                <div class="space-y-1">
+                    <a href="admin-clients-base.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
+                        <i class="fa-solid fa-address-book w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">База клієнтів</span>
+                    </a>
+                    <a href="admin-bonuses.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
+                        <i class="fa-solid fa-gift w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Бонуси</span>
+                    </a>
+                    <a href="admin-reviews.html" class="flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition">
+                        <i class="fa-solid fa-comment-dots w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Відгуки</span>
+                    </a>
+                </div>
+            </div>
         </nav>
+
         <div class="p-6 border-t border-white/5">
-            <button onclick="logoutStaff()" class="text-zinc-600 hover:text-rose-500 transition"><i class="fa-solid fa-power-off"></i></button>
+            <button onclick="logoutStaff()" class="text-zinc-600 hover:text-rose-500 transition"><i class="fa-solid fa-power-off text-sm"></i></button>
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
-    <main class="flex-1 ml-16 lg:ml-64 p-5 lg:p-10">
+    <!-- MAIN -->
+    <main class="flex-1 ml-16 lg:ml-64 p-5 lg:p-8">
         
-        <header class="flex justify-between items-center mb-10">
+        <header class="flex justify-between items-center mb-8">
             <div>
-                <h2 class="text-2xl font-extrabold text-white tracking-tight leading-none">Панель власника</h2>
-                <p id="owner-name" class="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mt-2">Вітаємо, Власник</p>
+                <h2 class="text-2xl font-extrabold text-white tracking-tight leading-none italic-none">Вітаю, <span id="admin-name">...</span>!</h2>
+                <p class="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mt-2">Аналітика студії</p>
             </div>
             <button class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white transition">
                 <i class="fa-solid fa-gear"></i>
             </button>
         </header>
 
-        <!-- KPI КАРТКИ -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-            <!-- Прибуток -->
-            <div class="glass-panel p-6 rounded-[2rem] border-t-2 border-t-rose-500">
-                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-2">Прибуток місяця</p>
+        <!-- KPI КАРТКИ (В ОДИН РЯДОК) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 italic-none">
+            <div class="glass-panel p-5 rounded-2xl">
+                <p class="text-zinc-500 text-[9px] uppercase font-black tracking-widest mb-2">Прибуток</p>
                 <h3 id="kpi-profit" class="text-2xl font-black text-white tracking-tighter leading-none">₴0</h3>
-                <div class="mt-4 h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                <div class="mt-3 h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
                     <div id="kpi-profit-bar" class="h-full bg-rose-500" style="width: 0%"></div>
                 </div>
             </div>
 
-            <!-- Нові клієнти -->
-            <div class="glass-panel p-6 rounded-[2rem]">
-                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-2">Нові клієнти</p>
-                <div class="flex items-center justify-between">
+            <div class="glass-panel p-5 rounded-2xl">
+                <p class="text-zinc-500 text-[9px] uppercase font-black tracking-widest mb-2">Нові клієнти</p>
+                <div class="flex items-baseline justify-between">
                     <h3 id="kpi-new-clients" class="text-2xl font-black text-white tracking-tighter leading-none">0</h3>
                     <span id="kpi-clients-trend" class="text-emerald-400 text-[10px] font-black">+0%</span>
                 </div>
-                <p class="text-[8px] text-zinc-600 uppercase font-bold mt-2 tracking-widest">Порівняно з минулим місяцем</p>
             </div>
 
-            <!-- Записи місяця -->
-            <div class="glass-panel p-6 rounded-[2rem]">
-                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-2">Записи місяця</p>
+            <div class="glass-panel p-5 rounded-2xl">
+                <p class="text-zinc-500 text-[9px] uppercase font-black tracking-widest mb-2">Записи міс.</p>
                 <h3 id="kpi-total-bookings" class="text-2xl font-black text-white tracking-tighter leading-none">0</h3>
-                <p class="text-[9px] text-zinc-500 mt-2 font-bold uppercase">Ціль: <span class="text-rose-400">500 записів</span></p>
                 <div id="kpi-bookings-bars" class="mt-3 flex gap-1">
                     <div class="h-1 flex-1 bg-zinc-800 rounded-full transition-all"></div>
                     <div class="h-1 flex-1 bg-zinc-800 rounded-full transition-all"></div>
@@ -94,69 +128,49 @@
                     <div class="h-1 flex-1 bg-zinc-800 rounded-full transition-all"></div>
                 </div>
             </div>
-            <div class="glass-panel p-6 rounded-[2rem]">
-                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-3 italic-none">Сер. чек</p>
-                <h3 id="kpi-avg-bill" class="text-2xl font-black text-white italic-none tracking-tighter">₴0</h3>
-            </div>
-            <!-- Retention Rate (НОВА КАРТКА) -->
-            <div class="glass-panel p-6 rounded-[2rem]">
-                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-2">Retention (Повернення)</p>
-                <div class="flex items-center justify-between">
-                    <h3 id="kpi-retention" class="text-2xl font-black text-white tracking-tighter leading-none">0%</h3>
-                    <i class="fa-solid fa-arrows-rotate text-emerald-500 text-sm"></i>
-                </div>
-                <p class="text-[8px] text-zinc-600 uppercase font-bold mt-3 tracking-widest">Клієнти з 2+ візитами</p>
+
+            <div class="glass-panel p-5 rounded-2xl">
+                <p class="text-zinc-500 text-[9px] uppercase font-black tracking-widest mb-2">Середній чек</p>
+                <h3 id="kpi-avg-bill" class="text-2xl font-black text-white tracking-tighter leading-none">₴0</h3>
+                <p class="text-[9px] text-emerald-500 font-bold mt-2 uppercase tracking-tighter">Ріст +5%</p>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-            <!-- ГРАФІК -->
-            <div class="lg:col-span-2 glass-panel p-8 rounded-[3rem]">
-                <h4 class="text-sm font-black text-white uppercase tracking-widest mb-8 leading-none">Аналітика доходів (30 днів)</h4>
+        <!-- ГРАФІК ТА ТАЙМЛАЙН (3/4 ТА 1/4) -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div class="lg:col-span-3 glass-panel p-6 rounded-3xl">
+                <h4 class="text-xs font-extrabold text-white uppercase tracking-widest mb-6 leading-none">Динаміка доходів (30 днів)</h4>
                 <div class="h-72"><canvas id="profitChart"></canvas></div>
             </div>
 
-            <!-- ВІЗИТИ СЬОГОДНІ -->
-            <div class="glass-panel p-8 rounded-[3rem]">
-                <h4 class="text-sm font-black text-white uppercase tracking-widest mb-10 leading-none">Візити сьогодні</h4>
+            <div class="lg:col-span-1 glass-panel p-6 rounded-3xl h-full">
+                <h4 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-8 leading-none">Візити сьогодні</h4>
                 <div id="today-timeline" class="relative space-y-8">
-                    <div class="timeline-line" style="left: 6px; top: 5px; bottom: 5px; width: 1px; background: rgba(255,255,255,0.08); position: absolute;"></div>
-                    <!-- Сюди JS вставить записи -->
+                    <!-- Завантажиться через JS -->
                 </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- ЕФЕКТИВНІСТЬ МАЙСТРІВ -->
-            <div class="lg:col-span-2 glass-panel p-8 rounded-[3rem]">
-                <h4 class="text-sm font-black text-white uppercase tracking-widest mb-8 leading-none">Ефективність майстрів</h4>
+        <!-- МАЙСТРИ ТА СКЛАД (3/4 ТА 1/4) -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div class="lg:col-span-3 glass-panel p-6 rounded-3xl">
+                <h4 class="text-xs font-black text-white uppercase tracking-widest mb-4 leading-none">Ефективність майстрів</h4>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
-                        <thead>
-                            <tr class="text-[10px] text-zinc-500 uppercase font-black border-b border-white/5 tracking-widest">
-                                <th class="pb-4 font-black">Майстер</th>
-                                <th class="pb-4 font-black text-center">Записи</th>
-                                <th class="pb-4 font-black text-center">Виручка</th>
-                                <th class="pb-4 font-black text-right">Статус</th>
-                            </tr>
-                        </thead>
                         <tbody id="staff-efficiency-body" class="divide-y divide-white/5">
-                            <!-- JS вставить дані -->
+                            <!-- Завантажиться через JS -->
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- СТАН СКЛАДУ -->
-            <div class="glass-panel p-8 rounded-[3rem]">
-                <h4 class="text-sm font-black text-white uppercase tracking-widest mb-8 leading-none text-center">Стан складу</h4>
+            <div class="lg:col-span-1 glass-panel p-6 rounded-3xl h-full">
+                <h4 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6 leading-none">Стан складу</h4>
                 <div id="stock-status-list" class="space-y-6">
-                    <!-- JS вставить товари -->
+                    <!-- Завантажиться через JS -->
                 </div>
-                <button class="w-full mt-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition border border-white/5">Повний звіт</button>
             </div>
         </div>
-
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
