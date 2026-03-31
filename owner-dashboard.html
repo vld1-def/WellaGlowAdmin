@@ -133,6 +133,15 @@
                     <div class="h-1 flex-1 bg-zinc-800 rounded-full"></div>
                 </div>
             </div>
+            <!-- Retention Rate (НОВА КАРТКА) -->
+            <div class="glass-panel p-6 rounded-[2rem]">
+                <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-2">Retention (Повернення)</p>
+                <div class="flex items-center justify-between">
+                    <h3 id="kpi-retention" class="text-2xl font-black text-white tracking-tighter leading-none">0%</h3>
+                    <i class="fa-solid fa-arrows-rotate text-emerald-500 text-sm"></i>
+                </div>
+                <p class="text-[8px] text-zinc-600 uppercase font-bold mt-3 tracking-widest">Клієнти з 2+ візитами</p>
+            </div>
 
             <div class="glass-panel p-6 rounded-[2rem]">
                 <p class="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-3 italic-none">Сер. чек</p>
@@ -155,7 +164,36 @@
                 </div>
             </div>
         </div>
+ <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- ЕФЕКТИВНІСТЬ МАЙСТРІВ -->
+            <div class="lg:col-span-2 glass-panel p-8 rounded-[3rem]">
+                <h4 class="text-sm font-black text-white uppercase tracking-widest mb-8 leading-none">Ефективність майстрів</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-[10px] text-zinc-500 uppercase font-black border-b border-white/5 tracking-widest">
+                                <th class="pb-4 font-black">Майстер</th>
+                                <th class="pb-4 font-black text-center">Записи</th>
+                                <th class="pb-4 font-black text-center">Виручка</th>
+                                <th class="pb-4 font-black text-right">Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staff-efficiency-body" class="divide-y divide-white/5">
+                            <!-- JS вставить дані -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
+            <!-- СТАН СКЛАДУ -->
+            <div class="glass-panel p-8 rounded-[3rem]">
+                <h4 class="text-sm font-black text-white uppercase tracking-widest mb-8 leading-none text-center">Стан складу</h4>
+                <div id="stock-status-list" class="space-y-6">
+                    <!-- JS вставить товари -->
+                </div>
+                <button class="w-full mt-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition border border-white/5">Повний звіт</button>
+            </div>
+        </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
