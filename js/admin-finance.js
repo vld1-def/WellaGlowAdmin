@@ -7,25 +7,30 @@ if (!staffId || (staffRole !== 'owner' && staffRole !== 'admin')) {
 }
 
 // ─── стан ───────────────────────────────────────────────────────────────────
-let flowChart    = null;
-let donutChart   = null;
-let txOffset     = 0;
-const TX_LIMIT   = 20;
-let allTxData    = []; // кешуємо для CSV-експорту
+let flowChart   = null;
+let donutChart  = null;
+let txOffset    = 0;
+const TX_LIMIT  = 20;
+let allTxData   = [];
+
+let drawerType   = 'expense';
+let drawerMethod = 'cash';
 
 // ─── ініціалізація ───────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     setPeriodLabel();
+    setDefaultDate();
     await Promise.all([
         loadCashBalance(),
         loadKPIs(),
+        loadStaffList(),
     ]);
     await loadTransactions(false);
 });
 
 // ─── поточний місяць ─────────────────────────────────────────────────────────
 function getPeriodRange() {
-    const now = new Date();
+    const now   = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
     const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     return {
@@ -43,12 +48,16 @@ function setPeriodLabel() {
         `${months[now.getMonth()]} ${now.getFullYear()}`;
 }
 
+function setDefaultDate() {
+    document.getElementById('fin-date').value = new Date().toISOString().split('T')[0];
+}
+
 // ─── готівка / рахунок ───────────────────────────────────────────────────────
 async function loadCashBalance() {
     const { data } = await window.db.from('cash_register').select('*').single();
     if (!data) return;
-    document.getElementById('cash-amount').textContent  = `₴${fmt(data.cash_amount)}`;
-    document.getElementById('bank-amount').textContent  = `₴${fmt(data.bank_amount)}`;
+    document.getElementById('cash-amount').textContent = `₴${fmt(data.cash_amount)}`;
+    document.getElementById('bank-amount').textContent = `₴${fmt(data.bank_amount)}`;
 }
 
 // ─── KPI + графіки ───────────────────────────────────────────────────────────
@@ -67,23 +76,19 @@ async function loadKPIs() {
             .lte('date', end)
     ]);
 
-    const incomeRows   = incomeRes.data   || [];
-    const expenseRows  = expensesRes.data || [];
+    const incomeRows  = incomeRes.data   || [];
+    const expenseRows = expensesRes.data || [];
 
     const totalRevenue  = incomeRows.reduce((s, r) => s + (r.price || 0), 0);
     const totalExpenses = expenseRows.reduce((s, r) => s + Math.abs(r.amount || 0), 0);
     const netProfit     = totalRevenue - totalExpenses;
     const margin        = totalRevenue > 0
-        ? ((netProfit / totalRevenue) * 100).toFixed(1)
-        : 0;
-
-    // Субтитри KPI
-    const biggestCat = topCategory(expenseRows);
+        ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0;
 
     document.getElementById('kpi-revenue').textContent      = `₴${fmt(totalRevenue)}`;
     document.getElementById('kpi-revenue-sub').textContent  = totalRevenue > 0 ? '+12% до плану' : 'Немає даних';
     document.getElementById('kpi-expenses').textContent     = `₴${fmt(totalExpenses)}`;
-    document.getElementById('kpi-expenses-sub').textContent = biggestCat || 'Немає витрат';
+    document.getElementById('kpi-expenses-sub').textContent = topCategory(expenseRows) || 'Немає витрат';
     document.getElementById('kpi-profit').textContent       = `₴${fmt(netProfit)}`;
     document.getElementById('kpi-margin').textContent       = `${margin}%`;
     document.getElementById('kpi-margin-bar').style.width   = `${Math.min(margin, 100)}%`;
@@ -154,29 +159,27 @@ function buildFlowChart(incomeRows, expenseRows) {
                     borderWidth: 1,
                     titleColor: '#71717a',
                     bodyColor: '#e2e8f0',
-                    titleFont: { size: 9, weight: '800' },
-                    bodyFont:  { size: 11, weight: '800' },
-                    padding: 10,
-                    callbacks: {
-                        label: ctx => `${ctx.dataset.label}: ₴${fmt(ctx.parsed.y)}`
-                    }
+                    titleFont: { size: 10, weight: '800' },
+                    bodyFont:  { size: 12, weight: '800' },
+                    padding: 12,
+                    callbacks: { label: ctx => ` ${ctx.dataset.label}: ₴${fmt(ctx.parsed.y)}` }
                 }
             },
             scales: {
                 y: {
                     grid:  { color: 'rgba(255,255,255,0.03)', drawBorder: false },
-                    ticks: { color: '#52525b', font: { size: 9 }, callback: v => `₴${(v/1000).toFixed(0)}к` }
+                    ticks: { color: '#52525b', font: { size: 10 }, callback: v => `₴${(v / 1000).toFixed(0)}к` }
                 },
                 x: {
                     grid:  { display: false },
-                    ticks: { color: '#52525b', font: { size: 9 }, maxTicksLimit: 10 }
+                    ticks: { color: '#52525b', font: { size: 10 }, maxTicksLimit: 10 }
                 }
             }
         }
     });
 }
 
-// ─── донат-графік ─────────────────────────────────────────────────────────────
+// ─── донат-графік ────────────────────────────────────────────────────────────
 function buildDonutChart(expenses) {
     const cats = { salary: 0, rent_utilities: 0, materials: 0, other: 0 };
 
@@ -186,8 +189,8 @@ function buildDonutChart(expenses) {
     });
 
     const total = Object.values(cats).reduce((s, v) => s + v, 0) || 1;
+    const pct   = k => Math.round((cats[k] / total) * 100);
 
-    const pct = k => Math.round((cats[k] / total) * 100);
     const salaryPct = pct('salary');
     const rentPct   = pct('rent_utilities');
     const matPct    = pct('materials');
@@ -209,13 +212,13 @@ function buildDonutChart(expenses) {
                 data: [salaryPct, rentPct, matPct, otherPct],
                 backgroundColor: ['#f43f5e', '#3b82f6', '#f59e0b', '#27272a'],
                 borderWidth: 0,
-                hoverOffset: 10
+                hoverOffset: 12
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '72%',
+            cutout: '68%',
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -224,9 +227,9 @@ function buildDonutChart(expenses) {
                     borderWidth: 1,
                     titleColor: '#71717a',
                     bodyColor: '#e2e8f0',
-                    titleFont: { size: 9, weight: '800' },
-                    bodyFont:  { size: 11, weight: '800' },
-                    padding: 10,
+                    titleFont: { size: 10, weight: '800' },
+                    bodyFont:  { size: 12, weight: '800' },
+                    padding: 12,
                     callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` }
                 }
             }
@@ -259,7 +262,7 @@ function renderTransactions(rows, append) {
 
     if (!append && rows.length === 0) {
         tbody.innerHTML = `<tr>
-            <td colspan="5" class="py-10 text-center text-zinc-700 text-[10px] font-black uppercase tracking-widest">
+            <td colspan="5" class="py-12 text-center text-zinc-600 text-sm font-black uppercase tracking-widest">
                 Немає транзакцій за поточний місяць
             </td>
         </tr>`;
@@ -274,16 +277,16 @@ function renderTransactions(rows, append) {
         const color  = isExp ? 'text-rose-400' : 'text-emerald-400';
         const date   = fmtDate(t.date);
 
-        return `<tr class="border-b border-white/5 hover:bg-white/[0.03] transition group">
-            <td class="py-4 pr-4 text-[11px] text-zinc-500 font-bold whitespace-nowrap">${date}</td>
+        return `<tr class="border-b border-white/5 hover:bg-white/[0.03] transition">
+            <td class="py-4 pr-4 text-sm text-zinc-400 font-bold whitespace-nowrap">${date}</td>
             <td class="py-4 pr-4">
-                <span class="px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-wider ${cat.cls}">
+                <span class="px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide ${cat.cls}">
                     ${cat.label}
                 </span>
             </td>
-            <td class="py-4 pr-4 text-[11px] text-zinc-300 max-w-xs truncate">${t.comment || '—'}</td>
-            <td class="py-4 pr-4 text-[10px] font-black text-zinc-500 uppercase tracking-wider whitespace-nowrap">${method}</td>
-            <td class="py-4 text-right text-sm font-black ${color} whitespace-nowrap">
+            <td class="py-4 pr-4 text-sm text-zinc-300 max-w-xs truncate">${t.comment || '—'}</td>
+            <td class="py-4 pr-4 text-xs font-black text-zinc-500 uppercase tracking-wider whitespace-nowrap">${method}</td>
+            <td class="py-4 text-right text-base font-black ${color} whitespace-nowrap">
                 ${sign}₴${fmt(Math.abs(t.amount || 0))}
             </td>
         </tr>`;
@@ -306,6 +309,122 @@ window.loadMoreTransactions = async function () {
     await loadTransactions(true);
 };
 
+// ─── список майстрів для drawer ──────────────────────────────────────────────
+async function loadStaffList() {
+    const { data } = await window.db.from('staff').select('id, name').eq('role', 'master').order('name');
+    const select = document.getElementById('fin-staff');
+    if (data && data.length > 0) {
+        data.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            select.appendChild(opt);
+        });
+    }
+}
+
+// ─── drawer ──────────────────────────────────────────────────────────────────
+window.openDrawer = function () {
+    document.getElementById('finance-drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeDrawer = function () {
+    document.getElementById('finance-drawer').classList.remove('open');
+    document.getElementById('drawer-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+};
+
+window.setType = function (type) {
+    drawerType = type;
+
+    const expBtn = document.getElementById('btn-expense');
+    const incBtn = document.getElementById('btn-income');
+    expBtn.classList.toggle('active', type === 'expense');
+    incBtn.classList.toggle('active', type === 'income');
+
+    // Категорії залежать від типу
+    const select = document.getElementById('fin-category');
+    if (type === 'income') {
+        select.innerHTML = `<option value="income">Оплата за послугу</option>
+                            <option value="other">Інший дохід</option>`;
+    } else {
+        select.innerHTML = `<option value="salary">Виплата ЗП</option>
+                            <option value="rent_utilities">Оренда / Комунальні</option>
+                            <option value="materials">Матеріали</option>
+                            <option value="other">Інше</option>`;
+    }
+};
+
+window.setMethod = function (method) {
+    drawerMethod = method;
+    ['cash', 'card', 'transfer'].forEach(m => {
+        const btn = document.getElementById(`pay-${m}`);
+        if (m === method) {
+            btn.className = 'pay-btn active py-3 rounded-xl border text-xs font-black uppercase tracking-wide transition bg-rose-500/10 border-rose-500/30 text-rose-400';
+        } else {
+            btn.className = 'pay-btn py-3 rounded-xl border text-xs font-black uppercase tracking-wide transition bg-white/3 border-white/8 text-zinc-500';
+        }
+    });
+};
+
+window.submitTransaction = async function () {
+    const date     = document.getElementById('fin-date').value;
+    const category = document.getElementById('fin-category').value;
+    const amount   = parseFloat(document.getElementById('fin-amount').value);
+    const comment  = document.getElementById('fin-comment').value.trim();
+    const staffSel = document.getElementById('fin-staff').value;
+
+    if (!date)              return showError('Вкажіть дату');
+    if (!amount || amount <= 0) return showError('Введіть суму більше нуля');
+
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    submitBtn.disabled  = true;
+
+    const payload = {
+        date,
+        type:           drawerType,
+        category,
+        amount,
+        payment_method: drawerMethod,
+        comment:        comment || null,
+        staff_id:       staffSel || null,
+    };
+
+    const { error } = await window.db.from('transactions').insert([payload]);
+
+    submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Зберегти';
+    submitBtn.disabled  = false;
+
+    if (error) {
+        showError('Помилка збереження. Спробуй ще раз.');
+        console.error(error);
+        return;
+    }
+
+    // Скидаємо форму
+    document.getElementById('fin-amount').value  = '';
+    document.getElementById('fin-comment').value = '';
+    document.getElementById('fin-staff').value   = '';
+    setDefaultDate();
+
+    closeDrawer();
+
+    // Оновлюємо дані
+    txOffset = 0;
+    await Promise.all([loadKPIs(), loadTransactions(false)]);
+};
+
+function showError(msg) {
+    const btn = document.getElementById('submit-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${msg}`;
+    btn.classList.add('bg-rose-700');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('bg-rose-700'); }, 2500);
+}
+
 // ─── CSV-експорт ─────────────────────────────────────────────────────────────
 window.exportCSV = function () {
     if (!allTxData.length) { alert('Немає даних для експорту'); return; }
@@ -320,7 +439,7 @@ window.exportCSV = function () {
         t.type === 'expense' ? -Math.abs(t.amount) : t.amount
     ]);
 
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const csv  = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -333,11 +452,11 @@ window.exportCSV = function () {
 
 // ─── довідники ───────────────────────────────────────────────────────────────
 const CATEGORY_META = {
-    salary:        { label: 'Виплата ЗП',        cls: 'bg-rose-500/20 text-rose-400' },
-    rent_utilities:{ label: 'Оренда/Комунальні', cls: 'bg-blue-500/20 text-blue-400' },
-    materials:     { label: 'Матеріали',          cls: 'bg-amber-500/20 text-amber-400' },
-    income:        { label: 'Дохід',              cls: 'bg-emerald-500/20 text-emerald-400' },
-    other:         { label: 'Інше',               cls: 'bg-zinc-700/50 text-zinc-400' }
+    salary:         { label: 'Виплата ЗП',        cls: 'bg-rose-500/20 text-rose-400' },
+    rent_utilities: { label: 'Оренда/Комунальні', cls: 'bg-blue-500/20 text-blue-400' },
+    materials:      { label: 'Матеріали',          cls: 'bg-amber-500/20 text-amber-400' },
+    income:         { label: 'Дохід',              cls: 'bg-emerald-500/20 text-emerald-400' },
+    other:          { label: 'Інше',               cls: 'bg-zinc-700/50 text-zinc-400' }
 };
 
 const METHOD_LABELS = {
@@ -356,13 +475,13 @@ function topCategory(expenses) {
     expenses.forEach(e => { cats[e.category] = (cats[e.category] || 0) + Math.abs(e.amount || 0); });
     const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
     if (!top) return null;
-    const pct  = Math.round((top[1] / expenses.reduce((s, r) => s + Math.abs(r.amount || 0), 0)) * 100);
-    const name = CATEGORY_META[top[0]]?.label || top[0];
+    const total = expenses.reduce((s, r) => s + Math.abs(r.amount || 0), 0);
+    const pct   = Math.round((top[1] / total) * 100);
+    const name  = CATEGORY_META[top[0]]?.label || top[0];
     return `${pct}% — ${name}`;
 }
 
 function fmtDate(str) {
     if (!str) return '—';
-    const d = new Date(str);
-    return d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return new Date(str).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
