@@ -64,7 +64,7 @@ async function loadCashBalance() {
 async function loadKPIs() {
     const { start, end } = getPeriodRange();
 
-    const [incomeRes, expensesRes] = await Promise.all([
+    const [incomeRes, expensesRes, manualIncomeRes] = await Promise.all([
         window.db.from('appointment_history')
             .select('price, visit_date')
             .gte('visit_date', start)
@@ -73,13 +73,22 @@ async function loadKPIs() {
             .select('*')
             .eq('type', 'expense')
             .gte('date', start)
+            .lte('date', end),
+        window.db.from('transactions')
+            .select('amount, date')
+            .eq('type', 'income')
+            .gte('date', start)
             .lte('date', end)
     ]);
 
-    const incomeRows  = incomeRes.data   || [];
-    const expenseRows = expensesRes.data || [];
+    const incomeRows       = incomeRes.data       || [];
+    const expenseRows      = expensesRes.data      || [];
+    const manualIncomeRows = manualIncomeRes.data  || [];
 
-    const totalRevenue  = incomeRows.reduce((s, r) => s + (r.price || 0), 0);
+    // Виручка = записи з appointment_history + ручні доходи з transactions
+    const totalRevenue =
+        incomeRows.reduce((s, r) => s + (r.price || 0), 0) +
+        manualIncomeRows.reduce((s, r) => s + (r.amount || 0), 0);
     const totalExpenses = expenseRows.reduce((s, r) => s + Math.abs(r.amount || 0), 0);
     const netProfit     = totalRevenue - totalExpenses;
     const margin        = totalRevenue > 0
@@ -93,12 +102,12 @@ async function loadKPIs() {
     document.getElementById('kpi-margin').textContent       = `${margin}%`;
     document.getElementById('kpi-margin-bar').style.width   = `${Math.min(margin, 100)}%`;
 
-    buildFlowChart(incomeRows, expenseRows);
+    buildFlowChart(incomeRows, expenseRows, manualIncomeRows);
     buildDonutChart(expenseRows);
 }
 
 // ─── лінійний графік ─────────────────────────────────────────────────────────
-function buildFlowChart(incomeRows, expenseRows) {
+function buildFlowChart(incomeRows, expenseRows, manualIncomeRows = []) {
     const { days } = getPeriodRange();
     const labels   = Array.from({ length: days }, (_, i) => String(i + 1).padStart(2, '0'));
 
@@ -108,6 +117,11 @@ function buildFlowChart(incomeRows, expenseRows) {
     incomeRows.forEach(r => {
         const d = new Date(r.visit_date).getDate() - 1;
         if (d >= 0 && d < days) incomeByDay[d] += r.price || 0;
+    });
+    // Ручні доходи з transactions
+    manualIncomeRows.forEach(r => {
+        const d = new Date(r.date).getDate() - 1;
+        if (d >= 0 && d < days) incomeByDay[d] += r.amount || 0;
     });
     expenseRows.forEach(r => {
         const d = new Date(r.date).getDate() - 1;
