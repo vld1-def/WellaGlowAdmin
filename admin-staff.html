@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wella Glow | Персонал</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;600;700;800&display=swap');
+        :root { --bg: #050505; --accent: #f43f5e; }
+        body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
+        * { font-style: normal !important; }
+        .glass-panel { background: rgba(17,17,19,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
+        .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
+        .sidebar-link.active { background: rgba(244,63,94,0.1); color: #f43f5e; border-left: 3px solid #f43f5e; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1e1e21; border-radius: 10px; }
+        .skeleton { background: linear-gradient(90deg,#111113 25%,#1a1a1d 50%,#111113 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        /* Drawers */
+        #staff-drawer, #archive-drawer, #permissions-drawer, #reviews-drawer, #candidates-drawer {
+            transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+        }
+        #staff-drawer.open, #archive-drawer.open, #permissions-drawer.open,
+        #reviews-drawer.open, #candidates-drawer.open { transform: translateX(0); }
+        #drawer-overlay { opacity:0; pointer-events:none; transition:opacity 0.35s ease; }
+        #drawer-overlay.open { opacity:1; pointer-events:all; }
+
+        /* Profile modal */
+        #profile-modal { opacity:0; pointer-events:none; transition:opacity 0.25s ease; }
+        #profile-modal.open { opacity:1; pointer-events:all; }
+
+        /* Form inputs */
+        .st-input {
+            width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+            border-radius:12px; padding:12px 14px; color:#e2e8f0; font-size:13px;
+            font-family:'Manrope',sans-serif; font-weight:600; outline:none; transition:border-color 0.2s;
+        }
+        .st-input:focus { border-color:rgba(244,63,94,0.5); }
+        .st-input option { background:#111113; color:#e2e8f0; }
+
+        /* Actions dropdown */
+        .actions-menu { display:none; position:absolute; right:0; top:100%; z-index:99; min-width:168px;
+            background:#111113; border:1px solid rgba(255,255,255,0.08); border-radius:12px;
+            padding:6px; box-shadow:0 16px 40px rgba(0,0,0,0.6); }
+        .actions-menu.open { display:block; }
+        .actions-item { display:flex; align-items:center; gap:9px; padding:9px 12px; border-radius:8px;
+            font-size:11px; font-weight:700; color:#a1a1aa; cursor:pointer; transition:all 0.15s; text-transform:uppercase; letter-spacing:0.06em; }
+        .actions-item:hover { background:rgba(255,255,255,0.05); color:#e2e8f0; }
+        .actions-item.danger { color:#f43f5e; }
+        .actions-item.danger:hover { background:rgba(244,63,94,0.1); }
+        .actions-item.success { color:#10b981; }
+        .actions-item.success:hover { background:rgba(16,185,129,0.1); }
+
+        /* Status badge */
+        .badge-active    { background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.25); }
+        .badge-trial     { background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.25); }
+        .badge-candidate { background:rgba(99,102,241,0.12); color:#818cf8; border:1px solid rgba(99,102,241,0.25); }
+        .badge-fired     { background:rgba(244,63,94,0.08); color:#f43f5e; border:1px solid rgba(244,63,94,0.2); }
+
+        /* Stars */
+        .star-full  { color:#fbbf24; }
+        .star-empty { color:#3f3f46; }
+
+        /* Tab */
+        .tab-btn { padding:8px 18px; border-radius:8px; font-size:11px; font-weight:800; text-transform:uppercase;
+            letter-spacing:0.08em; cursor:pointer; transition:all 0.2s; color:#52525b; border:1px solid transparent; }
+        .tab-btn.active { background:rgba(244,63,94,0.12); border-color:rgba(244,63,94,0.3); color:#f43f5e; }
+
+        /* Toggle */
+        .perm-toggle { position:relative; display:inline-block; width:40px; height:22px; }
+        .perm-toggle input { opacity:0; width:0; height:0; }
+        .perm-slider { position:absolute; cursor:pointer; inset:0; background:rgba(255,255,255,0.08);
+            border-radius:22px; transition:0.3s; }
+        .perm-slider:before { position:absolute; content:''; height:16px; width:16px; left:3px; bottom:3px;
+            background:#71717a; border-radius:50%; transition:0.3s; }
+        .perm-toggle input:checked + .perm-slider { background:rgba(244,63,94,0.3); }
+        .perm-toggle input:checked + .perm-slider:before { transform:translateX(18px); background:#f43f5e; }
+
+        /* Avatar color ring */
+        .avatar-ring { border:2px solid; border-radius:50%; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+<aside class="w-16 lg:w-64 bg-black/50 border-r border-white/5 flex flex-col fixed h-full z-50">
+    <div class="p-6">
+        <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none hidden lg:block">Wella Glow</h1>
+        <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none lg:hidden">W</h1>
+        <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] mt-1 uppercase hidden lg:block">studio</p>
+    </div>
+    <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto pb-10">
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Аналітика</p>
+            <div class="space-y-1">
+                <a href="owner-dashboard.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-chart-pie w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Дашборд</span></a>
+                <a href="admin-finance.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-wallet w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Фінанси</span></a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Студія</p>
+            <div class="space-y-1">
+                <a href="admin-calendar.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-calendar-check w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span></a>
+                <a href="admin-staff.html" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition font-bold"><i class="fa-solid fa-users-gear w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span></a>
+                <a href="admin-inventory.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-boxes-stacked w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Склад</span></a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Клієнти</p>
+            <div class="space-y-1">
+                <a href="admin-clients-base.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-address-book w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">База клієнтів</span></a>
+                <a href="admin-bonuses.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-gift w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Бонуси</span></a>
+            </div>
+        </div>
+    </nav>
+</aside>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main class="flex-1 ml-16 lg:ml-64 p-5 lg:p-8">
+
+    <!-- HEADER -->
+    <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
+        <div>
+            <h2 class="text-2xl font-extrabold text-white tracking-tight">Команда студії</h2>
+            <p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">
+                Активних: <span id="active-count" class="text-rose-500">—</span>
+            </p>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+            <button onclick="openArchiveDrawer()" class="glass-panel px-4 py-3 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition">
+                <i class="fa-solid fa-box-archive text-zinc-500"></i>
+                <span class="hidden sm:inline">Архів та кандидати</span>
+            </button>
+            <button onclick="openStaffDrawer()" class="neo-gradient px-5 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2 hover:opacity-90 transition">
+                <i class="fa-solid fa-plus"></i>
+                <span class="hidden sm:inline">Додати працівника</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- KPI CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <!-- Фонд оплати праці -->
+        <div class="glass-panel rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Фонд оплати праці</p>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(244,63,94,0.12)">
+                    <i class="fa-solid fa-money-bill-wave text-rose-500 text-xs"></i>
+                </div>
+            </div>
+            <p id="kpi-payroll" class="text-2xl font-extrabold text-white tracking-tight">₴—</p>
+            <p class="text-[9px] text-zinc-600 mt-1 font-semibold">% від виручки цього місяця</p>
+        </div>
+        <!-- Ефективність -->
+        <div class="glass-panel rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Ефективність команди</p>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(16,185,129,0.12)">
+                    <i class="fa-solid fa-bolt text-emerald-400 text-xs"></i>
+                </div>
+            </div>
+            <p id="kpi-efficiency" class="text-2xl font-extrabold text-white tracking-tight">—<span class="text-sm text-zinc-500 font-semibold">/10</span></p>
+            <p class="text-[9px] text-zinc-600 mt-1 font-semibold">Середня по майстрах</p>
+        </div>
+        <!-- Рейтинг -->
+        <div class="glass-panel rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Середній рейтинг</p>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(251,191,36,0.12)">
+                    <i class="fa-solid fa-star text-amber-400 text-xs"></i>
+                </div>
+            </div>
+            <p id="kpi-rating" class="text-2xl font-extrabold text-white tracking-tight">—<span class="text-sm text-zinc-500 font-semibold"> / 5.0</span></p>
+            <p class="text-[9px] text-zinc-600 mt-1 font-semibold">Оцінка за всі відгуки</p>
+        </div>
+    </div>
+
+    <!-- STAFF TABLE SECTION -->
+    <div class="glass-panel rounded-2xl p-5 lg:p-6 mb-8">
+        <!-- Table toolbar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-[11px]"></i>
+                    <input id="staff-search" oninput="filterStaff()" type="text" placeholder="Пошук по імені або посаді..."
+                        class="bg-white/5 border border-white/8 rounded-xl pl-8 pr-4 py-2.5 text-[11px] font-semibold text-zinc-300 placeholder-zinc-600 outline-none focus:border-rose-500/40 w-64 transition">
+                </div>
+                <span id="staff-count-label" class="text-[10px] text-zinc-600 font-bold hidden sm:block">0 працівників</span>
+            </div>
+            <button onclick="downloadLastMonthReport()" class="glass-panel px-4 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition whitespace-nowrap">
+                <i class="fa-solid fa-file-arrow-down text-xs"></i>
+                <span>Звіт за минулий місяць</span>
+            </button>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-white/5">
+                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">Працівник</th>
+                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden md:table-cell">Стаж</th>
+                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Записи (міс.)</th>
+                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Виручка (міс.)</th>
+                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">% ЗП</th>
+                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">Рейтинг</th>
+                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3">Статус</th>
+                        <th class="pb-3"></th>
+                    </tr>
+                </thead>
+                <tbody id="staff-table-body">
+                    <tr><td colspan="8" class="py-8 text-center">
+                        <div class="skeleton h-4 rounded w-2/3 mx-auto mb-2"></div>
+                        <div class="skeleton h-4 rounded w-1/2 mx-auto"></div>
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- BOTTOM ROW: Candidates + Reviews -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Candidates -->
+        <div class="glass-panel rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-[11px] font-black uppercase tracking-widest text-zinc-400">Недавні кандидати</h3>
+                <button onclick="openCandidatesDrawer()" class="text-[9px] text-rose-500 font-black uppercase tracking-widest hover:text-rose-400 transition">Всі →</button>
+            </div>
+            <div id="candidates-list" class="space-y-2">
+                <div class="skeleton h-10 rounded-xl"></div>
+                <div class="skeleton h-10 rounded-xl"></div>
+                <div class="skeleton h-10 rounded-xl mt-1"></div>
+            </div>
+        </div>
+
+        <!-- Reviews -->
+        <div class="glass-panel rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-[11px] font-black uppercase tracking-widest text-zinc-400">Останні відгуки</h3>
+                <button onclick="openReviewsDrawer()" class="text-[9px] text-rose-500 font-black uppercase tracking-widest hover:text-rose-400 transition">Всі →</button>
+            </div>
+            <div id="reviews-list" class="space-y-2">
+                <div class="skeleton h-14 rounded-xl"></div>
+                <div class="skeleton h-14 rounded-xl"></div>
+                <div class="skeleton h-14 rounded-xl mt-1"></div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- ═══════════════════ OVERLAY ═══════════════════ -->
+<div id="drawer-overlay" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 backdrop-blur-sm" style="z-index:60"></div>
+
+<!-- ═══════════════════ ADD/EDIT STAFF DRAWER ═══════════════════ -->
+<div id="staff-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-[#0d0d0f] border-l border-white/8 overflow-y-auto" style="z-index:70">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 id="staff-drawer-title" class="text-sm font-black uppercase tracking-widest text-white">Новий працівник</h3>
+            <button onclick="closeAllDrawers()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="space-y-4">
+            <!-- Name -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Повне ім'я *</label>
+                <input id="s-name" type="text" placeholder="Анна Король" class="st-input">
+            </div>
+            <!-- Phone -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Телефон</label>
+                <input id="s-phone" type="text" placeholder="+380..." class="st-input">
+            </div>
+            <!-- Position + Role -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Посада</label>
+                    <input id="s-position" type="text" placeholder="Майстер манікюру" class="st-input">
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Роль</label>
+                    <select id="s-role" class="st-input">
+                        <option value="master">Майстер</option>
+                        <option value="admin">Адмін</option>
+                        <option value="owner">Власник</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Status -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Статус</label>
+                <select id="s-status" class="st-input">
+                    <option value="active">Активний</option>
+                    <option value="trial">Випробувальний</option>
+                    <option value="candidate">Кандидат</option>
+                    <option value="fired">Архів</option>
+                </select>
+            </div>
+            <!-- Hire date + Salary % -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Дата прийому</label>
+                    <input id="s-hire-date" type="date" class="st-input">
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">% ЗП</label>
+                    <input id="s-salary-percent" type="number" min="0" max="100" placeholder="40" class="st-input">
+                </div>
+            </div>
+            <!-- Color -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Колір аватара</label>
+                <div class="flex items-center gap-3">
+                    <input id="s-color" type="color" value="#f43f5e" class="w-10 h-10 rounded-xl cursor-pointer border-0 bg-transparent">
+                    <span class="text-[11px] text-zinc-500 font-semibold">Відображається в аватарі та календарі</span>
+                </div>
+            </div>
+            <!-- Password -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Пароль для входу</label>
+                <input id="s-password" type="text" placeholder="Залиш порожнім для збереження" class="st-input">
+            </div>
+            <!-- Notes -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Нотатки</label>
+                <textarea id="s-notes" rows="3" placeholder="Будь-які нотатки..." class="st-input resize-none"></textarea>
+            </div>
+        </div>
+
+        <div class="flex gap-3 mt-6">
+            <button onclick="closeAllDrawers()" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-500 hover:text-white transition">Скасувати</button>
+            <button onclick="saveStaff()" class="flex-1 neo-gradient py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">Зберегти</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ ARCHIVE DRAWER ═══════════════════ -->
+<div id="archive-drawer" class="fixed top-0 right-0 h-full w-full max-w-lg bg-[#0d0d0f] border-l border-white/8 overflow-y-auto" style="z-index:70">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Архів та кандидати</h3>
+            <button onclick="closeAllDrawers()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-5">
+            <button class="tab-btn active" id="arch-tab-fired" onclick="switchArchiveTab('fired')">Архів</button>
+            <button class="tab-btn" id="arch-tab-trial" onclick="switchArchiveTab('trial')">Випробувальні</button>
+            <button class="tab-btn" id="arch-tab-candidate" onclick="switchArchiveTab('candidate')">Кандидати</button>
+        </div>
+        <div id="archive-list" class="space-y-2"></div>
+    </div>
+</div>
+
+<!-- ═══════════════════ PERMISSIONS DRAWER ═══════════════════ -->
+<div id="permissions-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-[#0d0d0f] border-l border-white/8 overflow-y-auto" style="z-index:80">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Доступи</h3>
+            <button onclick="closePermissions()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <p id="perm-staff-name" class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-6"></p>
+
+        <div id="perm-list" class="space-y-3"></div>
+
+        <button onclick="savePermissions()" class="w-full neo-gradient py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition mt-6">Зберегти доступи</button>
+    </div>
+</div>
+
+<!-- ═══════════════════ REVIEWS DRAWER ═══════════════════ -->
+<div id="reviews-drawer" class="fixed top-0 right-0 h-full w-full max-w-lg bg-[#0d0d0f] border-l border-white/8 overflow-y-auto" style="z-index:70">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Всі відгуки</h3>
+            <button onclick="closeAllDrawers()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex gap-2 mb-4">
+            <input id="reviews-search" oninput="filterReviews()" type="text" placeholder="Пошук по клієнту або коментарю..."
+                class="flex-1 bg-white/5 border border-white/8 rounded-xl px-3 py-2.5 text-[11px] font-semibold text-zinc-300 placeholder-zinc-600 outline-none focus:border-rose-500/40 transition">
+            <select id="reviews-filter-staff" onchange="filterReviews()" class="st-input w-40">
+                <option value="">Всі майстри</option>
+            </select>
+        </div>
+        <div id="all-reviews-list" class="space-y-3"></div>
+    </div>
+</div>
+
+<!-- ═══════════════════ CANDIDATES DRAWER ═══════════════════ -->
+<div id="candidates-drawer" class="fixed top-0 right-0 h-full w-full max-w-lg bg-[#0d0d0f] border-l border-white/8 overflow-y-auto" style="z-index:70">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Всі кандидати</h3>
+            <button onclick="closeAllDrawers()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="all-candidates-list" class="space-y-3"></div>
+    </div>
+</div>
+
+<!-- ═══════════════════ PROFILE MODAL ═══════════════════ -->
+<div id="profile-modal" class="fixed inset-0 flex items-center justify-center p-4" style="z-index:90; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px)">
+    <div class="bg-[#0d0d0f] border border-white/8 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <!-- Modal header -->
+        <div class="flex items-center justify-between p-6 border-b border-white/5">
+            <div class="flex items-center gap-4">
+                <div id="modal-avatar" class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black text-white"></div>
+                <div>
+                    <h3 id="modal-name" class="text-lg font-extrabold text-white tracking-tight"></h3>
+                    <p id="modal-position" class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5"></p>
+                </div>
+            </div>
+            <button onclick="closeProfileModal()" class="text-zinc-600 hover:text-white transition text-xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <!-- Tabs -->
+        <div class="flex gap-2 p-4 border-b border-white/5">
+            <button class="tab-btn active" id="modal-tab-info" onclick="switchModalTab('info')">Інформація</button>
+            <button class="tab-btn" id="modal-tab-chart" onclick="switchModalTab('chart')">Динаміка</button>
+            <button class="tab-btn" id="modal-tab-reviews" onclick="switchModalTab('reviews')">Відгуки</button>
+        </div>
+        <!-- Content -->
+        <div class="p-6">
+            <!-- Info tab -->
+            <div id="modal-info-tab">
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <div class="glass-panel rounded-xl p-4">
+                        <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Телефон</p>
+                        <p id="modal-phone" class="text-sm font-bold text-white">—</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4">
+                        <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Дата прийому</p>
+                        <p id="modal-hire-date" class="text-sm font-bold text-white">—</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4">
+                        <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Стаж</p>
+                        <p id="modal-tenure" class="text-sm font-bold text-white">—</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4">
+                        <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">% ЗП</p>
+                        <p id="modal-salary" class="text-sm font-bold text-white">—</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4">
+                        <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Рейтинг</p>
+                        <p id="modal-rating" class="text-sm font-bold text-amber-400">—</p>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4">
+                        <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Статус</p>
+                        <p id="modal-status-badge" class="text-sm font-bold">—</p>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl p-4">
+                    <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-2">Нотатки</p>
+                    <p id="modal-notes" class="text-sm text-zinc-400 font-semibold leading-relaxed">—</p>
+                </div>
+            </div>
+            <!-- Chart tab -->
+            <div id="modal-chart-tab" class="hidden">
+                <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-4">Виручка за 6 місяців</p>
+                <canvas id="modal-revenue-chart" height="200"></canvas>
+            </div>
+            <!-- Reviews tab -->
+            <div id="modal-reviews-tab" class="hidden">
+                <div id="modal-reviews-list" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/admin-staff.js"></script>
+</body>
+</html>
