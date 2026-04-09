@@ -20,9 +20,9 @@
         .skeleton { background: linear-gradient(90deg, #111113 25%, #1a1a1d 50%, #111113 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-        /* Drawer */
-        #finance-drawer { transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); }
-        #finance-drawer.open { transform: translateX(0); }
+        /* Drawers */
+        #finance-drawer, #settings-drawer { transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); }
+        #finance-drawer.open, #settings-drawer.open { transform: translateX(0); }
         #drawer-overlay { opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
         #drawer-overlay.open { opacity: 1; pointer-events: all; }
 
@@ -48,6 +48,10 @@
         .type-btn.expense.active { background: rgba(244,63,94,0.15); border-color: rgba(244,63,94,0.4); color: #f43f5e; }
         .type-btn.income.active  { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.35); color: #10b981; }
         .type-btn:not(.active) { background: rgba(255,255,255,0.03); color: #52525b; }
+
+        /* Edit row button */
+        .edit-tx-btn { opacity: 0; transition: opacity 0.15s; }
+        tr:hover .edit-tx-btn { opacity: 1; }
     </style>
 </head>
 <body class="flex min-h-screen">
@@ -103,9 +107,9 @@
                     <p class="text-[8px] text-zinc-600 uppercase font-black tracking-widest">Готівка в касі</p>
                     <p id="cash-amount" class="text-sm font-black text-white tracking-tight">₴—</p>
                 </div>
-                <!-- На розрахунковому -->
+                <!-- Баланс ФОП -->
                 <div class="glass-panel px-4 py-2.5 rounded-xl flex flex-col items-end">
-                    <p class="text-[8px] text-zinc-600 uppercase font-black tracking-widest">На розрахунковому</p>
+                    <p class="text-[8px] text-zinc-600 uppercase font-black tracking-widest">Баланс ФОП</p>
                     <p id="bank-amount" class="text-sm font-black text-emerald-400 tracking-tight">₴—</p>
                 </div>
                 <!-- Внести фінанси -->
@@ -118,43 +122,52 @@
                     <i class="fa-solid fa-file-arrow-down"></i>
                     <span class="hidden sm:inline">Експорт</span>
                 </button>
+                <!-- Налаштування -->
+                <button onclick="openSettings()" class="w-11 h-11 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition" title="Налаштування">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
             </div>
         </header>
 
-        <!-- KPI КАРТКИ -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <!-- KPI КАРТКИ (5 шт) -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
 
             <div class="glass-panel p-5 rounded-2xl">
                 <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Загальна виручка</p>
-                <h3 id="kpi-revenue" class="text-3xl font-black text-white tracking-tighter">₴—</h3>
+                <h3 id="kpi-revenue" class="text-2xl font-black text-white tracking-tighter">₴—</h3>
                 <p id="kpi-revenue-sub" class="text-emerald-400 text-[9px] font-black mt-2 uppercase tracking-wide">—</p>
             </div>
 
             <div class="glass-panel p-5 rounded-2xl">
                 <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Всього витрат</p>
-                <h3 id="kpi-expenses" class="text-3xl font-black text-white tracking-tighter">₴—</h3>
+                <h3 id="kpi-expenses" class="text-2xl font-black text-white tracking-tighter">₴—</h3>
                 <p id="kpi-expenses-sub" class="text-rose-400 text-[9px] font-black mt-2 uppercase tracking-wide">—</p>
             </div>
 
             <div class="glass-panel p-5 rounded-2xl border border-emerald-500/30" style="box-shadow: 0 0 30px rgba(16,185,129,0.06);">
                 <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Чистий прибуток</p>
-                <h3 id="kpi-profit" class="text-3xl font-black text-white tracking-tighter">₴—</h3>
-                <p class="text-zinc-600 text-[9px] font-black mt-2 uppercase tracking-wide">Після всіх відрахувань</p>
+                <h3 id="kpi-profit" class="text-2xl font-black text-white tracking-tighter">₴—</h3>
+                <p class="text-zinc-600 text-[9px] font-black mt-2 uppercase tracking-wide">Після відрахувань</p>
             </div>
 
             <div class="glass-panel p-5 rounded-2xl">
                 <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Рентабельність</p>
-                <h3 id="kpi-margin" class="text-3xl font-black text-white tracking-tighter">—%</h3>
+                <h3 id="kpi-margin" class="text-2xl font-black text-white tracking-tighter">—%</h3>
                 <div class="mt-3 h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
                     <div id="kpi-margin-bar" class="h-full bg-emerald-500 transition-all duration-700" style="width: 0%"></div>
                 </div>
+            </div>
+
+            <!-- Бонуси клієнтів -->
+            <div class="glass-panel p-5 rounded-2xl border border-amber-500/20">
+                <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Бонуси клієнтів</p>
+                <h3 id="kpi-bonuses" class="text-2xl font-black text-amber-400 tracking-tighter">—</h3>
+                <p class="text-zinc-600 text-[9px] font-black mt-2 uppercase tracking-wide">Всього балів</p>
             </div>
         </div>
 
         <!-- ГРАФІКИ -->
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-
-            <!-- Грошові потоки (3/4) -->
             <div class="lg:col-span-3 glass-panel p-6 rounded-3xl">
                 <div class="flex items-center justify-between mb-6">
                     <h4 class="text-xs font-black text-white uppercase tracking-widest">Грошові потоки (дохід vs витрати)</h4>
@@ -166,7 +179,6 @@
                 <div class="h-72"><canvas id="flowChart"></canvas></div>
             </div>
 
-            <!-- Куди йдуть гроші (1/4) -->
             <div class="lg:col-span-1 glass-panel p-6 rounded-3xl flex flex-col">
                 <h4 class="text-[10px] font-black text-white uppercase tracking-widest mb-6">Куди йдуть гроші</h4>
                 <div class="flex-1 flex items-center justify-center">
@@ -211,10 +223,11 @@
                             <th class="pb-3 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Метод</th>
                             <th class="pb-3 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Вніс</th>
                             <th class="pb-3 text-[9px] font-black text-zinc-600 uppercase tracking-widest text-right">Сума</th>
+                            <th class="pb-3 w-8"></th>
                         </tr>
                     </thead>
                     <tbody id="transactions-body">
-                        <tr><td colspan="6" class="py-8 text-center"><div class="skeleton h-4 w-full rounded"></div></td></tr>
+                        <tr><td colspan="7" class="py-8 text-center"><div class="skeleton h-4 w-full rounded"></div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -227,31 +240,25 @@
 
     </main>
 
-    <!-- ═══════════════════════════════════════════════════════
-         DRAWER — ВНЕСТИ ФІНАНСИ
-    ═══════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════
+         SHARED OVERLAY
+    ═══════════════════════════════════════════════════ -->
+    <div id="drawer-overlay" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"></div>
 
-    <!-- Overlay -->
-    <div id="drawer-overlay" onclick="closeDrawer()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"></div>
-
-    <!-- Drawer panel -->
+    <!-- ═══════════════════════════════════════════════════
+         DRAWER — ВНЕСТИ / РЕДАГУВАТИ ФІНАНСИ
+    ═══════════════════════════════════════════════════ -->
     <div id="finance-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-[#0c0c0e] border-l border-white/5 z-50 flex flex-col shadow-2xl">
-
-        <!-- Drawer header -->
         <div class="flex items-center justify-between px-6 py-5 border-b border-white/5">
             <div>
-                <h3 class="text-lg font-extrabold text-white tracking-tight">Внести операцію</h3>
+                <h3 id="drawer-title" class="text-lg font-extrabold text-white tracking-tight">Внести операцію</h3>
                 <p class="text-xs text-zinc-600 font-bold uppercase tracking-widest mt-0.5">Фінансовий запис</p>
             </div>
             <button onclick="closeDrawer()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-500 hover:text-white transition">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-
-        <!-- Drawer body -->
         <div class="flex-1 overflow-y-auto px-6 py-6 space-y-5">
-
-            <!-- Тип: витрата / дохід -->
             <div>
                 <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Тип операції</label>
                 <div class="flex gap-2">
@@ -263,14 +270,10 @@
                     </button>
                 </div>
             </div>
-
-            <!-- Дата -->
             <div>
                 <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Дата</label>
                 <input id="fin-date" type="date" class="fin-input">
             </div>
-
-            <!-- Категорія -->
             <div>
                 <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Категорія</label>
                 <select id="fin-category" class="fin-input">
@@ -280,46 +283,35 @@
                     <option value="other">Інше</option>
                 </select>
             </div>
-
-            <!-- Сума -->
             <div>
                 <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Сума (₴)</label>
                 <input id="fin-amount" type="number" min="0" step="0.01" placeholder="0.00" class="fin-input">
             </div>
-
-            <!-- Метод оплати -->
             <div>
                 <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Метод оплати</label>
                 <div class="grid grid-cols-3 gap-2">
                     <button id="pay-cash" onclick="setMethod('cash')" class="pay-btn active py-3 rounded-xl border text-xs font-black uppercase tracking-wide transition bg-rose-500/10 border-rose-500/30 text-rose-400">
                         <i class="fa-solid fa-money-bill-wave block text-base mb-1"></i>Готівка
                     </button>
-                    <button id="pay-card" onclick="setMethod('card')" class="pay-btn py-3 rounded-xl border text-xs font-black uppercase tracking-wide transition bg-white/3 border-white/8 text-zinc-500">
+                    <button id="pay-card" onclick="setMethod('card')" class="pay-btn py-3 rounded-xl border text-xs font-black uppercase tracking-wide transition bg-white/5 border-white/10 text-zinc-500">
                         <i class="fa-solid fa-credit-card block text-base mb-1"></i>Картка
                     </button>
-                    <button id="pay-transfer" onclick="setMethod('transfer')" class="pay-btn py-3 rounded-xl border text-xs font-black uppercase tracking-wide transition bg-white/3 border-white/8 text-zinc-500">
+                    <button id="pay-transfer" onclick="setMethod('transfer')" class="pay-btn py-3 rounded-xl border text-xs font-black uppercase tracking-wide transition bg-white/5 border-white/10 text-zinc-500">
                         <i class="fa-solid fa-building-columns block text-base mb-1"></i>Переказ
                     </button>
                 </div>
             </div>
-
-            <!-- Коментар -->
             <div>
                 <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Коментар</label>
                 <textarea id="fin-comment" rows="3" placeholder="Наприклад: Виплата Анні Король за березень…" class="fin-input resize-none"></textarea>
             </div>
-
-            <!-- Майстер (опціонально) -->
             <div>
                 <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Майстер <span class="text-zinc-700 normal-case font-bold">(необов'язково)</span></label>
                 <select id="fin-staff" class="fin-input">
                     <option value="">— не вказано —</option>
                 </select>
             </div>
-
         </div>
-
-        <!-- Drawer footer -->
         <div class="px-6 py-5 border-t border-white/5 flex gap-3">
             <button onclick="closeDrawer()" class="flex-1 py-3.5 rounded-xl border border-white/10 text-sm font-black text-zinc-500 hover:text-white hover:bg-white/5 uppercase tracking-widest transition">
                 Скасувати
@@ -330,17 +322,76 @@
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════
-         МОДАЛКА — УСІ ТРАНЗАКЦІЇ
-    ═══════════════════════════════════════════════════════ -->
-    <div id="all-tx-modal" class="hidden fixed inset-0 flex items-center justify-center p-4" style="z-index:60">
-        <!-- Overlay -->
-        <div onclick="closeAllTxModal()" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <!-- ═══════════════════════════════════════════════════
+         DRAWER — НАЛАШТУВАННЯ
+    ═══════════════════════════════════════════════════ -->
+    <div id="settings-drawer" class="fixed top-0 right-0 h-full w-full max-w-sm bg-[#0c0c0e] border-l border-white/5 z-50 flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-white/5">
+            <div>
+                <h3 class="text-lg font-extrabold text-white tracking-tight">Налаштування</h3>
+                <p class="text-xs text-zinc-600 font-bold uppercase tracking-widest mt-0.5">Фінансові параметри</p>
+            </div>
+            <button onclick="closeSettings()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-500 hover:text-white transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
 
-        <!-- Панель -->
+            <!-- Секція: Місячний план -->
+            <div>
+                <p class="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-3">Фінансовий план</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">План виручки на місяць (₴)</label>
+                        <input id="set-monthly-plan" type="number" min="0" placeholder="0" class="fin-input">
+                        <p class="text-[9px] text-zinc-600 mt-1.5">Відображається як "% до плану" у виручці</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-px bg-white/5"></div>
+
+            <!-- Секція: Залишки -->
+            <div>
+                <p class="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-3">Залишки коштів</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Готівка в касі (₴)</label>
+                        <input id="set-cash" type="number" min="0" placeholder="0" class="fin-input">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Баланс ФОП / розрахунковий рахунок (₴)</label>
+                        <input id="set-bank" type="number" min="0" placeholder="0" class="fin-input">
+                        <p class="text-[9px] text-zinc-600 mt-1.5">Вносьте на початку місяця або після поповнення</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-px bg-white/5"></div>
+
+            <!-- Секція: Інфо -->
+            <div class="glass-panel rounded-xl p-4 space-y-2">
+                <p class="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Довідка</p>
+                <p class="text-[11px] text-zinc-500 leading-relaxed">Ці дані зберігаються в таблиці <span class="text-zinc-300 font-bold">cash_register</span>. Оновлюйте залишки вручну на початку кожного місяця або після значних операцій.</p>
+            </div>
+        </div>
+        <div class="px-6 py-5 border-t border-white/5 flex gap-3">
+            <button onclick="closeSettings()" class="flex-1 py-3.5 rounded-xl border border-white/10 text-sm font-black text-zinc-500 hover:text-white hover:bg-white/5 uppercase tracking-widest transition">
+                Скасувати
+            </button>
+            <button onclick="saveSettings()" id="settings-save-btn" class="flex-1 py-3.5 rounded-xl neo-gradient text-sm font-black text-white uppercase tracking-widest hover:opacity-90 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-floppy-disk"></i> Зберегти
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         МОДАЛКА — УСІ ТРАНЗАКЦІЇ
+    ═══════════════════════════════════════════════════ -->
+    <div id="all-tx-modal" class="hidden fixed inset-0 flex items-center justify-center p-4" style="z-index:60">
+        <div onclick="closeAllTxModal()" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
         <div class="relative w-full max-w-5xl max-h-[90vh] flex flex-col glass-panel rounded-3xl shadow-2xl border border-white/8 z-10">
 
-            <!-- Хедер -->
             <div class="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
                 <div class="flex items-center gap-4">
                     <h3 class="text-base font-extrabold text-white tracking-tight">Усі транзакції</h3>
@@ -351,23 +402,17 @@
                 </button>
             </div>
 
-            <!-- Фільтри + пошук -->
             <div class="px-6 py-4 border-b border-white/5 shrink-0">
                 <div class="flex flex-wrap gap-3">
-                    <!-- Пошук -->
                     <div class="flex-1 min-w-[200px] relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-xs pointer-events-none"></i>
-                        <input id="modal-search" type="text" placeholder="Пошук по всіх стовпцях…"
-                            oninput="applyModalFilters()"
-                            class="fin-input pl-9 text-[12px] py-2.5">
+                        <input id="modal-search" type="text" placeholder="Пошук по всіх стовпцях…" oninput="applyModalFilters()" class="fin-input pl-9 text-[12px] py-2.5">
                     </div>
-                    <!-- Тип -->
                     <select id="modal-filter-type" onchange="applyModalFilters()" class="fin-input w-auto text-[11px] py-2.5 px-3">
                         <option value="">Всі типи</option>
                         <option value="expense">Витрата</option>
                         <option value="income">Дохід</option>
                     </select>
-                    <!-- Категорія -->
                     <select id="modal-filter-cat" onchange="applyModalFilters()" class="fin-input w-auto text-[11px] py-2.5 px-3">
                         <option value="">Всі категорії</option>
                         <option value="salary">Виплата ЗП</option>
@@ -376,38 +421,35 @@
                         <option value="income">Дохід</option>
                         <option value="other">Інше</option>
                     </select>
-                    <!-- Метод -->
                     <select id="modal-filter-method" onchange="applyModalFilters()" class="fin-input w-auto text-[11px] py-2.5 px-3">
                         <option value="">Всі методи</option>
                         <option value="cash">Готівка</option>
                         <option value="card">Картка</option>
                         <option value="transfer">Переказ</option>
                     </select>
-                    <!-- Скинути -->
                     <button onclick="clearModalFilters()" class="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-black text-zinc-500 hover:text-white uppercase tracking-widest transition whitespace-nowrap">
                         <i class="fa-solid fa-xmark mr-1"></i>Скинути
                     </button>
                 </div>
             </div>
 
-            <!-- Таблиця -->
             <div class="overflow-y-auto flex-1 px-6">
                 <table class="w-full text-left">
                     <thead class="sticky top-0 bg-[#0d0d0f] z-10">
                         <tr class="border-b border-white/5">
-                            <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Дата / Час внесення</th>
+                            <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Дата / Час</th>
                             <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Категорія</th>
                             <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Коментар</th>
                             <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Метод</th>
                             <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Вніс</th>
                             <th class="py-3 text-[9px] font-black text-zinc-600 uppercase tracking-widest text-right">Сума</th>
+                            <th class="py-3 w-8"></th>
                         </tr>
                     </thead>
                     <tbody id="all-tx-tbody"></tbody>
                 </table>
             </div>
 
-            <!-- Футер -->
             <div class="px-6 py-4 border-t border-white/5 shrink-0 flex justify-end">
                 <button onclick="closeAllTxModal()" class="px-6 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-black text-zinc-400 hover:text-white uppercase tracking-widest transition">
                     Закрити

@@ -32,14 +32,19 @@ create index if not exists idx_transactions_type     on transactions(type);
 create index if not exists idx_transactions_category on transactions(category);
 
 
--- 2. ГОТІВКА В КАСІ ТА НА РАХУНКУ
+-- 2. ГОТІВКА В КАСІ / ФОП / ПЛАН
 -- -----------------------------------------------------------
 create table if not exists cash_register (
-    id           serial      primary key,
-    cash_amount  numeric(10,2) not null default 0,   -- готівка в касі
-    bank_amount  numeric(10,2) not null default 0,   -- на розрахунковому рахунку
-    updated_at   timestamptz not null default now()
+    id            serial        primary key,
+    cash_amount   numeric(10,2) not null default 0,   -- готівка в касі
+    bank_amount   numeric(10,2) not null default 0,   -- баланс ФОП / розрахунковий рахунок
+    monthly_plan  numeric(12,2) not null default 0,   -- план виручки на місяць
+    updated_at    timestamptz   not null default now()
 );
+
+-- ── Міграції (якщо таблиця вже існує) ───────────────────────────────────────
+-- alter table cash_register add column if not exists monthly_plan numeric(12,2) not null default 0;
+-- alter table clients       add column if not exists bonus_balance numeric(10,2) not null default 0;
 
 -- Один рядок на студію (singleton)
 insert into cash_register (cash_amount, bank_amount)
