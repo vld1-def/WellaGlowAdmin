@@ -329,6 +329,91 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════
+         МОДАЛКА — УСІ ТРАНЗАКЦІЇ
+    ═══════════════════════════════════════════════════════ -->
+    <div id="all-tx-modal" class="hidden fixed inset-0 flex items-center justify-center p-4" style="z-index:60">
+        <!-- Overlay -->
+        <div onclick="closeAllTxModal()" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+
+        <!-- Панель -->
+        <div class="relative w-full max-w-5xl max-h-[90vh] flex flex-col glass-panel rounded-3xl shadow-2xl border border-white/8 z-10">
+
+            <!-- Хедер -->
+            <div class="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
+                <div class="flex items-center gap-4">
+                    <h3 class="text-base font-extrabold text-white tracking-tight">Усі транзакції</h3>
+                    <span id="modal-counter" class="text-[9px] font-black text-zinc-500 uppercase tracking-widest bg-white/5 px-2.5 py-1 rounded-full">—</span>
+                </div>
+                <button onclick="closeAllTxModal()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-500 hover:text-white transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Фільтри + пошук -->
+            <div class="px-6 py-4 border-b border-white/5 shrink-0">
+                <div class="flex flex-wrap gap-3">
+                    <!-- Пошук -->
+                    <div class="flex-1 min-w-[200px] relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-xs pointer-events-none"></i>
+                        <input id="modal-search" type="text" placeholder="Пошук по всіх стовпцях…"
+                            oninput="applyModalFilters()"
+                            class="fin-input pl-9 text-[12px] py-2.5">
+                    </div>
+                    <!-- Тип -->
+                    <select id="modal-filter-type" onchange="applyModalFilters()" class="fin-input w-auto text-[11px] py-2.5 px-3">
+                        <option value="">Всі типи</option>
+                        <option value="expense">Витрата</option>
+                        <option value="income">Дохід</option>
+                    </select>
+                    <!-- Категорія -->
+                    <select id="modal-filter-cat" onchange="applyModalFilters()" class="fin-input w-auto text-[11px] py-2.5 px-3">
+                        <option value="">Всі категорії</option>
+                        <option value="salary">Виплата ЗП</option>
+                        <option value="rent_utilities">Оренда/Комунальні</option>
+                        <option value="materials">Матеріали</option>
+                        <option value="income">Дохід</option>
+                        <option value="other">Інше</option>
+                    </select>
+                    <!-- Метод -->
+                    <select id="modal-filter-method" onchange="applyModalFilters()" class="fin-input w-auto text-[11px] py-2.5 px-3">
+                        <option value="">Всі методи</option>
+                        <option value="cash">Готівка</option>
+                        <option value="card">Картка</option>
+                        <option value="transfer">Переказ</option>
+                    </select>
+                    <!-- Скинути -->
+                    <button onclick="clearModalFilters()" class="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-black text-zinc-500 hover:text-white uppercase tracking-widest transition whitespace-nowrap">
+                        <i class="fa-solid fa-xmark mr-1"></i>Скинути
+                    </button>
+                </div>
+            </div>
+
+            <!-- Таблиця -->
+            <div class="overflow-y-auto flex-1 px-6">
+                <table class="w-full text-left">
+                    <thead class="sticky top-0 bg-[#0d0d0f] z-10">
+                        <tr class="border-b border-white/5">
+                            <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Дата / Час внесення</th>
+                            <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Категорія</th>
+                            <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Коментар</th>
+                            <th class="py-3 pr-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Метод</th>
+                            <th class="py-3 text-[9px] font-black text-zinc-600 uppercase tracking-widest text-right">Сума</th>
+                        </tr>
+                    </thead>
+                    <tbody id="all-tx-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- Футер -->
+            <div class="px-6 py-4 border-t border-white/5 shrink-0 flex justify-end">
+                <button onclick="closeAllTxModal()" class="px-6 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-black text-zinc-400 hover:text-white uppercase tracking-widest transition">
+                    Закрити
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-init.js"></script>
     <script src="js/admin-finance.js"></script>

@@ -10,8 +10,10 @@ if (!staffId || (staffRole !== 'owner' && staffRole !== 'admin')) {
 let flowChart   = null;
 let donutChart  = null;
 let txOffset    = 0;
-const TX_LIMIT  = 20;
+const TX_LIMIT  = 10;
 let allTxData   = [];
+let allModalData = [];   // повний список для модалки
+let modalFiltered = [];
 
 let drawerType   = 'expense';
 let drawerMethod = 'cash';
@@ -251,7 +253,7 @@ function buildDonutChart(expenses) {
     });
 }
 
-// ─── реєстр транзакцій ───────────────────────────────────────────────────────
+// ─── реєстр транзакцій (головна сторінка — 10 шт) ───────────────────────────
 async function loadTransactions(append = false) {
     const { start } = getPeriodRange();
 
@@ -259,7 +261,7 @@ async function loadTransactions(append = false) {
         .from('transactions')
         .select('*', { count: 'exact' })
         .gte('date', start)
-        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
         .range(txOffset, txOffset + TX_LIMIT - 1);
 
     if (!append) allTxData = [];
@@ -313,14 +315,114 @@ function renderTransactions(rows, append) {
     }
 }
 
-function showAllTransactions() {
-    txOffset = 0;
-    loadTransactions(false);
-}
-
 window.loadMoreTransactions = async function () {
     txOffset += TX_LIMIT;
     await loadTransactions(true);
+};
+
+// ─── модалка "Всі транзакції" ─────────────────────────────────────────────────
+window.showAllTransactions = async function () {
+    document.getElementById('all-tx-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    await loadModalTransactions();
+};
+
+window.closeAllTxModal = function () {
+    document.getElementById('all-tx-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+};
+
+async function loadModalTransactions() {
+    const { start } = getPeriodRange();
+    document.getElementById('all-tx-tbody').innerHTML =
+        `<tr><td colspan="5" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Завантаження…</td></tr>`;
+
+    const { data } = await window.db
+        .from('transactions')
+        .select('*')
+        .gte('date', start)
+        .order('created_at', { ascending: false });
+
+    allModalData  = data || [];
+    modalFiltered = [...allModalData];
+    renderModalTable(modalFiltered);
+    updateModalCounter(modalFiltered.length, allModalData.length);
+}
+
+function renderModalTable(rows) {
+    const tbody = document.getElementById('all-tx-tbody');
+    if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Нічого не знайдено</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = rows.map(t => {
+        const cat   = CATEGORY_META[t.category] || CATEGORY_META.other;
+        const method = METHOD_LABELS[t.payment_method] || (t.payment_method || '—').toUpperCase();
+        const isExp  = t.type === 'expense';
+        const color  = isExp ? 'text-rose-400' : 'text-emerald-400';
+        const sign   = isExp ? '-' : '+';
+        // Час внесення
+        const createdAt = t.created_at
+            ? new Date(t.created_at).toLocaleString('uk-UA', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+            : '—';
+        return `<tr class="border-b border-white/5 hover:bg-white/[0.03] transition">
+            <td class="py-3 pr-4 whitespace-nowrap">
+                <p class="text-[11px] text-zinc-300 font-bold">${fmtDate(t.date)}</p>
+                <p class="text-[9px] text-zinc-600 mt-0.5">${createdAt}</p>
+            </td>
+            <td class="py-3 pr-4">
+                <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${cat.cls}">${cat.label}</span>
+            </td>
+            <td class="py-3 pr-4 text-[11px] text-zinc-300 max-w-[260px] truncate">${t.comment || '—'}</td>
+            <td class="py-3 pr-4 text-[10px] font-black text-zinc-500 uppercase tracking-wider whitespace-nowrap">${method}</td>
+            <td class="py-3 text-right text-sm font-black ${color} whitespace-nowrap">${sign}₴${fmt(Math.abs(t.amount || 0))}</td>
+        </tr>`;
+    }).join('');
+}
+
+function updateModalCounter(filtered, total) {
+    document.getElementById('modal-counter').textContent =
+        filtered === total ? `${total} записів` : `${filtered} з ${total}`;
+}
+
+// пошук + фільтр
+window.applyModalFilters = function () {
+    const q      = (document.getElementById('modal-search').value || '').toLowerCase().trim();
+    const type   = document.getElementById('modal-filter-type').value;
+    const cat    = document.getElementById('modal-filter-cat').value;
+    const method = document.getElementById('modal-filter-method').value;
+
+    modalFiltered = allModalData.filter(t => {
+        if (type   && t.type           !== type)   return false;
+        if (cat    && t.category       !== cat)    return false;
+        if (method && t.payment_method !== method) return false;
+        if (q) {
+            const haystack = [
+                fmtDate(t.date),
+                t.category,
+                CATEGORY_META[t.category]?.label || '',
+                t.comment || '',
+                t.payment_method,
+                METHOD_LABELS[t.payment_method] || '',
+                String(t.amount || '')
+            ].join(' ').toLowerCase();
+            if (!haystack.includes(q)) return false;
+        }
+        return true;
+    });
+
+    renderModalTable(modalFiltered);
+    updateModalCounter(modalFiltered.length, allModalData.length);
+};
+
+window.clearModalFilters = function () {
+    document.getElementById('modal-search').value          = '';
+    document.getElementById('modal-filter-type').value    = '';
+    document.getElementById('modal-filter-cat').value     = '';
+    document.getElementById('modal-filter-method').value  = '';
+    modalFiltered = [...allModalData];
+    renderModalTable(modalFiltered);
+    updateModalCounter(modalFiltered.length, allModalData.length);
 };
 
 // ─── список майстрів для drawer ──────────────────────────────────────────────
