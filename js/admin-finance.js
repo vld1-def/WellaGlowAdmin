@@ -259,7 +259,7 @@ async function loadTransactions(append = false) {
 
     const { data, count } = await window.db
         .from('transactions')
-        .select('*', { count: 'exact' })
+        .select('*, creator:staff!created_by_id(name)', { count: 'exact' })
         .gte('date', start)
         .order('created_at', { ascending: false })
         .range(txOffset, txOffset + TX_LIMIT - 1);
@@ -278,7 +278,7 @@ function renderTransactions(rows, append) {
 
     if (!append && rows.length === 0) {
         tbody.innerHTML = `<tr>
-            <td colspan="5" class="py-12 text-center text-zinc-600 text-sm font-black uppercase tracking-widest">
+            <td colspan="6" class="py-12 text-center text-zinc-600 text-sm font-black uppercase tracking-widest">
                 Немає транзакцій за поточний місяць
             </td>
         </tr>`;
@@ -286,23 +286,25 @@ function renderTransactions(rows, append) {
     }
 
     const html = rows.map(t => {
-        const cat    = CATEGORY_META[t.category] || CATEGORY_META.other;
-        const method = METHOD_LABELS[t.payment_method] || (t.payment_method || '—').toUpperCase();
-        const isExp  = t.type === 'expense';
-        const sign   = isExp ? '-' : '+';
-        const color  = isExp ? 'text-rose-400' : 'text-emerald-400';
-        const date   = fmtDate(t.date);
+        const cat      = CATEGORY_META[t.category] || CATEGORY_META.other;
+        const method   = METHOD_LABELS[t.payment_method] || (t.payment_method || '—').toUpperCase();
+        const isExp    = t.type === 'expense';
+        const sign     = isExp ? '-' : '+';
+        const color    = isExp ? 'text-rose-400' : 'text-emerald-400';
+        const date     = fmtDate(t.date);
+        const creator  = t.creator?.name || '—';
 
         return `<tr class="border-b border-white/5 hover:bg-white/[0.03] transition">
-            <td class="py-4 pr-4 text-sm text-zinc-400 font-bold whitespace-nowrap">${date}</td>
+            <td class="py-4 pr-4 text-[11px] text-zinc-400 font-bold whitespace-nowrap">${date}</td>
             <td class="py-4 pr-4">
-                <span class="px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide ${cat.cls}">
+                <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${cat.cls}">
                     ${cat.label}
                 </span>
             </td>
-            <td class="py-4 pr-4 text-sm text-zinc-300 max-w-xs truncate">${t.comment || '—'}</td>
-            <td class="py-4 pr-4 text-xs font-black text-zinc-500 uppercase tracking-wider whitespace-nowrap">${method}</td>
-            <td class="py-4 text-right text-base font-black ${color} whitespace-nowrap">
+            <td class="py-4 pr-4 text-[11px] text-zinc-300 max-w-xs truncate">${t.comment || '—'}</td>
+            <td class="py-4 pr-4 text-[10px] font-black text-zinc-500 uppercase tracking-wider whitespace-nowrap">${method}</td>
+            <td class="py-4 pr-4 text-[11px] font-bold text-zinc-400 whitespace-nowrap">${creator}</td>
+            <td class="py-4 text-right text-sm font-black ${color} whitespace-nowrap">
                 ${sign}₴${fmt(Math.abs(t.amount || 0))}
             </td>
         </tr>`;
@@ -335,11 +337,11 @@ window.closeAllTxModal = function () {
 async function loadModalTransactions() {
     const { start } = getPeriodRange();
     document.getElementById('all-tx-tbody').innerHTML =
-        `<tr><td colspan="5" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Завантаження…</td></tr>`;
+        `<tr><td colspan="6" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Завантаження…</td></tr>`;
 
     const { data } = await window.db
         .from('transactions')
-        .select('*')
+        .select('*, creator:staff!created_by_id(name)')
         .gte('date', start)
         .order('created_at', { ascending: false });
 
@@ -352,7 +354,7 @@ async function loadModalTransactions() {
 function renderModalTable(rows) {
     const tbody = document.getElementById('all-tx-tbody');
     if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Нічого не знайдено</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Нічого не знайдено</td></tr>`;
         return;
     }
     tbody.innerHTML = rows.map(t => {
@@ -365,6 +367,7 @@ function renderModalTable(rows) {
         const createdAt = t.created_at
             ? new Date(t.created_at).toLocaleString('uk-UA', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
             : '—';
+        const creator = t.creator?.name || '—';
         return `<tr class="border-b border-white/5 hover:bg-white/[0.03] transition">
             <td class="py-3 pr-4 whitespace-nowrap">
                 <p class="text-[11px] text-zinc-300 font-bold">${fmtDate(t.date)}</p>
@@ -373,8 +376,9 @@ function renderModalTable(rows) {
             <td class="py-3 pr-4">
                 <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${cat.cls}">${cat.label}</span>
             </td>
-            <td class="py-3 pr-4 text-[11px] text-zinc-300 max-w-[260px] truncate">${t.comment || '—'}</td>
+            <td class="py-3 pr-4 text-[11px] text-zinc-300 max-w-[220px] truncate">${t.comment || '—'}</td>
             <td class="py-3 pr-4 text-[10px] font-black text-zinc-500 uppercase tracking-wider whitespace-nowrap">${method}</td>
+            <td class="py-3 pr-4 text-[11px] font-bold text-zinc-400 whitespace-nowrap">${creator}</td>
             <td class="py-3 text-right text-sm font-black ${color} whitespace-nowrap">${sign}₴${fmt(Math.abs(t.amount || 0))}</td>
         </tr>`;
     }).join('');
@@ -507,6 +511,7 @@ window.submitTransaction = async function () {
         payment_method: drawerMethod,
         comment:        comment || null,
         staff_id:       staffSel || null,
+        created_by_id:  staffId,
     };
 
     const { error } = await window.db.from('transactions').insert([payload]);

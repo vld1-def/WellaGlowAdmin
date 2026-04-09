@@ -18,8 +18,13 @@ create table if not exists transactions (
     amount         numeric(10,2) not null check (amount >= 0),
     -- amount завжди позитивне; тип визначається полем type
     staff_id       uuid        references staff(id) on delete set null,
+    created_by_id  uuid        references staff(id) on delete set null,
+    -- created_by_id: хто вніс транзакцію (з localStorage wella_staff_id)
     created_at     timestamptz not null default now()
 );
+
+-- ── Міграція (якщо таблиця вже існує) ──────────────────────────────────────
+-- alter table transactions add column if not exists created_by_id uuid references staff(id) on delete set null;
 
 -- Індекси для швидких запитів по місяцях
 create index if not exists idx_transactions_date     on transactions(date desc);
