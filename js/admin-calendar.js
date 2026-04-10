@@ -101,7 +101,7 @@ async function refreshAppts(){
         window.db.from('appointments').select('*').gte('appointment_date',from).lte('appointment_date',to),
         window.db.from('appointment_history').select('*').gte('visit_date',from).lte('visit_date',to),
     ]);
-    appts      = (r1.data||[]).map(a=>({...a, _tbl:'appointments', _date:a.appointment_date, _start:a.appointment_time, _end:a.end_time}));
+    appts      = (r1.data||[]).filter(a=>a.status!=='cancelled'&&a.status!=='Скасовано').map(a=>({...a, _tbl:'appointments', _date:a.appointment_date, _start:a.appointment_time, _end:a.end_time}));
     histAppts  = (r2.data||[]).map(a=>({...a, _tbl:'appointment_history', _date:a.visit_date, _start:a.start_time, _end:a.end_time}));
 }
 
@@ -331,8 +331,8 @@ function apptBlockHTML(a){
     const t=a._start?a._start.slice(0,5):'';
     return `<div class="appt-block" style="top:${top}px;height:${height}px;background:${color}20;border-left-color:${color}"
         onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
-        <p style="font-size:9px;font-weight:800;color:#fff;line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
-        ${durH>1?`<p style="font-size:8px;color:${color}bb" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
+        <p style="font-size:11px;font-weight:800;color:#fff;line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
+        ${durH>1?`<p style="font-size:10px;color:${color}bb" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
     </div>`;
 }
 
@@ -571,6 +571,12 @@ window.onMasterOrDateChange=async function(){
         const sh=parseInt(a.appointment_time.split(':')[0]);
         const eh=a.end_time ? parseInt(a.end_time.split(':')[0]) : sh+1;
         for(let h=sh;h<eh;h++) booked.add(h);
+    });
+    // Also block hours covered by shifts (day_off / break)
+    shiftsForMasterDay(masterId, date).forEach(s=>{
+        if(s.type==='shift') return; // working shift — not blocked
+        if(s.all_day){ HOURS.forEach(h=>booked.add(h)); }
+        else { for(let h=shiftH(s.start_time);h<shiftH(s.end_time);h++) booked.add(h); }
     });
     renderSlotGrid(booked, selStartHour, selEndHour, date);
 };
