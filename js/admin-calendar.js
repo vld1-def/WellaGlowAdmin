@@ -18,6 +18,9 @@ let staffSvc      = [];          // staff_services
 let filterMId     = '';
 let editingId     = null;
 let editingTable  = 'appointments'; // which table when editing
+let shifts        = [];             // staff_shifts for current week
+let shiftType     = 'day_off';
+let shiftRec      = 'once';
 
 // Drag-to-select state
 let dragStart     = null;        // { dayStr, hour }
@@ -50,10 +53,19 @@ const HOURS = Array.from({length:12},(_,i)=>i+9); // [9,10,...,20]
 document.addEventListener('DOMContentLoaded', async ()=>{
     await Promise.all([loadMasters(),loadClients(),loadServices(),loadStaffSvc()]);
     buildMasterPills();
-    await refreshAppts();
+    await Promise.all([refreshAppts(), loadShifts()]);
     render();
     renderKPIs();
     document.getElementById('a-date').value = localDate(new Date());
+    // Init flatpickr on date input if available
+    if(window.flatpickr){
+        flatpickr('#a-date',{
+            dateFormat:'Y-m-d',
+            locale:{firstDayOfWeek:1},
+            disableMobile:true,
+            onChange:()=>onMasterOrDateChange(),
+        });
+    }
     // Close dropdowns on outside click
     document.addEventListener('click', e=>{
         if(!e.target.closest('.ac-wrap')) { closeAcAll(); }
@@ -91,6 +103,15 @@ async function refreshAppts(){
     ]);
     appts      = (r1.data||[]).map(a=>({...a, _tbl:'appointments', _date:a.appointment_date, _start:a.appointment_time, _end:a.end_time}));
     histAppts  = (r2.data||[]).map(a=>({...a, _tbl:'appointment_history', _date:a.visit_date, _start:a.start_time, _end:a.end_time}));
+}
+
+async function loadShifts(){
+    const ws=weekStart(curDate);
+    const from=localDate(ws);
+    const to=localDate(new Date(ws.getTime()+6*86400000));
+    const {data}=await window.db.from('staff_shifts').select('*')
+        .or(`recurrence.neq.once,and(shift_date.gte.${from},shift_date.lte.${to})`);
+    shifts=data||[];
 }
 
 function allAppts(){ return [...appts,...histAppts]; }
@@ -141,11 +162,11 @@ window.setView=function(v){
 };
 window.navPrev=function(){ step(-1); };
 window.navNext=function(){ step(1);  };
-window.goToday=function(){ curDate=new Date(); refreshAppts().then(()=>{render();renderKPIs();}); };
+window.goToday=function(){ curDate=new Date(); Promise.all([refreshAppts(),loadShifts()]).then(()=>{render();renderKPIs();}); };
 function step(dir){
     if(view==='week') curDate=new Date(curDate.getTime()+dir*7*86400000);
     else curDate=new Date(curDate.getFullYear(),curDate.getMonth()+dir,1);
-    refreshAppts().then(()=>{render();renderKPIs();});
+    Promise.all([refreshAppts(),loadShifts()]).then(()=>{render();renderKPIs();});
 }
 function render(){ view==='week'?renderWeek():renderMonth(); }
 
@@ -216,11 +237,12 @@ function renderTimeline(days, today){
     // Headers
     document.getElementById('week-day-headers').innerHTML=`
         <div class="tl-wrap" style="margin-bottom:2px">
-            <div></div>
+            <div class="tl-hour-label" style="cursor:default"></div>
             ${days.map(({d,str},i)=>`
-                <div class="tl-col-header ${str===today?'today-hdr':''}">
+                <div class="tl-col-header ${str===today?'today-hdr':''}" onclick="openShiftModal('${str}',null,'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну">
                     <div>${DAY_UA[i]}</div>
                     <div style="font-size:18px;font-weight:800;color:${str===today?'#f43f5e':'#71717a'};line-height:1">${d.getDate()}</div>
+                    ${shiftBannerHTML(str,masterId)}
                 </div>`).join('')}
         </div>`;
 
@@ -228,15 +250,16 @@ function renderTimeline(days, today){
     const rows=HOURS.map(h=>{
         const cells=days.map(({str})=>{
             const blockAppts=allAppts().filter(a=>a.master_id===masterId&&a._date===str&&startHour(a)===h);
+            const shiftOverlay=shiftCellOverlay(str,masterId,h);
             return `<div class="tl-cell"
                 data-day="${str}" data-hour="${h}"
                 onmousedown="dragBegin(event,'${str}',${h})"
                 onmouseenter="dragMove(event,'${str}',${h})"
                 onmouseup="dragEnd_(event,'${str}',${h})"
-            >${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
+            >${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
         }).join('');
         return `<div class="tl-wrap">
-            <div class="tl-hour-label">${hhmm(h)}</div>
+            <div class="tl-hour-label" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну в цей час">${hhmm(h)}</div>
             ${cells}
         </div>`;
     }).join('');
@@ -251,6 +274,39 @@ function startHour(a){
 function endHour(a){
     const t=a._end||a.end_time;
     return t ? parseInt(t.split(':')[0]) : (startHour(a)!==null ? startHour(a)+1 : null);
+}
+
+// ── Shift helpers ─────────────────────────────────────
+function dayOfWeek(dateStr){ const d=parseLD(dateStr); return d?(d.getDay()||7):0; }
+function shiftsForMasterDay(masterId,dateStr){
+    const dow=dayOfWeek(dateStr);
+    return shifts.filter(s=>s.staff_id===masterId&&(
+        (s.recurrence==='once'&&s.shift_date===dateStr)||
+        (s.recurrence==='weekly'&&s.day_of_week===dow)||
+        (s.recurrence==='always'&&(!s.day_of_week||s.day_of_week===dow))
+    ));
+}
+function shiftBannerHTML(dateStr,masterId){
+    if(!masterId) return '';
+    const ss=shiftsForMasterDay(masterId,dateStr);
+    const dayOffs=ss.filter(s=>s.type==='day_off');
+    if(dayOffs.length) return `<div style="font-size:8px;font-weight:800;color:#f43f5e;margin-top:2px">ВИХІДНИЙ</div>`;
+    const sh=ss.filter(s=>s.type==='shift');
+    if(sh.length){
+        const s=sh[0];
+        const t=s.all_day?'':''+s.start_time?.slice(0,5)+'–'+s.end_time?.slice(0,5);
+        return `<div style="font-size:8px;font-weight:800;color:#34d399;margin-top:2px">${t||'ЗМІНА'}</div>`;
+    }
+    return '';
+}
+function shiftCellOverlay(dateStr,masterId,h){
+    if(!masterId) return '';
+    const ss=shiftsForMasterDay(masterId,dateStr);
+    const dayOff=ss.find(s=>s.type==='day_off'&&(s.all_day||true));
+    if(dayOff&&dayOff.all_day) return `<div style="position:absolute;inset:0;background:rgba(244,63,94,.06);z-index:1;pointer-events:none"></div>`;
+    const brk=ss.find(s=>s.type==='break'&&!s.all_day&&parseInt(s.start_time)<=h&&parseInt(s.end_time)>h);
+    if(brk) return `<div style="position:absolute;inset:0;background:rgba(251,191,36,.08);z-index:1;pointer-events:none"></div>`;
+    return '';
 }
 
 function apptBlockHTML(a){
@@ -297,7 +353,7 @@ function renderLanes(days, today){
                     <p style="font-size:8px;color:${co}aa" class="truncate">${sv?.name||''}</p>
                 </div>`;
             }).join('');
-            return `<div class="lane-cell" ondblclick="openApptDrawer('${str}','','${s.id}')">${cards}</div>`;
+            return `<div class="lane-cell" style="height:auto;min-height:56px" ondblclick="openApptDrawer('${str}','','${s.id}')">${cards}</div>`;
         }).join('');
         return `<div class="lane-wrap">
             <div class="lane-master-label">
@@ -544,15 +600,20 @@ function renderSlotGrid(bookedSet, startH, endH, dateStr=''){
 }
 
 window.slotClick=function(h){
-    if(selStartHour===null||selEndHour===null||(selStartHour===selEndHour-1&&h!==selStartHour)){
-        // Start new selection
+    if(selStartHour===null||selEndHour===null){
+        // No selection → start fresh
         selStartHour=h; selEndHour=h+1;
     } else if(h<selStartHour){
+        // Extend range downward
         selStartHour=h;
     } else if(h>=selEndHour){
+        // Extend range upward
         selEndHour=h+1;
+    } else if(h===selStartHour&&selEndHour===h+1){
+        // Click same single-hour slot → deselect
+        selStartHour=null; selEndHour=null;
     } else {
-        // Click inside range → reset
+        // Click inside multi-hour range → reset to that hour
         selStartHour=h; selEndHour=h+1;
     }
     // Re-render keeping booked state
@@ -709,10 +770,7 @@ function showDayList(dStr,da){
                 <span style="font-size:10px;color:rgba(255,255,255,.4);float:right">₴${parseFloat(a.price||0).toLocaleString('uk-UA')}</span>
             </div>`;
         }).join('')}
-        </div>
-        <button onclick="openApptDrawer('${dStr}')" style="width:100%;margin-top:12px;padding:10px;border-radius:10px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;border:1px solid rgba(255,255,255,.08);color:#71717a;background:transparent">
-            + Додати запис
-        </button>`;
+        </div>`;
     ['d-edit','d-done','d-cancel'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
     document.getElementById('detail-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
@@ -725,3 +783,98 @@ function closeAllDrawers(){
     ['d-edit','d-done','d-cancel'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});
     editingId=null; closeAcAll();
 }
+
+// ══════════════════════════════════════════════════════
+//  SHIFT / DAY-OFF MODAL
+// ══════════════════════════════════════════════════════
+window.openShiftModal=function(dayStr='',hour=null,masterId=''){
+    shiftType='day_off'; shiftRec='once';
+    // Populate master select
+    const sel=document.getElementById('sh-master');
+    sel.innerHTML='<option value="">— Оберіть майстра —</option>';
+    masters.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.name; sel.appendChild(o); });
+    if(masterId) sel.value=masterId;
+    else if(filterMId) sel.value=filterMId;
+
+    // Prefill date
+    document.getElementById('sh-date').value=dayStr||localDate(new Date());
+
+    // Prefill time
+    const allDayChk=document.getElementById('sh-allday');
+    if(hour!==null){
+        allDayChk.checked=false;
+        document.getElementById('sh-time-wrap').classList.remove('hidden');
+        document.getElementById('sh-start').value=hhmm(hour)+':00';
+        document.getElementById('sh-end').value=hhmm(hour+1)+':00';
+    } else {
+        allDayChk.checked=true;
+        document.getElementById('sh-time-wrap').classList.add('hidden');
+        document.getElementById('sh-start').value='09:00:00';
+        document.getElementById('sh-end').value='20:00:00';
+    }
+
+    // Reset type + recurrence buttons
+    document.querySelectorAll('.shift-type-btn[data-type]').forEach(b=>b.classList.toggle('active',b.dataset.type==='day_off'));
+    document.querySelectorAll('.shift-type-btn[data-rec]').forEach(b=>b.classList.toggle('active',b.dataset.rec==='once'));
+    document.getElementById('sh-date-wrap').classList.remove('hidden');
+    document.getElementById('sh-note').value='';
+
+    const modal=document.getElementById('shift-modal');
+    modal.style.opacity='1'; modal.style.pointerEvents='all';
+    document.getElementById('drawer-overlay').classList.add('open');
+};
+
+window.closeShiftModal=function(){
+    const modal=document.getElementById('shift-modal');
+    modal.style.opacity='0'; modal.style.pointerEvents='none';
+    document.getElementById('drawer-overlay').classList.remove('open');
+};
+
+window.selectShiftType=function(type){
+    shiftType=type;
+    document.querySelectorAll('.shift-type-btn[data-type]').forEach(b=>b.classList.toggle('active',b.dataset.type===type));
+};
+
+window.selectShiftRec=function(rec){
+    shiftRec=rec;
+    document.querySelectorAll('.shift-type-btn[data-rec]').forEach(b=>b.classList.toggle('active',b.dataset.rec===rec));
+    document.getElementById('sh-date-wrap').classList.toggle('hidden',rec!=='once');
+};
+
+window.toggleShiftAllDay=function(){
+    const allDay=document.getElementById('sh-allday').checked;
+    document.getElementById('sh-time-wrap').classList.toggle('hidden',allDay);
+};
+
+window.saveShift=async function(){
+    const staffId=document.getElementById('sh-master').value;
+    if(!staffId){ alert('Оберіть майстра'); return; }
+    const allDay=document.getElementById('sh-allday').checked;
+    const startRaw=document.getElementById('sh-start').value;
+    const endRaw=document.getElementById('sh-end').value;
+
+    const payload={
+        staff_id:staffId,
+        type:shiftType,
+        recurrence:shiftRec,
+        all_day:allDay,
+        start_time:allDay?'09:00:00':(startRaw.length===5?startRaw+':00':startRaw),
+        end_time:allDay?'20:00:00':(endRaw.length===5?endRaw+':00':endRaw),
+        note:document.getElementById('sh-note').value.trim()||null,
+    };
+    const dateVal=document.getElementById('sh-date').value;
+    if(shiftRec==='once'){
+        payload.shift_date=dateVal;
+    } else {
+        // weekly/always: store day_of_week derived from selected date
+        const d=new Date(dateVal+'T12:00:00');
+        payload.day_of_week=d.getDay()||7; // 1=Mon..7=Sun
+        payload.shift_date=null;
+    }
+
+    const {error}=await window.db.from('staff_shifts').insert([payload]);
+    if(error){ alert('Помилка: '+error.message); return; }
+    closeShiftModal();
+    await loadShifts();
+    render();
+};

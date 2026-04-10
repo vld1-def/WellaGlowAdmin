@@ -110,6 +110,7 @@
             <div class="space-y-1">
                 <a href="admin-calendar.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-calendar-check w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span></a>
                 <a href="admin-staff.html" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition font-bold"><i class="fa-solid fa-users-gear w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span></a>
+                <a href="admin-access.html" class="sidebar-link flex items-center gap-3 p-3 pl-8 text-zinc-600 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-shield-halved w-3 text-[10px]"></i> <span class="hidden lg:block text-[10px] uppercase tracking-widest">Доступи по ролях</span></a>
                 <a href="admin-inventory.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-boxes-stacked w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Склад</span></a>
             </div>
         </div>
@@ -135,6 +136,10 @@
             </p>
         </div>
         <div class="flex items-center gap-3 flex-wrap">
+            <button onclick="openTeamSchedule()" class="glass-panel px-4 py-3 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition">
+                <i class="fa-solid fa-calendar-week text-zinc-500"></i>
+                <span class="hidden sm:inline">Графік команди</span>
+            </button>
             <button onclick="openArchiveDrawer()" class="glass-panel px-4 py-3 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition">
                 <i class="fa-solid fa-box-archive text-zinc-500"></i>
                 <span class="hidden sm:inline">Архів та кандидати</span>
@@ -209,7 +214,8 @@
                         <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">Працівник</th>
                         <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden md:table-cell">Стаж</th>
                         <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Записи (міс.)</th>
-                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Виручка (міс.)</th>
+                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Принесено (міс.)</th>
+                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Зароблено (міс.)</th>
                         <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">% ЗП</th>
                         <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">Рейтинг</th>
                         <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3">Статус</th>
@@ -432,6 +438,7 @@
             <button class="tab-btn active" id="modal-tab-info" onclick="switchModalTab('info')">Інформація</button>
             <button class="tab-btn" id="modal-tab-chart" onclick="switchModalTab('chart')">Динаміка</button>
             <button class="tab-btn" id="modal-tab-reviews" onclick="switchModalTab('reviews')">Відгуки</button>
+            <button class="tab-btn" id="modal-tab-shifts" onclick="switchModalTab('shifts')">Графік</button>
         </div>
         <!-- Content -->
         <div class="p-6">
@@ -477,6 +484,15 @@
             <div id="modal-reviews-tab" class="hidden">
                 <div id="modal-reviews-list" class="space-y-3"></div>
             </div>
+            <!-- Shifts tab -->
+            <div id="modal-shifts-tab" class="hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <button onclick="modalShiftsPrev()" class="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-lg glass-panel"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                    <span id="modal-shifts-week-label" class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">—</span>
+                    <button onclick="modalShiftsNext()" class="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-lg glass-panel"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                </div>
+                <div id="modal-shifts-list" class="space-y-1.5"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -499,6 +515,22 @@
 <div id="actions-portal" style="display:none; position:fixed; z-index:99999; min-width:168px;
      background:#111113; border:1px solid rgba(255,255,255,0.08); border-radius:12px;
      padding:6px; box-shadow:0 16px 40px rgba(0,0,0,0.75);">
+</div>
+
+<!-- ═══════════════════ TEAM SCHEDULE MODAL ═══════════════════ -->
+<div id="team-sched-modal" class="fixed inset-0 flex items-center justify-center p-4" style="z-index:80;opacity:0;pointer-events:none;transition:opacity .25s">
+    <div class="bg-[#0d0d0f] border border-white/8 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-5 flex-shrink-0">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Графік команди</h3>
+            <button onclick="closeTeamSchedule()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex items-center justify-between mb-4 flex-shrink-0">
+            <button onclick="teamSchedPrev()" class="w-9 h-9 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-xl glass-panel"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+            <span id="team-sched-week-label" class="text-[11px] font-black text-zinc-300 uppercase tracking-widest">—</span>
+            <button onclick="teamSchedNext()" class="w-9 h-9 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-xl glass-panel"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+        </div>
+        <div id="team-sched-body" class="overflow-y-auto flex-1 space-y-1"></div>
+    </div>
 </div>
 
 <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
