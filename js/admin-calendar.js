@@ -708,10 +708,15 @@ window.openDetail=function(id,tbl){
         ${dRow('fa-circle','Майстер',master?.name||'—',master?.position||'','style="color:'+color+'"')}
         ${dRow('fa-hryvnia-sign','Сума','₴'+parseFloat(a.price||0).toLocaleString('uk-UA'),'','style="color:#f43f5e;font-size:16px;font-weight:800"')}`;
 
+    document.getElementById('d-edit').style.display='';
+    document.getElementById('d-cancel').style.display='';
     document.getElementById('d-edit').onclick=()=>{ closeAllDrawers(); openEditDrawer(a,tbl); };
     document.getElementById('d-done').onclick=()=>updateStatus(id,tbl,'completed');
     document.getElementById('d-cancel').onclick=()=>updateStatus(id,tbl,'cancelled');
-    document.getElementById('d-done').style.display=(a.status==='completed'||a.status==='Виконано')?'none':'';
+    const isDone=a.status==='completed'||a.status==='Виконано';
+    const isCancelled=a.status==='cancelled'||a.status==='Скасовано';
+    document.getElementById('d-done').style.display=(isDone||isCancelled)?'none':'';
+    document.getElementById('d-cancel').style.display=isCancelled?'none':'';
 
     document.getElementById('detail-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
@@ -887,10 +892,13 @@ window.saveShift=async function(){
     const dateVal=document.getElementById('sh-date').value;
     if(shiftRec==='once'){
         payload.shift_date=dateVal;
-    } else {
-        // weekly/always: store day_of_week derived from selected date
+        payload.day_of_week=null;
+    } else if(shiftRec==='weekly'){
         const d=new Date(dateVal+'T12:00:00');
         payload.day_of_week=d.getDay()||7; // 1=Mon..7=Sun
+        payload.shift_date=null;
+    } else { // always — no specific date or weekday
+        payload.day_of_week=null;
         payload.shift_date=null;
     }
 
