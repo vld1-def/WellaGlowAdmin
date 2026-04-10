@@ -39,6 +39,14 @@ function getAvatarColor(s) {
     return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
 
+// Timezone-safe local date string (avoids UTC shift on toISOString)
+function localDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 // ── Init ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     loadAll();
@@ -83,7 +91,7 @@ async function loadStaff() {
 async function loadReviews() {
     const { data, error } = await window.db
         .from('reviews')
-        .select('*, staff:staff_id(name), client:client_id(name)')
+        .select('*, staff:staff_id(name), client:client_id(first_name, last_name, full_name, name)')
         .order('created_at', { ascending: false });
 
     if (error) { console.error(error); return; }
@@ -108,8 +116,8 @@ async function loadKPIs() {
 
     // Payroll fund = avg commission_rate % of monthly revenue
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const monthStart = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    const monthEnd   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
     const [apptRes, txRes] = await Promise.all([
         window.db.from('appointment_history')
@@ -205,7 +213,12 @@ function pluralize(n, one, few, many) {
 }
 
 function getClientName(r) {
-    return r.client?.name || 'Клієнт';
+    const c = r.client;
+    if (!c) return 'Клієнт';
+    if (c.name)       return c.name;
+    if (c.full_name)  return c.full_name;
+    if (c.first_name) return [c.first_name, c.last_name].filter(Boolean).join(' ');
+    return 'Клієнт';
 }
 
 // ══════════════════════════════════════════════════════
@@ -275,8 +288,8 @@ async function renderStaffTable(list) {
     }
 
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const monthStart = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    const monthEnd   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
     const { data: appts } = await window.db
         .from('appointment_history')
@@ -765,8 +778,8 @@ async function renderModalChart(sid) {
 
     for (let i = 5; i >= 0; i--) {
         const d     = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const start = d.toISOString().slice(0, 10);
-        const end   = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+        const start = localDate(d);
+        const end   = localDate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
         labels.push(d.toLocaleDateString('uk-UA', { month: 'short' }));
         const { data } = await window.db
             .from('appointment_history')
@@ -810,8 +823,8 @@ window.downloadLastMonthReport = async function() {
     const now      = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastDay  = new Date(now.getFullYear(), now.getMonth(), 0);
-    const start    = firstDay.toISOString().slice(0, 10);
-    const end      = lastDay.toISOString().slice(0, 10);
+    const start    = localDate(firstDay);
+    const end      = localDate(lastDay);
     const label    = firstDay.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
 
     const { data: appts } = await window.db
