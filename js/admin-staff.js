@@ -91,7 +91,7 @@ async function loadStaff() {
 async function loadReviews() {
     const { data, error } = await window.db
         .from('reviews')
-        .select('*, staff:staff_id(name), client:client_id(first_name, last_name, full_name, name)')
+        .select('*, staff:staff_id(name), client:client_id(full_name)')
         .order('created_at', { ascending: false });
 
     if (error) { console.error(error); return; }
@@ -121,9 +121,9 @@ async function loadKPIs() {
 
     const [apptRes, txRes] = await Promise.all([
         window.db.from('appointment_history')
-            .select('total_price')
-            .gte('date', monthStart)
-            .lte('date', monthEnd),
+            .select('price')
+            .gte('visit_date', monthStart)
+            .lte('visit_date', monthEnd),
         window.db.from('transactions')
             .select('amount')
             .eq('type', 'income')
@@ -132,7 +132,7 @@ async function loadKPIs() {
     ]);
 
     const revenue =
-        (apptRes.data || []).reduce((s, r) => s + parseFloat(r.total_price || 0), 0) +
+        (apptRes.data || []).reduce((s, r) => s + parseFloat(r.price || 0), 0) +
         (txRes.data || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
 
     const avgPct = allStaff.length
@@ -213,12 +213,7 @@ function pluralize(n, one, few, many) {
 }
 
 function getClientName(r) {
-    const c = r.client;
-    if (!c) return 'Клієнт';
-    if (c.name)       return c.name;
-    if (c.full_name)  return c.full_name;
-    if (c.first_name) return [c.first_name, c.last_name].filter(Boolean).join(' ');
-    return 'Клієнт';
+    return r.client?.full_name || 'Клієнт';
 }
 
 // ══════════════════════════════════════════════════════
@@ -293,16 +288,16 @@ async function renderStaffTable(list) {
 
     const { data: appts } = await window.db
         .from('appointment_history')
-        .select('staff_id, total_price')
-        .gte('date', monthStart)
-        .lte('date', monthEnd);
+        .select('master_id, price')
+        .gte('visit_date', monthStart)
+        .lte('visit_date', monthEnd);
 
     const apptMap = {};
     (appts || []).forEach(a => {
-        if (!a.staff_id) return;
-        if (!apptMap[a.staff_id]) apptMap[a.staff_id] = { count: 0, revenue: 0 };
-        apptMap[a.staff_id].count++;
-        apptMap[a.staff_id].revenue += parseFloat(a.total_price || 0);
+        if (!a.master_id) return;
+        if (!apptMap[a.master_id]) apptMap[a.master_id] = { count: 0, revenue: 0 };
+        apptMap[a.master_id].count++;
+        apptMap[a.master_id].revenue += parseFloat(a.price || 0);
     });
 
     tbody.innerHTML = list.map(s => {
@@ -783,11 +778,11 @@ async function renderModalChart(sid) {
         labels.push(d.toLocaleDateString('uk-UA', { month: 'short' }));
         const { data } = await window.db
             .from('appointment_history')
-            .select('total_price')
-            .eq('staff_id', sid)
-            .gte('date', start)
-            .lte('date', end);
-        values.push((data || []).reduce((s, r) => s + parseFloat(r.total_price || 0), 0));
+            .select('price')
+            .eq('master_id', sid)
+            .gte('visit_date', start)
+            .lte('visit_date', end);
+        values.push((data || []).reduce((s, r) => s + parseFloat(r.price || 0), 0));
     }
 
     const ctx = document.getElementById('modal-revenue-chart').getContext('2d');
@@ -829,17 +824,17 @@ window.downloadLastMonthReport = async function() {
 
     const { data: appts } = await window.db
         .from('appointment_history')
-        .select('date, staff_id, total_price')
-        .gte('date', start)
-        .lte('date', end)
-        .order('date');
+        .select('visit_date, master_id, price')
+        .gte('visit_date', start)
+        .lte('visit_date', end)
+        .order('visit_date');
 
     const staffMap = {};
     [...allStaff, ...archiveStaff].forEach(s => { staffMap[s.id] = s; });
 
     const report = {};
     (appts || []).forEach(a => {
-        const s    = staffMap[a.staff_id];
+        const s    = staffMap[a.master_id];
         const name = s?.name || 'Невідомий';
         if (!report[name]) report[name] = {
             name, position: s?.position || '—',
@@ -847,7 +842,7 @@ window.downloadLastMonthReport = async function() {
             appointments: 0, revenue: 0
         };
         report[name].appointments++;
-        report[name].revenue += parseFloat(a.total_price || 0);
+        report[name].revenue += parseFloat(a.price || 0);
     });
 
     const rows = Object.values(report).map(r => ({
