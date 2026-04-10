@@ -42,12 +42,35 @@ insert into storage.buckets (id, name, public)
 values ('staff-avatars', 'staff-avatars', true)
 on conflict (id) do nothing;
 
--- RLS policy: дозволити публічне читання
+-- RLS policy: публічне читання (select)
 create policy if not exists "Public read staff avatars"
   on storage.objects for select
   using ( bucket_id = 'staff-avatars' );
 
--- RLS policy: дозволити upload для автентифікованих (або service_role)
+-- RLS policy: дозволити upload (insert) для anon та authenticated
+-- Потрібно для завантаження фото через браузер з anon-ключем
+create policy if not exists "Anon upload staff avatars"
+  on storage.objects for insert
+  to anon
+  with check ( bucket_id = 'staff-avatars' );
+
 create policy if not exists "Auth upload staff avatars"
   on storage.objects for insert
+  to authenticated
   with check ( bucket_id = 'staff-avatars' );
+
+-- RLS policy: дозволити update/delete (перезапис фото)
+create policy if not exists "Anon update staff avatars"
+  on storage.objects for update
+  to anon
+  using ( bucket_id = 'staff-avatars' );
+
+create policy if not exists "Anon delete staff avatars"
+  on storage.objects for delete
+  to anon
+  using ( bucket_id = 'staff-avatars' );
+
+-- ⚠️  Якщо policies вище не допомагають — швидке рішення:
+-- В Supabase Dashboard → Storage → staff-avatars → Policies → "Allow all" або
+-- вимкни RLS для storage.objects (не рекомендовано для продакшн):
+-- alter table storage.objects disable row level security;
