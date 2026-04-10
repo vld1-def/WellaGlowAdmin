@@ -21,6 +21,8 @@ let archiveTab     = 'fired';
 let modalTab       = 'info';
 let modalChart     = null;
 let archiveStaff   = [];
+let staffVisibleCount = 5;  // "load more" limit
+let teamSchedWeek  = new Date(); // current week for team schedule
 
 const MODULES = [
     { key: 'dashboard',  label: 'Дашборд',   icon: 'fa-chart-pie'      },
@@ -131,16 +133,17 @@ async function loadKPIs() {
             .lte('date', monthEnd),
     ]);
 
-    const revenue =
-        (apptRes.data || []).reduce((s, r) => s + parseFloat(r.price || 0), 0) +
-        (txRes.data || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-
-    const avgPct = allStaff.length
-        ? allStaff.reduce((s, m) => s + (m.commission_rate || 40), 0) / allStaff.length
-        : 40;
-
-    const fund = Math.round(revenue * avgPct / 100);
-    document.getElementById('kpi-payroll').textContent = '₴' + fund.toLocaleString('uk-UA');
+    // Payroll: sum each master's actual earned (their revenue × their commission rate)
+    const apptRows = apptRes.data || [];
+    const staffMap = {};
+    [...allStaff, ...archiveStaff].forEach(s => { staffMap[s.id] = s; });
+    let fund = 0;
+    apptRows.forEach(a => {
+        const s = staffMap[a.master_id];
+        const pct = s?.commission_rate || 40;
+        fund += parseFloat(a.price || 0) * pct / 100;
+    });
+    document.getElementById('kpi-payroll').textContent = '₴' + Math.round(fund).toLocaleString('uk-UA');
 }
 
 // ══════════════════════════════════════════════════════
@@ -225,6 +228,7 @@ function staffRow(s, appointments = 0, revenue = 0) {
     const avgRating = revs.length
         ? revs.reduce((sum, r) => sum + parseFloat(r.rating), 0) / revs.length
         : null;
+    const earned = Math.round(revenue * (s.commission_rate || 40) / 100);
 
     return `
     <tr class="staff-row hover:bg-white/2 transition cursor-pointer" onclick="openProfile('${s.id}')">
@@ -240,6 +244,7 @@ function staffRow(s, appointments = 0, revenue = 0) {
         <td class="py-3 pr-4 hidden md:table-cell text-[11px] text-zinc-400 font-semibold">${tenureDays(s.hire_date)}</td>
         <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-zinc-400 font-semibold">${appointments}</td>
         <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-white font-bold">₴${revenue.toLocaleString('uk-UA')}</td>
+        <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-emerald-400 font-bold">₴${earned.toLocaleString('uk-UA')}</td>
         <td class="py-3 pr-4">
             <span class="text-[11px] font-bold text-rose-400">${s.commission_rate || 40}%</span>
         </td>
@@ -280,16 +285,40 @@ async function renderStaffTable(list) {
         apptMap[a.master_id].revenue += parseFloat(a.price || 0);
     });
 
-    tbody.innerHTML = list.map(s => {
+    const visible = list.slice(0, staffVisibleCount);
+    tbody.innerHTML = visible.map(s => {
         const stat = apptMap[s.id] || { count: 0, revenue: 0 };
         return staffRow(s, stat.count, stat.revenue);
     }).join('');
+
+    // "Load more" row
+    if (list.length > staffVisibleCount) {
+        const remaining = list.length - staffVisibleCount;
+        tbody.insertAdjacentHTML('beforeend', `
+            <tr id="load-more-row">
+                <td colspan="9" class="pt-3 pb-1 text-center">
+                    <button onclick="loadMoreStaff()" class="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-400 transition">
+                        Завантажити ще ${remaining} →
+                    </button>
+                </td>
+            </tr>`);
+    }
 
     document.getElementById('staff-count-label').textContent =
         list.length + ' ' + pluralize(list.length, 'працівник', 'працівники', 'працівників');
 }
 
+window.loadMoreStaff = function() {
+    staffVisibleCount += 5;
+    const q = document.getElementById('staff-search').value.toLowerCase().trim();
+    const filtered = q
+        ? allStaff.filter(s => s.name?.toLowerCase().includes(q) || s.position?.toLowerCase().includes(q))
+        : allStaff;
+    renderStaffTable(filtered);
+};
+
 function filterStaff() {
+    staffVisibleCount = 5; // reset on new search
     const q = document.getElementById('staff-search').value.toLowerCase().trim();
     const filtered = allStaff.filter(s =>
         s.name?.toLowerCase().includes(q) || s.position?.toLowerCase().includes(q)
@@ -775,9 +804,9 @@ window.closeProfileModal = function() {
 
 window.switchModalTab = function(tab) {
     modalTab = tab;
-    ['info','chart','reviews'].forEach(t => {
-        document.getElementById('modal-tab-' + t).classList.toggle('active', t === tab);
-        document.getElementById('modal-' + t + '-tab').classList.toggle('hidden', t !== tab);
+    ['info','chart','reviews','shifts'].forEach(t => {
+        document.getElementById('modal-tab-' + t)?.classList.toggle('active', t === tab);
+        document.getElementById('modal-' + t + '-tab')?.classList.toggle('hidden', t !== tab);
     });
 
     if (tab === 'chart' && modalStaffData) renderModalChart(modalStaffData.id);
@@ -787,6 +816,7 @@ window.switchModalTab = function(tab) {
             ? myRevs.map(r => reviewCard(r, false)).join('')
             : `<p class="text-[11px] text-zinc-600 text-center py-6 font-semibold">Відгуків немає</p>`;
     }
+    if (tab === 'shifts' && modalStaffData) renderModalShifts(modalStaffData.id);
 };
 
 async function renderModalChart(sid) {
@@ -955,3 +985,148 @@ window.downloadLastMonthReport = async function() {
     a.href = url; a.download = `Звіт_персонал_${label}.csv`; a.click();
     URL.revokeObjectURL(url);
 };
+
+// ══════════════════════════════════════════════════════
+//  SHIFTS TAB (in staff profile modal)
+// ══════════════════════════════════════════════════════
+
+let modalShiftsWeek = new Date();
+
+function staffWeekStart(d) {
+    const dow = d.getDay() || 7;
+    const s = new Date(d); s.setDate(d.getDate() - (dow - 1)); s.setHours(0,0,0,0); return s;
+}
+function fmtDate(d) {
+    return d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
+}
+
+async function renderModalShifts(staffId) {
+    const ws = staffWeekStart(modalShiftsWeek);
+    const we = new Date(ws.getTime() + 6 * 86400000);
+    const from = localDate(ws), to = localDate(we);
+
+    document.getElementById('modal-shifts-week-label').textContent = fmtDate(ws) + ' – ' + fmtDate(we);
+
+    const { data } = await window.db.from('staff_shifts').select('*')
+        .eq('staff_id', staffId)
+        .or(`recurrence.neq.once,and(shift_date.gte.${from},shift_date.lte.${to})`);
+    const shifts = data || [];
+
+    const DAY_UA = ['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
+    const TYPE_LABEL = { day_off: 'Вихідний', break: 'Перерва', shift: 'Зміна' };
+    const TYPE_COLOR = { day_off: '#f43f5e', break: '#fbbf24', shift: '#34d399' };
+
+    const rows = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(ws.getTime() + i * 86400000);
+        const dStr = localDate(d);
+        const dow = d.getDay() || 7;
+        const dayShifts = shifts.filter(s =>
+            (s.recurrence === 'once' && s.shift_date === dStr) ||
+            (s.recurrence === 'weekly' && s.day_of_week === dow) ||
+            (s.recurrence === 'always' && (!s.day_of_week || s.day_of_week === dow))
+        );
+        const badges = dayShifts.map(s => {
+            const c = TYPE_COLOR[s.type] || '#71717a';
+            const t = s.all_day ? '' : ` ${s.start_time?.slice(0,5)}–${s.end_time?.slice(0,5)}`;
+            return `<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;background:${c}20;color:${c};border:1px solid ${c}44">${TYPE_LABEL[s.type]||s.type}${t}</span>`;
+        }).join('');
+        const isToday = dStr === localDate(new Date());
+        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;background:${isToday?'rgba(244,63,94,.05)':'rgba(255,255,255,.02)'};border:1px solid rgba(255,255,255,${isToday?'.08':'.04'})">
+            <div style="min-width:48px;font-size:10px;font-weight:800;color:${isToday?'#f43f5e':'#52525b'}">${DAY_UA[i]}&nbsp;${d.getDate()}</div>
+            <div style="flex:1;display:flex;flex-wrap:wrap;gap:4px">${badges || '<span style="font-size:10px;color:#3f3f46;font-weight:600">Робочий день</span>'}</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('modal-shifts-list').innerHTML = rows;
+}
+
+window.modalShiftsPrev = function() {
+    modalShiftsWeek = new Date(modalShiftsWeek.getTime() - 7 * 86400000);
+    if (modalStaffData) renderModalShifts(modalStaffData.id);
+};
+window.modalShiftsNext = function() {
+    modalShiftsWeek = new Date(modalShiftsWeek.getTime() + 7 * 86400000);
+    if (modalStaffData) renderModalShifts(modalStaffData.id);
+};
+
+// ══════════════════════════════════════════════════════
+//  TEAM SCHEDULE MODAL
+// ══════════════════════════════════════════════════════
+
+window.openTeamSchedule = async function() {
+    teamSchedWeek = new Date();
+    await renderTeamSchedule();
+    document.getElementById('team-sched-modal').style.opacity = '1';
+    document.getElementById('team-sched-modal').style.pointerEvents = 'all';
+    document.getElementById('drawer-overlay').classList.add('open');
+};
+
+window.closeTeamSchedule = function() {
+    document.getElementById('team-sched-modal').style.opacity = '0';
+    document.getElementById('team-sched-modal').style.pointerEvents = 'none';
+    document.getElementById('drawer-overlay').classList.remove('open');
+};
+
+window.teamSchedPrev = async function() {
+    teamSchedWeek = new Date(teamSchedWeek.getTime() - 7 * 86400000);
+    await renderTeamSchedule();
+};
+window.teamSchedNext = async function() {
+    teamSchedWeek = new Date(teamSchedWeek.getTime() + 7 * 86400000);
+    await renderTeamSchedule();
+};
+
+async function renderTeamSchedule() {
+    const ws = staffWeekStart(teamSchedWeek);
+    const we = new Date(ws.getTime() + 6 * 86400000);
+    const from = localDate(ws), to = localDate(we);
+    document.getElementById('team-sched-week-label').textContent = fmtDate(ws) + ' – ' + fmtDate(we);
+
+    const { data: shifts } = await window.db.from('staff_shifts').select('*')
+        .or(`recurrence.neq.once,and(shift_date.gte.${from},shift_date.lte.${to})`);
+    const allShifts = shifts || [];
+
+    const TYPE_COLOR = { day_off: '#f43f5e', break: '#fbbf24', shift: '#34d399' };
+    const TYPE_LABEL = { day_off: 'Вихідний', break: 'Перерва', shift: 'Зміна' };
+    const DAY_UA = ['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
+
+    const container = document.getElementById('team-sched-body');
+    container.innerHTML = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(ws.getTime() + i * 86400000);
+        const dStr = localDate(d);
+        const dow = d.getDay() || 7;
+        const isToday = dStr === localDate(new Date());
+
+        // gather staff with shifts this day
+        const staffEntries = allStaff.map(s => {
+            const dayShifts = allShifts.filter(sh =>
+                sh.staff_id === s.id && (
+                    (sh.recurrence === 'once' && sh.shift_date === dStr) ||
+                    (sh.recurrence === 'weekly' && sh.day_of_week === dow) ||
+                    (sh.recurrence === 'always' && (!sh.day_of_week || sh.day_of_week === dow))
+                )
+            );
+            return { s, dayShifts };
+        }).filter(e => e.dayShifts.length > 0);
+
+        const items = staffEntries.map(({ s, dayShifts }) => {
+            const badges = dayShifts.map(sh => {
+                const c = TYPE_COLOR[sh.type] || '#71717a';
+                const t = sh.all_day ? '' : ` ${sh.start_time?.slice(0,5)}–${sh.end_time?.slice(0,5)}`;
+                return `<span style="font-size:8px;font-weight:800;padding:1px 6px;border-radius:20px;background:${c}20;color:${c}">${TYPE_LABEL[sh.type]||sh.type}${t}</span>`;
+            }).join('');
+            return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+                <span style="font-size:10px;font-weight:700;color:#a1a1aa;min-width:90px">${s.name.split(' ')[0]}</span>
+                <div style="display:flex;flex-wrap:wrap;gap:3px">${badges}</div>
+            </div>`;
+        }).join('') || `<p style="font-size:10px;color:#3f3f46;font-weight:600;padding:6px 0">Всі працюють</p>`;
+
+        return `<details style="border-radius:10px;overflow:hidden;margin-bottom:4px" ${isToday?'open':''}>
+            <summary style="padding:10px 12px;cursor:pointer;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${isToday?'#f43f5e':'#71717a'};background:rgba(255,255,255,.03);list-style:none;display:flex;justify-content:space-between;align-items:center">
+                <span>${DAY_UA[i]}, ${d.getDate()}</span>
+                <span style="font-size:9px;color:#52525b;font-weight:700;text-transform:none;letter-spacing:0">${staffEntries.length ? staffEntries.length+' відміток' : ''}</span>
+            </summary>
+            <div style="padding:4px 12px 8px">${items}</div>
+        </details>`;
+    }).join('');
+}

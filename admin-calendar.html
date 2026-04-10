@@ -110,7 +110,32 @@
             padding:10px 20px;font-size:11px;font-weight:700;color:#a1a1aa;
             pointer-events:none;z-index:9999;opacity:0;transition:opacity .25s}
         #drag-hint.show{opacity:1}
+
+        /* Shift modal */
+        #shift-modal{transition:opacity .25s}
+        .shift-type-btn{padding:8px 6px;border-radius:9px;font-size:10px;font-weight:800;
+            text-transform:uppercase;letter-spacing:.05em;cursor:pointer;transition:all .2s;
+            border:1px solid rgba(255,255,255,.07);color:#52525b;background:transparent;width:100%}
+        .shift-type-btn.active{background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.3);color:#f43f5e}
+        .shift-type-btn:hover:not(.active){border-color:rgba(255,255,255,.15);color:#a1a1aa}
+
+        /* Flatpickr dark theme overrides */
+        .flatpickr-calendar{background:#111113!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:14px!important;box-shadow:0 20px 60px rgba(0,0,0,.8)!important;font-family:'Manrope',sans-serif!important}
+        .flatpickr-day{color:#a1a1aa!important;border-radius:8px!important;font-weight:700!important;font-size:11px!important}
+        .flatpickr-day:hover,.flatpickr-day.prevMonthDay:hover,.flatpickr-day.nextMonthDay:hover{background:rgba(255,255,255,.05)!important;border-color:transparent!important;color:#fff!important}
+        .flatpickr-day.selected,.flatpickr-day.selected:hover{background:#f43f5e!important;border-color:#f43f5e!important;color:#fff!important}
+        .flatpickr-day.today{border-color:rgba(244,63,94,.4)!important;color:#f43f5e!important}
+        .flatpickr-day.prevMonthDay,.flatpickr-day.nextMonthDay{color:#3f3f46!important}
+        .flatpickr-months,.flatpickr-month{color:#fff!important;fill:#fff!important;background:#111113!important}
+        .flatpickr-current-month,.flatpickr-monthDropdown-months{color:#fff!important;font-weight:800!important;font-size:13px!important;font-family:'Manrope',sans-serif!important;background:#111113!important}
+        .flatpickr-weekday{color:#52525b!important;font-weight:800!important;font-size:9px!important;text-transform:uppercase!important}
+        .flatpickr-prev-month,.flatpickr-next-month{fill:#71717a!important}
+        .flatpickr-prev-month:hover,.flatpickr-next-month:hover{fill:#f43f5e!important}
+        .numInputWrapper span{border-color:rgba(255,255,255,.1)!important}
+        .numInputWrapper:hover{background:rgba(255,255,255,.04)!important}
     </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
 <body class="flex min-h-screen">
 
@@ -156,20 +181,9 @@
             <h2 class="text-2xl font-extrabold text-white tracking-tight">Записи</h2>
             <p id="period-label" class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">—</p>
         </div>
-        <div class="flex items-center gap-3 flex-wrap">
-            <div class="glass-panel rounded-xl p-1 flex items-center gap-1">
-                <button id="btn-week"  onclick="setView('week')"  class="view-btn active">Тиждень</button>
-                <button id="btn-month" onclick="setView('month')" class="view-btn">Місяць</button>
-            </div>
-            <div class="glass-panel rounded-xl flex items-center">
-                <button onclick="navPrev()" class="w-9 h-9 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-l-xl"><i class="fa-solid fa-chevron-left text-xs"></i></button>
-                <button onclick="goToday()" class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition border-x border-white/5">Сьогодні</button>
-                <button onclick="navNext()" class="w-9 h-9 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-chevron-right text-xs"></i></button>
-            </div>
-            <button onclick="openApptDrawer()" class="neo-gradient px-5 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2 hover:opacity-90 transition">
-                <i class="fa-solid fa-plus"></i><span class="hidden sm:inline">Новий запис</span>
-            </button>
-        </div>
+        <button onclick="openApptDrawer()" class="neo-gradient px-5 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2 hover:opacity-90 transition self-start lg:self-auto">
+            <i class="fa-solid fa-plus"></i><span class="hidden sm:inline">Новий запис</span>
+        </button>
     </header>
 
     <!-- KPI -->
@@ -192,17 +206,33 @@
         </div>
     </div>
 
-    <!-- MASTER FILTER -->
-    <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-[9px] text-zinc-600 uppercase font-black tracking-widest flex-shrink-0">Майстер:</span>
-        <div id="master-filters" class="flex items-center gap-2 flex-wrap"></div>
+    <!-- MASTER FILTER + NAVIGATION (above calendar) -->
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[9px] text-zinc-600 uppercase font-black tracking-widest flex-shrink-0">Майстер:</span>
+            <div id="master-filters" class="flex items-center gap-2 flex-wrap"></div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <div class="glass-panel rounded-xl p-1 flex items-center gap-1">
+                <button id="btn-week"  onclick="setView('week')"  class="view-btn active">Тиждень</button>
+                <button id="btn-month" onclick="setView('month')" class="view-btn">Місяць</button>
+            </div>
+            <div class="glass-panel rounded-xl flex items-center">
+                <button onclick="navPrev()" class="w-9 h-9 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-l-xl"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                <button onclick="goToday()" class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition border-x border-white/5">Сьогодні</button>
+                <button onclick="navNext()" class="w-9 h-9 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+            </div>
+            <button onclick="openShiftModal()" class="glass-panel px-4 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition">
+                <i class="fa-solid fa-moon text-xs"></i><span class="hidden sm:inline">Вихідний</span>
+            </button>
+        </div>
     </div>
 
     <!-- CALENDAR AREA -->
-    <div class="glass-panel rounded-2xl p-4 lg:p-5 flex-1 min-h-0 overflow-hidden">
+    <div class="glass-panel rounded-2xl p-4 lg:p-5" style="overflow:clip">
         <div id="week-view">
             <div id="week-day-headers" class="mb-1"></div>
-            <div id="week-content" class="overflow-y-auto" style="max-height:58vh"></div>
+            <div id="week-content" class="overflow-y-auto" style="max-height:calc(100vh - 310px)"></div>
         </div>
         <div id="month-view" class="hidden">
             <div class="grid grid-cols-7 gap-[2px] mb-[2px]">
@@ -314,6 +344,76 @@
             <button id="d-edit"   class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-400 hover:text-white transition flex items-center justify-center gap-2"><i class="fa-solid fa-pen text-xs"></i> Редагувати</button>
             <button id="d-done"   class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-400/10 border border-emerald-400/20 transition flex items-center justify-center gap-2"><i class="fa-solid fa-check text-xs"></i> Виконано</button>
             <button id="d-cancel" class="py-3 px-3 rounded-xl text-[10px] font-black text-rose-500 hover:bg-rose-500/10 border border-rose-500/15 transition"><i class="fa-solid fa-xmark text-xs"></i></button>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════ SHIFT / DAY-OFF MODAL ═════════ -->
+<div id="shift-modal" class="fixed inset-0 flex items-center justify-center p-4" style="z-index:80;opacity:0;pointer-events:none">
+    <div class="bg-[#0d0d0f] border border-white/8 rounded-2xl w-full max-w-md p-6 shadow-2xl" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Вихідний / Зміна / Перерва</h3>
+            <button onclick="closeShiftModal()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="space-y-4">
+            <!-- Master -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Майстер *</label>
+                <select id="sh-master" class="cal-input"></select>
+            </div>
+            <!-- Type -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Тип</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" class="shift-type-btn active" data-type="day_off" onclick="selectShiftType('day_off')">Вихідний</button>
+                    <button type="button" class="shift-type-btn" data-type="break" onclick="selectShiftType('break')">Перерва</button>
+                    <button type="button" class="shift-type-btn" data-type="shift" onclick="selectShiftType('shift')">Зміна</button>
+                </div>
+            </div>
+            <!-- All day -->
+            <div class="flex items-center gap-3">
+                <label style="position:relative;display:inline-block;width:40px;height:22px">
+                    <input type="checkbox" id="sh-allday" onchange="toggleShiftAllDay()" style="opacity:0;width:0;height:0">
+                    <span style="position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.08);border-radius:22px;transition:.3s">
+                        <span style="position:absolute;content:'';height:16px;width:16px;left:3px;bottom:3px;background:#71717a;border-radius:50%;transition:.3s;display:block" id="sh-allday-knob"></span>
+                    </span>
+                </label>
+                <span class="text-[11px] text-zinc-400 font-semibold">Весь день</span>
+            </div>
+            <!-- Time range -->
+            <div id="sh-time-wrap" class="grid grid-cols-2 gap-3 hidden">
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">З</label>
+                    <input id="sh-start" type="time" class="cal-input">
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">До</label>
+                    <input id="sh-end" type="time" class="cal-input">
+                </div>
+            </div>
+            <!-- Recurrence -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Повторення</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" class="shift-type-btn active" data-rec="once" onclick="selectShiftRec('once')">Один раз</button>
+                    <button type="button" class="shift-type-btn" data-rec="weekly" onclick="selectShiftRec('weekly')">Щотижня</button>
+                    <button type="button" class="shift-type-btn" data-rec="always" onclick="selectShiftRec('always')">Завжди</button>
+                </div>
+            </div>
+            <!-- Date -->
+            <div id="sh-date-wrap">
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Дата</label>
+                <input id="sh-date" type="date" class="cal-input">
+            </div>
+            <!-- Note -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Примітка</label>
+                <input id="sh-note" type="text" placeholder="Необов'язково..." class="cal-input">
+            </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+            <button onclick="closeShiftModal()" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-500 hover:text-white transition">Скасувати</button>
+            <button onclick="saveShift()" class="flex-1 neo-gradient py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">Зберегти</button>
         </div>
     </div>
 </div>

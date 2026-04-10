@@ -19,3 +19,25 @@ alter table appointment_history
     add column if not exists start_time time;
 alter table appointment_history
     add column if not exists end_time   time;
+
+-- ============================================================
+--  staff_shifts — вихідні, перерви, зміни
+--  Розширення існуючої таблиці (staff_id, shift_date, start_time, end_time)
+-- ============================================================
+
+alter table staff_shifts
+    add column if not exists type        text    default 'day_off',   -- 'day_off' | 'break' | 'shift'
+    add column if not exists recurrence  text    default 'once',      -- 'once' | 'weekly' | 'always'
+    add column if not exists day_of_week integer,                      -- 1=Пн … 7=Нд (для weekly/always)
+    add column if not exists all_day     boolean default true,
+    add column if not exists note        text;
+
+-- Якщо shift_date раніше was NOT NULL — зробимо nullable для recurring записів
+alter table staff_shifts
+    alter column shift_date drop not null;
+
+-- Індекс для швидкого пошуку по майстру
+create index if not exists idx_shifts_staff
+    on staff_shifts(staff_id);
+create index if not exists idx_shifts_date
+    on staff_shifts(shift_date) where shift_date is not null;
