@@ -16,8 +16,35 @@
         .sidebar-link.active{background:rgba(244,63,94,.1);color:#f43f5e;border-left:3px solid #f43f5e}
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-thumb{background:#1e1e21;border-radius:10px}
-        .skeleton{background:linear-gradient(90deg,#111113 25%,#1a1a1d 50%,#111113 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
-        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+        /* Inputs */
+        .cal-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+            border-radius:12px;padding:11px 14px;color:#e2e8f0;font-size:13px;
+            font-family:'Manrope',sans-serif;font-weight:600;outline:none;transition:border-color .2s}
+        .cal-input:focus{border-color:rgba(244,63,94,.5)}
+        .cal-input option{background:#111113;color:#e2e8f0}
+
+        /* Autocomplete */
+        .ac-wrap{position:relative}
+        .ac-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
+            background:#111113;border:1px solid rgba(255,255,255,.1);border-radius:12px;
+            padding:4px;z-index:200;max-height:220px;overflow-y:auto;
+            box-shadow:0 16px 40px rgba(0,0,0,.7)}
+        .ac-dropdown.open{display:block}
+        .ac-item{padding:9px 12px;border-radius:8px;font-size:12px;font-weight:600;
+            color:#a1a1aa;cursor:pointer;transition:all .15s}
+        .ac-item:hover,.ac-item.active{background:rgba(244,63,94,.1);color:#fff}
+        .ac-empty{padding:10px 12px;font-size:11px;color:#52525b;font-weight:600}
+
+        /* View toggle */
+        .view-btn{padding:7px 16px;border-radius:9px;font-size:10px;font-weight:800;
+            text-transform:uppercase;letter-spacing:.08em;cursor:pointer;transition:all .2s;color:#52525b}
+        .view-btn.active{background:rgba(244,63,94,.12);color:#f43f5e}
+
+        /* Master pill */
+        .master-pill{padding:5px 13px;border-radius:20px;font-size:9px;font-weight:800;
+            text-transform:uppercase;letter-spacing:.08em;cursor:pointer;transition:all .2s;
+            border:1.5px solid rgba(255,255,255,.07);color:#52525b;white-space:nowrap}
 
         /* Drawers */
         #appt-drawer,#detail-drawer{transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
@@ -25,34 +52,44 @@
         #drawer-overlay{opacity:0;pointer-events:none;transition:opacity .35s ease}
         #drawer-overlay.open{opacity:1;pointer-events:all}
 
-        /* Inputs */
-        .cal-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:11px 14px;color:#e2e8f0;font-size:13px;font-family:'Manrope',sans-serif;font-weight:600;outline:none;transition:border-color .2s}
-        .cal-input:focus{border-color:rgba(244,63,94,.5)}
-        .cal-input option{background:#111113;color:#e2e8f0}
+        /* ── TIMELINE (single master) ── */
+        .tl-wrap{display:grid;grid-template-columns:48px repeat(7,1fr);gap:0;user-select:none}
+        .tl-col-header{text-align:center;padding:6px 2px 10px;font-size:9px;font-weight:800;
+            text-transform:uppercase;letter-spacing:.1em;color:#52525b;line-height:1.1}
+        .tl-col-header.today-hdr{color:#f43f5e}
+        .tl-hour-label{padding:0 8px 0 0;font-size:9px;font-weight:800;color:#3f3f46;
+            text-align:right;display:flex;align-items:flex-start;padding-top:5px;height:60px}
+        .tl-cell{height:60px;border-left:1px solid rgba(255,255,255,.04);
+            border-bottom:1px solid rgba(255,255,255,.03);padding:2px 3px;
+            position:relative;cursor:pointer;transition:background .1s;box-sizing:border-box}
+        .tl-cell:hover{background:rgba(255,255,255,.025)}
+        .tl-cell.selecting{background:rgba(244,63,94,.08);border-color:rgba(244,63,94,.2)}
+        .tl-cell.selected-range{background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.25)}
 
-        /* View toggle */
-        .view-btn{padding:7px 16px;border-radius:9px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;transition:all .2s;color:#52525b}
-        .view-btn.active{background:rgba(244,63,94,.12);color:#f43f5e}
+        /* Appointment block in timeline */
+        .appt-block{position:absolute;left:3px;right:3px;border-radius:7px;padding:4px 6px;
+            cursor:pointer;overflow:hidden;border-left:3px solid;z-index:2;
+            transition:filter .15s,transform .15s}
+        .appt-block:hover{filter:brightness(1.15);transform:scaleY(1.01)}
 
-        /* Master pill */
-        .master-pill{padding:5px 13px;border-radius:20px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;transition:all .2s;border:1.5px solid rgba(255,255,255,.07);color:#52525b;white-space:nowrap}
+        /* ── MULTI-MASTER lanes ── */
+        .lane-wrap{display:grid;grid-template-columns:80px repeat(7,1fr);gap:0;user-select:none}
+        .lane-master-label{padding:4px 8px 4px 0;display:flex;align-items:center;gap:6px;
+            font-size:9px;font-weight:800;color:#71717a;border-bottom:1px solid rgba(255,255,255,.03)}
+        .lane-cell{height:56px;border-left:1px solid rgba(255,255,255,.04);
+            border-bottom:1px solid rgba(255,255,255,.03);padding:2px;cursor:pointer;
+            transition:background .1s;position:relative}
+        .lane-cell:hover{background:rgba(255,255,255,.025)}
 
-        /* ── WEEK (single master): time-axis layout ── */
-        .tl-grid{display:grid;gap:0}
-        .tl-hour{display:grid;grid-template-columns:44px 1fr;min-height:56px;border-bottom:1px solid rgba(255,255,255,.03)}
-        .tl-hour-label{padding:4px 8px 0 0;font-size:9px;font-weight:800;color:#3f3f46;text-align:right;line-height:1;padding-top:6px}
-        .tl-day-cell{border-left:1px solid rgba(255,255,255,.04);padding:3px 2px;position:relative;cursor:pointer;transition:background .15s}
-        .tl-day-cell:hover{background:rgba(255,255,255,.02)}
-
-        /* ── WEEK (all masters): master-lane rows ── */
-        .multi-grid{display:grid;gap:3px}
-        .multi-master-row{display:grid;gap:2px;align-items:start}
-        .multi-day-cell{min-height:48px;border-radius:8px;padding:3px;background:rgba(255,255,255,.015);border:1px solid rgba(255,255,255,.03);cursor:pointer;transition:background .15s}
-        .multi-day-cell:hover{background:rgba(255,255,255,.03)}
+        /* Appointment card (compact, for lanes & month) */
+        .appt-card{border-radius:7px;padding:4px 6px;cursor:pointer;border-left:2.5px solid;
+            overflow:hidden;transition:filter .15s;margin-bottom:2px}
+        .appt-card:hover{filter:brightness(1.15)}
 
         /* ── MONTH ── */
         .month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-        .month-day{min-height:88px;border-radius:10px;padding:6px;background:rgba(255,255,255,.015);border:1px solid rgba(255,255,255,.04);transition:background .15s}
+        .month-day{min-height:88px;border-radius:10px;padding:6px;
+            background:rgba(255,255,255,.015);border:1px solid rgba(255,255,255,.04);transition:background .15s}
         .month-day.today{background:rgba(244,63,94,.04);border-color:rgba(244,63,94,.2)}
         .month-day.other-month{opacity:.35}
         .month-day.has-appts{cursor:pointer}
@@ -61,27 +98,23 @@
         .month-day.today .month-day-num{color:#f43f5e}
         .month-dot{height:5px;border-radius:3px;margin-bottom:2px}
 
-        /* Appointment card */
-        .appt-card{border-radius:8px;padding:5px 7px;cursor:pointer;border-left:2.5px solid;transition:all .15s;overflow:hidden}
-        .appt-card:hover{filter:brightness(1.15);transform:translateY(-1px)}
-
-        /* Status badges */
+        /* Status */
         .s-done   {background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.2)}
-        .s-pending{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.2)}
+        .s-wait   {background:rgba(99,102,241,.12);color:#818cf8;border:1px solid rgba(99,102,241,.2)}
+        .s-confirm{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.2)}
         .s-cancel {background:rgba(244,63,94,.08);color:#f43f5e;border:1px solid rgba(244,63,94,.15)}
-        .s-new    {background:rgba(99,102,241,.12);color:#818cf8;border:1px solid rgba(99,102,241,.2)}
 
-        /* Time slot picker */
-        .time-slot{padding:9px 6px;border-radius:10px;font-size:11px;font-weight:800;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#a1a1aa;transition:all .18s;line-height:1}
-        .time-slot:hover:not(.booked):not(.selected){background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.2)}
-        .time-slot.selected{background:linear-gradient(135deg,#f43f5e,#fb7185);border-color:transparent;color:#fff}
-        .time-slot.booked{opacity:.28;cursor:not-allowed;text-decoration:line-through}
-        .time-slot.past{opacity:.22;cursor:not-allowed}
+        /* Drag hint */
+        #drag-hint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+            background:#111113;border:1px solid rgba(255,255,255,.1);border-radius:12px;
+            padding:10px 20px;font-size:11px;font-weight:700;color:#a1a1aa;
+            pointer-events:none;z-index:9999;opacity:0;transition:opacity .25s}
+        #drag-hint.show{opacity:1}
     </style>
 </head>
 <body class="flex min-h-screen">
 
-<!-- ═══════════ SIDEBAR ═══════════ -->
+<!-- ═════════ SIDEBAR ═════════ -->
 <aside class="w-16 lg:w-64 bg-black/50 border-r border-white/5 flex flex-col fixed h-full z-50">
     <div class="p-6">
         <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none hidden lg:block">Wella Glow</h1>
@@ -114,7 +147,7 @@
     </nav>
 </aside>
 
-<!-- ═══════════ MAIN ═══════════ -->
+<!-- ═════════ MAIN ═════════ -->
 <main class="flex-1 ml-16 lg:ml-64 p-5 lg:p-8 flex flex-col gap-5">
 
     <!-- HEADER -->
@@ -130,7 +163,7 @@
             </div>
             <div class="glass-panel rounded-xl flex items-center">
                 <button onclick="navPrev()" class="w-9 h-9 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-l-xl"><i class="fa-solid fa-chevron-left text-xs"></i></button>
-                <button onclick="goToday()"  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition border-x border-white/5">Сьогодні</button>
+                <button onclick="goToday()" class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition border-x border-white/5">Сьогодні</button>
                 <button onclick="navNext()" class="w-9 h-9 flex items-center justify-center text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-chevron-right text-xs"></i></button>
             </div>
             <button onclick="openApptDrawer()" class="neo-gradient px-5 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2 hover:opacity-90 transition">
@@ -139,7 +172,7 @@
         </div>
     </header>
 
-    <!-- KPI STRIP -->
+    <!-- KPI -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="glass-panel rounded-xl px-4 py-3 flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(244,63,94,.12)"><i class="fa-solid fa-calendar-day text-rose-500 text-xs"></i></div>
@@ -165,18 +198,12 @@
         <div id="master-filters" class="flex items-center gap-2 flex-wrap"></div>
     </div>
 
-    <!-- CALENDAR -->
-    <div class="glass-panel rounded-2xl p-4 lg:p-5 flex-1 min-h-0">
-
-        <!-- WEEK VIEW -->
+    <!-- CALENDAR AREA -->
+    <div class="glass-panel rounded-2xl p-4 lg:p-5 flex-1 min-h-0 overflow-hidden">
         <div id="week-view">
-            <!-- Day header row -->
-            <div id="week-day-headers" class="mb-2"></div>
-            <!-- Content: single-master (timeline) OR all-masters (lanes) -->
-            <div id="week-content" class="overflow-y-auto" style="max-height:62vh"></div>
+            <div id="week-day-headers" class="mb-1"></div>
+            <div id="week-content" class="overflow-y-auto" style="max-height:58vh"></div>
         </div>
-
-        <!-- MONTH VIEW -->
         <div id="month-view" class="hidden">
             <div class="grid grid-cols-7 gap-[2px] mb-[2px]">
                 <div class="text-center text-[8px] text-zinc-600 font-black uppercase tracking-widest py-1">Пн</div>
@@ -192,72 +219,82 @@
     </div>
 </main>
 
-<!-- ═══════════ OVERLAY ═══════════ -->
+<!-- DRAG HINT -->
+<div id="drag-hint">Виберіть скільки годин займає запис</div>
+
+<!-- OVERLAY -->
 <div id="drawer-overlay" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 backdrop-blur-sm" style="z-index:60"></div>
 
-<!-- ═══════════ ADD / EDIT DRAWER ═══════════ -->
+<!-- ═════════ ADD / EDIT DRAWER ═════════ -->
 <div id="appt-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-[#0d0d0f] border-l border-white/8 overflow-y-auto" style="z-index:70">
     <div class="p-6">
         <div class="flex items-center justify-between mb-6">
             <h3 id="drawer-title" class="text-sm font-black uppercase tracking-widest text-white">Новий запис</h3>
             <button onclick="closeAllDrawers()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
         </div>
+
         <div class="space-y-4">
-            <!-- Client -->
+            <!-- Client autocomplete -->
             <div>
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Клієнт *</label>
-                <select id="a-client" class="cal-input"><option value="">— Оберіть клієнта —</option></select>
+                <div class="ac-wrap">
+                    <input id="client-search" type="text" placeholder="Пошук клієнта..." class="cal-input"
+                        oninput="acSearch('client')" onfocus="acOpen('client')" onkeydown="acKey(event,'client')" autocomplete="off">
+                    <div id="client-dropdown" class="ac-dropdown"></div>
+                </div>
+                <input type="hidden" id="a-client">
             </div>
-            <!-- Service -->
+
+            <!-- Service autocomplete -->
             <div>
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Послуга *</label>
-                <select id="a-service" class="cal-input" onchange="onServiceChange()"><option value="">— Оберіть послугу —</option></select>
+                <div class="ac-wrap">
+                    <input id="service-search" type="text" placeholder="Пошук послуги..." class="cal-input"
+                        oninput="acSearch('service')" onfocus="acOpen('service')" onkeydown="acKey(event,'service')" autocomplete="off">
+                    <div id="service-dropdown" class="ac-dropdown"></div>
+                </div>
+                <input type="hidden" id="a-service">
             </div>
-            <!-- Master (filtered by service) -->
+
+            <!-- Master -->
             <div>
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Майстер *</label>
-                <select id="a-master" class="cal-input" onchange="onMasterOrDateChange()"><option value="">— Оберіть майстра —</option></select>
-                <p id="master-hint" class="text-[9px] text-zinc-600 mt-1.5 font-semibold hidden">
-                    <i class="fa-solid fa-circle-info mr-1"></i>Оберіть послугу для фільтрації майстрів
-                </p>
+                <select id="a-master" class="cal-input" onchange="onMasterOrDateChange()">
+                    <option value="">— Оберіть майстра —</option>
+                </select>
+                <p id="master-hint" class="text-[9px] text-zinc-600 mt-1.5 font-semibold hidden"></p>
             </div>
-            <!-- Date & Price -->
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Дата *</label>
-                    <input id="a-date" type="date" class="cal-input" onchange="onMasterOrDateChange()">
-                </div>
-                <div>
-                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Ціна (₴)</label>
-                    <input id="a-price" type="number" placeholder="0" class="cal-input">
-                </div>
+
+            <!-- Date + Time range -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Дата *</label>
+                <input id="a-date" type="date" class="cal-input" onchange="onMasterOrDateChange()">
             </div>
-            <!-- Time slots -->
+
+            <!-- Time range display -->
             <div>
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">
                     Час *
-                    <span id="slots-loading" class="hidden ml-2 text-zinc-600 normal-case font-semibold">завантаження...</span>
+                    <span id="time-range-badge" class="hidden ml-2 px-2 py-0.5 rounded-full text-[9px] font-black" style="background:rgba(244,63,94,.15);color:#f43f5e"></span>
                 </label>
-                <div id="time-slots-grid" class="grid grid-cols-3 gap-2">
-                    <p class="col-span-3 text-[10px] text-zinc-600 font-semibold py-2">Оберіть майстра та дату</p>
+                <!-- Slot grid -->
+                <div id="slot-grid" class="grid grid-cols-4 gap-1.5 mb-1">
+                    <p class="col-span-4 text-[10px] text-zinc-600 font-semibold py-1">Оберіть майстра та дату</p>
                 </div>
-                <p id="slots-legend" class="hidden mt-2 text-[9px] text-zinc-600 font-semibold flex items-center gap-3">
-                    <span><span class="inline-block w-3 h-3 rounded bg-white/10 mr-1 align-middle"></span>Вільно</span>
-                    <span><span class="inline-block w-3 h-3 rounded bg-rose-500 mr-1 align-middle"></span>Обрано</span>
-                    <span><span class="inline-block w-3 h-3 rounded bg-white/5 opacity-30 mr-1 align-middle"></span>Зайнято</span>
+                <p class="text-[9px] text-zinc-600 font-semibold mt-1 hidden" id="slot-legend">
+                    <span class="inline-block w-3 h-3 rounded mr-1 align-middle" style="background:rgba(244,63,94,.25)"></span>Обрано
+                    <span class="inline-block w-3 h-3 rounded mr-1 align-middle ml-3" style="background:rgba(255,255,255,.08)"></span>Вільно
+                    <span class="inline-block w-3 h-3 rounded mr-1 align-middle ml-3 opacity-30" style="background:rgba(255,255,255,.08)"></span>Зайнято
                 </p>
             </div>
-            <!-- Status -->
+
+            <!-- Price -->
             <div>
-                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Статус</label>
-                <select id="a-status" class="cal-input">
-                    <option value="Новий">Новий</option>
-                    <option value="Підтверджено">Підтверджено</option>
-                    <option value="Виконано">Виконано</option>
-                    <option value="Скасовано">Скасовано</option>
-                </select>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Ціна (₴)</label>
+                <input id="a-price" type="number" placeholder="Автоматично з послуги" class="cal-input">
             </div>
         </div>
+
         <div class="flex gap-3 mt-6">
             <button onclick="closeAllDrawers()" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-500 hover:text-white transition">Скасувати</button>
             <button onclick="saveAppt()" class="flex-1 neo-gradient py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">Зберегти</button>
@@ -265,7 +302,7 @@
     </div>
 </div>
 
-<!-- ═══════════ DETAIL DRAWER ═══════════ -->
+<!-- ═════════ DETAIL DRAWER ═════════ -->
 <div id="detail-drawer" class="fixed top-0 right-0 h-full w-full max-w-sm bg-[#0d0d0f] border-l border-white/8 overflow-y-auto" style="z-index:70">
     <div class="p-6">
         <div class="flex items-center justify-between mb-5">
@@ -276,7 +313,7 @@
         <div class="flex gap-2 mt-6">
             <button id="d-edit"   class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-400 hover:text-white transition flex items-center justify-center gap-2"><i class="fa-solid fa-pen text-xs"></i> Редагувати</button>
             <button id="d-done"   class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-400/10 border border-emerald-400/20 transition flex items-center justify-center gap-2"><i class="fa-solid fa-check text-xs"></i> Виконано</button>
-            <button id="d-cancel" class="py-3 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-500/10 border border-rose-500/15 transition"><i class="fa-solid fa-xmark text-xs"></i></button>
+            <button id="d-cancel" class="py-3 px-3 rounded-xl text-[10px] font-black text-rose-500 hover:bg-rose-500/10 border border-rose-500/15 transition"><i class="fa-solid fa-xmark text-xs"></i></button>
         </div>
     </div>
 </div>
