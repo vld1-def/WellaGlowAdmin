@@ -111,6 +111,10 @@
             pointer-events:none;z-index:9999;opacity:0;transition:opacity .25s}
         #drag-hint.show{opacity:1}
 
+        /* Blocked cells */
+        .tl-cell.blocked{cursor:not-allowed}
+        .tl-cell.blocked:hover{background:transparent}
+
         /* Shift modal */
         #shift-modal{transition:opacity .25s}
         .shift-type-btn{padding:8px 6px;border-radius:9px;font-size:10px;font-weight:800;
@@ -118,6 +122,25 @@
             border:1px solid rgba(255,255,255,.07);color:#52525b;background:transparent;width:100%}
         .shift-type-btn.active{background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.3);color:#f43f5e}
         .shift-type-btn:hover:not(.active){border-color:rgba(255,255,255,.15);color:#a1a1aa}
+
+        /* Toggle switch for shift modal */
+        .sh-toggle{position:relative;display:inline-flex;align-items:center;gap:10px;cursor:pointer}
+        .sh-toggle input{opacity:0;width:0;height:0;position:absolute}
+        .sh-track{width:40px;height:22px;background:rgba(255,255,255,.08);border-radius:22px;
+            transition:.3s;flex-shrink:0;position:relative}
+        .sh-knob{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;
+            background:#71717a;transition:.3s}
+        .sh-toggle input:checked ~ .sh-track{background:rgba(244,63,94,.3)}
+        .sh-toggle input:checked ~ .sh-track .sh-knob{transform:translateX(18px);background:#f43f5e}
+
+        /* 24h time selects */
+        .time-select-wrap{display:flex;align-items:center;gap:6px}
+        .time-sel{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+            border-radius:10px;padding:9px 10px;color:#e2e8f0;font-size:13px;
+            font-family:'Manrope',sans-serif;font-weight:700;outline:none;transition:border-color .2s;
+            appearance:none;text-align:center}
+        .time-sel:focus{border-color:rgba(244,63,94,.5)}
+        .time-sel option{background:#111113;color:#e2e8f0}
 
         /* Flatpickr dark theme overrides */
         .flatpickr-calendar{background:#111113!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:14px!important;box-shadow:0 20px 60px rgba(0,0,0,.8)!important;font-family:'Manrope',sans-serif!important}
@@ -371,24 +394,38 @@
                 </div>
             </div>
             <!-- All day -->
-            <div class="flex items-center gap-3">
-                <label style="position:relative;display:inline-block;width:40px;height:22px">
-                    <input type="checkbox" id="sh-allday" onchange="toggleShiftAllDay()" style="opacity:0;width:0;height:0">
-                    <span style="position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.08);border-radius:22px;transition:.3s">
-                        <span style="position:absolute;content:'';height:16px;width:16px;left:3px;bottom:3px;background:#71717a;border-radius:50%;transition:.3s;display:block" id="sh-allday-knob"></span>
-                    </span>
-                </label>
+            <label class="sh-toggle">
+                <input type="checkbox" id="sh-allday" onchange="toggleShiftAllDay()">
+                <div class="sh-track"><div class="sh-knob"></div></div>
                 <span class="text-[11px] text-zinc-400 font-semibold">Весь день</span>
-            </div>
-            <!-- Time range -->
+            </label>
+            <!-- Time range (24h selects) -->
             <div id="sh-time-wrap" class="grid grid-cols-2 gap-3 hidden">
                 <div>
-                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">З</label>
-                    <input id="sh-start" type="time" class="cal-input">
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">З (година)</label>
+                    <div class="time-select-wrap">
+                        <select id="sh-start-h" class="time-sel"></select>
+                        <span class="text-zinc-600 font-black">:</span>
+                        <select id="sh-start-m" class="time-sel">
+                            <option value="00">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
-                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">До</label>
-                    <input id="sh-end" type="time" class="cal-input">
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">До (година)</label>
+                    <div class="time-select-wrap">
+                        <select id="sh-end-h" class="time-sel"></select>
+                        <span class="text-zinc-600 font-black">:</span>
+                        <select id="sh-end-m" class="time-sel">
+                            <option value="00">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <!-- Recurrence -->

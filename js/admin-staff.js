@@ -21,8 +21,21 @@ let archiveTab     = 'fired';
 let modalTab       = 'info';
 let modalChart     = null;
 let archiveStaff   = [];
-let staffVisibleCount = 5;  // "load more" limit
-let teamSchedWeek  = new Date(); // current week for team schedule
+let staffVisibleCount = 5;
+let teamSchedWeek  = new Date();
+
+// Sorting + pinning
+let staffSortBy  = 'pin';   // 'pin'|'role'|'tenure'|'appointments'|'earnings'
+let staffSortDir = 'asc';
+let pinnedIds    = new Set(JSON.parse(localStorage.getItem('wella_pinned') || '[]'));
+let staffApptMap = {};      // cached per-staff stats for sorting
+
+// Role access
+let roleAccessTab = 'admin';
+const ROLE_DEFAULTS = {
+    admin:  { dashboard:true,  calendar:true,  finance:true,  clients:true,  inventory:true,  staff:true,  bonuses:true  },
+    master: { dashboard:false, calendar:true,  finance:false, clients:false, inventory:false, staff:false, bonuses:false },
+};
 
 const MODULES = [
     { key: 'dashboard',  label: 'Дашборд',   icon: 'fa-chart-pie'      },
@@ -229,6 +242,7 @@ function staffRow(s, appointments = 0, revenue = 0) {
         ? revs.reduce((sum, r) => sum + parseFloat(r.rating), 0) / revs.length
         : null;
     const earned = Math.round(revenue * (s.commission_rate || 40) / 100);
+    const isPinned = pinnedIds.has(s.id);
 
     return `
     <tr class="staff-row hover:bg-white/2 transition cursor-pointer" onclick="openProfile('${s.id}')">
@@ -251,10 +265,16 @@ function staffRow(s, appointments = 0, revenue = 0) {
         <td class="py-3 pr-4">${starRating(avgRating)}</td>
         <td class="py-3 pr-4">${statusBadge(s.status)}</td>
         <td class="py-3" onclick="event.stopPropagation()">
-            <button onclick="toggleActions('${s.id}', this)"
-                class="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-600 hover:text-white hover:bg-white/5 transition">
-                <i class="fa-solid fa-ellipsis text-xs"></i>
-            </button>
+            <div class="flex items-center gap-1">
+                <button onclick="togglePin('${s.id}')" title="${isPinned?'Відкріпити':'Закріпити'}"
+                    class="w-7 h-7 rounded-lg flex items-center justify-center transition ${isPinned?'text-rose-500 bg-rose-500/10':'text-zinc-700 hover:text-zinc-400 hover:bg-white/5'}">
+                    <i class="fa-solid fa-thumbtack text-[9px]"></i>
+                </button>
+                <button onclick="toggleActions('${s.id}', this)"
+                    class="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-600 hover:text-white hover:bg-white/5 transition">
+                    <i class="fa-solid fa-ellipsis text-xs"></i>
+                </button>
+            </div>
         </td>
     </tr>`;
 }
@@ -284,16 +304,44 @@ async function renderStaffTable(list) {
         apptMap[a.master_id].count++;
         apptMap[a.master_id].revenue += parseFloat(a.price || 0);
     });
+    staffApptMap = apptMap; // cache for sort
 
-    const visible = list.slice(0, staffVisibleCount);
+    // Sort
+    const ROLE_ORDER = { owner: 0, admin: 1, master: 2 };
+    const sorted = [...list].sort((a, b) => {
+        // Pinned always first
+        const ap = pinnedIds.has(a.id) ? 0 : 1;
+        const bp = pinnedIds.has(b.id) ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        if (staffSortBy === 'pin') return 0;
+        let va, vb;
+        if (staffSortBy === 'role') {
+            va = ROLE_ORDER[a.role] ?? 9; vb = ROLE_ORDER[b.role] ?? 9;
+        } else if (staffSortBy === 'tenure') {
+            va = a.hire_date ? new Date(a.hire_date).getTime() : Infinity;
+            vb = b.hire_date ? new Date(b.hire_date).getTime() : Infinity;
+            // earlier hire = more tenure = should sort first in 'asc'
+            return staffSortDir === 'asc' ? va - vb : vb - va;
+        } else if (staffSortBy === 'appointments') {
+            va = apptMap[a.id]?.count || 0; vb = apptMap[b.id]?.count || 0;
+        } else if (staffSortBy === 'earnings') {
+            const ra = apptMap[a.id]?.revenue || 0;
+            const rb = apptMap[b.id]?.revenue || 0;
+            va = ra * (a.commission_rate || 40) / 100;
+            vb = rb * (b.commission_rate || 40) / 100;
+        } else { return 0; }
+        return staffSortDir === 'asc' ? va - vb : vb - va;
+    });
+
+    const visible = sorted.slice(0, staffVisibleCount);
     tbody.innerHTML = visible.map(s => {
         const stat = apptMap[s.id] || { count: 0, revenue: 0 };
         return staffRow(s, stat.count, stat.revenue);
     }).join('');
 
     // "Load more" row
-    if (list.length > staffVisibleCount) {
-        const remaining = list.length - staffVisibleCount;
+    if (sorted.length > staffVisibleCount) {
+        const remaining = sorted.length - staffVisibleCount;
         tbody.insertAdjacentHTML('beforeend', `
             <tr id="load-more-row">
                 <td colspan="9" class="pt-3 pb-1 text-center">
@@ -318,13 +366,88 @@ window.loadMoreStaff = function() {
 };
 
 function filterStaff() {
-    staffVisibleCount = 5; // reset on new search
+    staffVisibleCount = 5;
     const q = document.getElementById('staff-search').value.toLowerCase().trim();
     const filtered = allStaff.filter(s =>
         s.name?.toLowerCase().includes(q) || s.position?.toLowerCase().includes(q)
     );
     renderStaffTable(filtered);
 }
+
+window.setStaffSort = function(by) {
+    if (staffSortBy === by && by !== 'pin') {
+        staffSortDir = staffSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        staffSortBy = by;
+        staffSortDir = by === 'tenure' ? 'asc' : 'desc';
+    }
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sort-' + by)?.classList.add('active');
+    staffVisibleCount = 5;
+    filterStaff();
+};
+
+window.togglePin = function(id) {
+    if (pinnedIds.has(id)) pinnedIds.delete(id);
+    else pinnedIds.add(id);
+    localStorage.setItem('wella_pinned', JSON.stringify([...pinnedIds]));
+    filterStaff();
+};
+
+// ══════════════════════════════════════════════════════
+//  ROLE ACCESS DRAWER
+// ══════════════════════════════════════════════════════
+
+window.openRoleAccess = function() {
+    roleAccessTab = 'admin';
+    document.getElementById('rtab-admin').classList.add('active');
+    document.getElementById('rtab-master').classList.remove('active');
+    renderRolePermList('admin');
+    document.getElementById('role-access-drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('open');
+};
+
+window.closeRoleAccess = function() {
+    document.getElementById('role-access-drawer').classList.remove('open');
+    document.getElementById('drawer-overlay').classList.remove('open');
+};
+
+window.switchRoleTab = function(role) {
+    roleAccessTab = role;
+    ['admin','master'].forEach(r => {
+        document.getElementById('rtab-' + r).classList.toggle('active', r === role);
+    });
+    renderRolePermList(role);
+};
+
+function renderRolePermList(role) {
+    const saved = JSON.parse(localStorage.getItem('wella_role_perms_' + role) || 'null');
+    const perms = saved || ROLE_DEFAULTS[role] || {};
+    document.getElementById('role-perm-list').innerHTML = MODULES.map(m => `
+        <div class="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/2">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(244,63,94,0.1)">
+                    <i class="fa-solid ${m.icon} text-rose-500 text-xs"></i>
+                </div>
+                <span class="text-[12px] font-bold text-white">${m.label}</span>
+            </div>
+            <label class="perm-toggle">
+                <input type="checkbox" id="rperm-${m.key}" ${perms[m.key] ? 'checked' : ''}>
+                <span class="perm-slider"></span>
+            </label>
+        </div>
+    `).join('');
+}
+
+window.saveRolePermissions = function() {
+    const perms = {};
+    MODULES.forEach(m => { perms[m.key] = document.getElementById('rperm-' + m.key)?.checked ?? false; });
+    localStorage.setItem('wella_role_perms_' + roleAccessTab, JSON.stringify(perms));
+    closeRoleAccess();
+    // Show brief confirmation
+    const btn = document.querySelector('#role-access-drawer .neo-gradient');
+    if (btn) { btn.textContent = 'Збережено ✓'; setTimeout(() => { btn.textContent = 'Зберегти'; }, 1500); }
+};
 
 // ══════════════════════════════════════════════════════
 //  RENDER: CANDIDATES
@@ -443,7 +566,7 @@ function openOverlay() {
 }
 
 function closeAllDrawers() {
-    ['staff-drawer','archive-drawer','reviews-drawer','candidates-drawer'].forEach(id => {
+    ['staff-drawer','archive-drawer','reviews-drawer','candidates-drawer','role-access-drawer'].forEach(id => {
         document.getElementById(id).classList.remove('open');
     });
     document.getElementById('drawer-overlay').classList.remove('open');
