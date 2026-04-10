@@ -42,11 +42,7 @@
         .st-input:focus { border-color:rgba(244,63,94,0.5); }
         .st-input option { background:#111113; color:#e2e8f0; }
 
-        /* Actions dropdown — fixed so it escapes overflow:hidden containers */
-        .actions-menu { display:none; position:fixed; z-index:9999; min-width:168px;
-            background:#111113; border:1px solid rgba(255,255,255,0.08); border-radius:12px;
-            padding:6px; box-shadow:0 16px 40px rgba(0,0,0,0.7); }
-        .actions-menu.open { display:block; }
+        /* Actions portal items */
 
         /* Staff table row separator */
         .staff-row { border-bottom: 1px solid rgba(255,255,255,0.04); }
@@ -497,6 +493,12 @@
             <div class="skeleton h-12 rounded-xl"></div>
         </div>
     </div>
+</div>
+
+<!-- ═══════════════════ ACTIONS PORTAL (body-level, escapes backdrop-filter stacking) ═══════════════════ -->
+<div id="actions-portal" style="display:none; position:fixed; z-index:99999; min-width:168px;
+     background:#111113; border:1px solid rgba(255,255,255,0.08); border-radius:12px;
+     padding:6px; box-shadow:0 16px 40px rgba(0,0,0,0.75);">
 </div>
 
 <!-- ═══════════════════ SCRIPTS ═══════════════════ -->

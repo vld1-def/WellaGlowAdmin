@@ -246,30 +246,10 @@ function staffRow(s, appointments = 0, revenue = 0) {
         <td class="py-3 pr-4">${starRating(avgRating)}</td>
         <td class="py-3 pr-4">${statusBadge(s.status)}</td>
         <td class="py-3" onclick="event.stopPropagation()">
-            <div class="relative inline-block">
-                <button onclick="toggleActions('${s.id}', this)"
-                    class="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-600 hover:text-white hover:bg-white/5 transition">
-                    <i class="fa-solid fa-ellipsis text-xs"></i>
-                </button>
-                <div id="actions-${s.id}" class="actions-menu" onclick="event.stopPropagation()">
-                    <div class="actions-item" onclick="openProfile('${s.id}'); closeActions()">
-                        <i class="fa-solid fa-id-card w-4"></i> Картка
-                    </div>
-                    <div class="actions-item" onclick="editStaff('${s.id}'); closeActions()">
-                        <i class="fa-solid fa-pen w-4"></i> Редагувати
-                    </div>
-                    <div class="actions-item" onclick="openPermissions('${s.id}'); closeActions()">
-                        <i class="fa-solid fa-shield-halved w-4"></i> Доступи
-                    </div>
-                    ${s.status === 'active' || s.status === 'trial' ? `
-                    <div class="actions-item danger" onclick="archiveStaffMember('${s.id}'); closeActions()">
-                        <i class="fa-solid fa-box-archive w-4"></i> Архівувати
-                    </div>` : `
-                    <div class="actions-item success" onclick="activateStaff('${s.id}'); closeActions()">
-                        <i class="fa-solid fa-user-check w-4"></i> Взяти у штат
-                    </div>`}
-                </div>
-            </div>
+            <button onclick="toggleActions('${s.id}', this)"
+                class="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-600 hover:text-white hover:bg-white/5 transition">
+                <i class="fa-solid fa-ellipsis text-xs"></i>
+            </button>
         </td>
     </tr>`;
 }
@@ -396,30 +376,33 @@ function renderReviews(list) {
 window.previewPhoto = function(input) {
     const file = input.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
+    // Resize + convert to base64 for storage directly in avatar_url column
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+        const MAX = 256; // max px on longest side
+        let w = img.width, h = img.height;
+        if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        else if (h > w && h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        else if (w > MAX) { w = MAX; h = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const b64 = canvas.toDataURL('image/jpeg', 0.82);
+        URL.revokeObjectURL(url);
+        // Show preview
         const preview = document.getElementById('s-avatar-preview');
-        preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+        preview.innerHTML = `<img src="${b64}" class="w-full h-full object-cover">`;
+        // Cache so saveStaff() can read it without re-reading the file
+        input._base64 = b64;
     };
-    reader.readAsDataURL(file);
+    img.src = url;
 };
 
-async function uploadPhoto(file, id) {
-    if (!file) return null;
-    const ext  = file.name.split('.').pop();
-    const path = `${id}.${ext}`;
-
-    const { error } = await window.db.storage
-        .from('staff-avatars')
-        .upload(path, file, { upsert: true, contentType: file.type });
-
-    if (error) { console.error('Photo upload error:', error); return null; }
-
-    const { data } = window.db.storage
-        .from('staff-avatars')
-        .getPublicUrl(path);
-
-    return data?.publicUrl || null;
+// Returns base64 string (stored directly in staff.avatar_url — no Storage bucket needed)
+function getPhotoBase64() {
+    const input = document.getElementById('s-photo');
+    return input._base64 || null;
 }
 
 // ══════════════════════════════════════════════════════
@@ -509,13 +492,10 @@ window.saveStaff = async function() {
 
     if (error) { alert('Помилка: ' + error.message); return; }
 
-    // Upload photo if selected
-    const photoFile = document.getElementById('s-photo').files[0];
-    if (photoFile && savedId) {
-        const avatarUrl = await uploadPhoto(photoFile, savedId);
-        if (avatarUrl) {
-            await window.db.from('staff').update({ avatar_url: avatarUrl }).eq('id', savedId);
-        }
+    // Save photo as base64 directly into avatar_url (no Storage bucket needed)
+    const base64 = getPhotoBase64();
+    if (base64 && savedId) {
+        await window.db.from('staff').update({ avatar_url: base64 }).eq('id', savedId);
     }
 
     closeAllDrawers();
@@ -671,26 +651,59 @@ window.openCandidatesDrawer = function() {
 };
 
 // ══════════════════════════════════════════════════════
-//  ACTIONS DROPDOWN
+//  ACTIONS DROPDOWN — portal rendered at <body> level
+//  Avoids backdrop-filter stacking context on .glass-panel
 // ══════════════════════════════════════════════════════
 
+let _actionsOpenId = null;
+
 function toggleActions(id, btn) {
-    const menu = document.getElementById('actions-' + id);
-    const isOpen = menu.classList.contains('open');
+    if (_actionsOpenId === id) { closeActions(); return; }
     closeActions();
-    if (!isOpen) {
-        const rect = btn.getBoundingClientRect();
-        menu.style.top  = (rect.bottom + 6) + 'px';
-        menu.style.right = (window.innerWidth - rect.right) + 'px';
-        menu.classList.add('open');
-    }
+
+    const s = [...allStaff, ...allCandidates, ...archiveStaff].find(x => x.id === id);
+    if (!s) return;
+
+    const archiveOrActivate = (s.status === 'active' || s.status === 'trial')
+        ? `<div class="actions-item danger" onclick="archiveStaffMember('${id}'); closeActions()">
+               <i class="fa-solid fa-box-archive w-4"></i> Архівувати
+           </div>`
+        : `<div class="actions-item success" onclick="activateStaff('${id}'); closeActions()">
+               <i class="fa-solid fa-user-check w-4"></i> Взяти у штат
+           </div>`;
+
+    const portal = document.getElementById('actions-portal');
+    portal.innerHTML = `
+        <div class="actions-item" onclick="openProfile('${id}'); closeActions()">
+            <i class="fa-solid fa-id-card w-4"></i> Картка
+        </div>
+        <div class="actions-item" onclick="editStaff('${id}'); closeActions()">
+            <i class="fa-solid fa-pen w-4"></i> Редагувати
+        </div>
+        <div class="actions-item" onclick="openPermissions('${id}'); closeActions()">
+            <i class="fa-solid fa-shield-halved w-4"></i> Доступи
+        </div>
+        ${archiveOrActivate}
+    `;
+
+    const rect = btn.getBoundingClientRect();
+    portal.style.top   = (rect.bottom + 6) + 'px';
+    portal.style.right = (window.innerWidth - rect.right) + 'px';
+    portal.style.display = 'block';
+    _actionsOpenId = id;
 }
 
 function closeActions() {
-    document.querySelectorAll('.actions-menu.open').forEach(m => m.classList.remove('open'));
+    const portal = document.getElementById('actions-portal');
+    if (portal) { portal.style.display = 'none'; portal.innerHTML = ''; }
+    _actionsOpenId = null;
 }
 
-document.addEventListener('click', () => closeActions());
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#actions-portal') && !e.target.closest('button[onclick*="toggleActions"]')) {
+        closeActions();
+    }
+});
 
 window.archiveStaffMember = async function(id) {
     if (!confirm('Архівувати цього працівника?')) return;
