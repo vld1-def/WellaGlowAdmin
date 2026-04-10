@@ -251,12 +251,9 @@ function renderTimeline(days, today){
         const cells=days.map(({str})=>{
             const blockAppts=allAppts().filter(a=>a.master_id===masterId&&a._date===str&&startHour(a)===h);
             const shiftOverlay=shiftCellOverlay(str,masterId,h);
-            return `<div class="tl-cell"
-                data-day="${str}" data-hour="${h}"
-                onmousedown="dragBegin(event,'${str}',${h})"
-                onmouseenter="dragMove(event,'${str}',${h})"
-                onmouseup="dragEnd_(event,'${str}',${h})"
-            >${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
+            const blocked=isCellBlocked(str,masterId,h);
+            const handlers=blocked?'':`onmousedown="dragBegin(event,'${str}',${h})" onmouseenter="dragMove(event,'${str}',${h})" onmouseup="dragEnd_(event,'${str}',${h})"`;
+            return `<div class="tl-cell${blocked?' blocked':''}" data-day="${str}" data-hour="${h}" ${handlers}>${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
         }).join('');
         return `<div class="tl-wrap">
             <div class="tl-hour-label" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну в цей час">${hhmm(h)}</div>
@@ -278,6 +275,7 @@ function endHour(a){
 
 // ── Shift helpers ─────────────────────────────────────
 function dayOfWeek(dateStr){ const d=parseLD(dateStr); return d?(d.getDay()||7):0; }
+function shiftH(t){ return t?parseInt(t.split(':')[0]):0; }
 function shiftsForMasterDay(masterId,dateStr){
     const dow=dayOfWeek(dateStr);
     return shifts.filter(s=>s.staff_id===masterId&&(
@@ -286,26 +284,38 @@ function shiftsForMasterDay(masterId,dateStr){
         (s.recurrence==='always'&&(!s.day_of_week||s.day_of_week===dow))
     ));
 }
+function isCellBlocked(dateStr,masterId,h){
+    if(!masterId) return false;
+    return shiftsForMasterDay(masterId,dateStr).some(s=>{
+        if(s.all_day) return true;
+        return h>=shiftH(s.start_time)&&h<shiftH(s.end_time);
+    });
+}
 function shiftBannerHTML(dateStr,masterId){
     if(!masterId) return '';
     const ss=shiftsForMasterDay(masterId,dateStr);
-    const dayOffs=ss.filter(s=>s.type==='day_off');
-    if(dayOffs.length) return `<div style="font-size:8px;font-weight:800;color:#f43f5e;margin-top:2px">ВИХІДНИЙ</div>`;
-    const sh=ss.filter(s=>s.type==='shift');
-    if(sh.length){
-        const s=sh[0];
-        const t=s.all_day?'':''+s.start_time?.slice(0,5)+'–'+s.end_time?.slice(0,5);
-        return `<div style="font-size:8px;font-weight:800;color:#34d399;margin-top:2px">${t||'ЗМІНА'}</div>`;
+    const dayOff=ss.find(s=>s.type==='day_off');
+    if(dayOff){
+        const label=dayOff.all_day?'ВИХІДНИЙ':`${dayOff.start_time?.slice(0,5)}–${dayOff.end_time?.slice(0,5)}`;
+        return `<div style="font-size:8px;font-weight:800;color:#f43f5e;margin-top:2px">${label}</div>`;
+    }
+    const shift=ss.find(s=>s.type==='shift');
+    if(shift){
+        const label=shift.all_day?'ЗМІНА':`${shift.start_time?.slice(0,5)}–${shift.end_time?.slice(0,5)}`;
+        return `<div style="font-size:8px;font-weight:800;color:#34d399;margin-top:2px">${label}</div>`;
     }
     return '';
 }
 function shiftCellOverlay(dateStr,masterId,h){
     if(!masterId) return '';
     const ss=shiftsForMasterDay(masterId,dateStr);
-    const dayOff=ss.find(s=>s.type==='day_off'&&(s.all_day||true));
-    if(dayOff&&dayOff.all_day) return `<div style="position:absolute;inset:0;background:rgba(244,63,94,.06);z-index:1;pointer-events:none"></div>`;
-    const brk=ss.find(s=>s.type==='break'&&!s.all_day&&parseInt(s.start_time)<=h&&parseInt(s.end_time)>h);
-    if(brk) return `<div style="position:absolute;inset:0;background:rgba(251,191,36,.08);z-index:1;pointer-events:none"></div>`;
+    for(const s of ss){
+        const covers=s.all_day||(h>=shiftH(s.start_time)&&h<shiftH(s.end_time));
+        if(!covers) continue;
+        const bg=s.type==='day_off'?'rgba(244,63,94,.07)':
+                  s.type==='break'  ?'rgba(251,191,36,.07)':'rgba(52,211,153,.06)';
+        return `<div style="position:absolute;inset:0;background:${bg};z-index:1;pointer-events:none"></div>`;
+    }
     return '';
 }
 
@@ -700,7 +710,7 @@ window.openDetail=function(id,tbl){
 
     document.getElementById('d-edit').onclick=()=>{ closeAllDrawers(); openEditDrawer(a,tbl); };
     document.getElementById('d-done').onclick=()=>updateStatus(id,tbl,'completed');
-    document.getElementById('d-cancel').onclick=()=>{ if(confirm('Скасувати?')) updateStatus(id,tbl,'cancelled'); };
+    document.getElementById('d-cancel').onclick=()=>updateStatus(id,tbl,'cancelled');
     document.getElementById('d-done').style.display=(a.status==='completed'||a.status==='Виконано')?'none':'';
 
     document.getElementById('detail-drawer').classList.add('open');
@@ -787,6 +797,11 @@ function closeAllDrawers(){
 // ══════════════════════════════════════════════════════
 //  SHIFT / DAY-OFF MODAL
 // ══════════════════════════════════════════════════════
+function buildHourOptions(selId,defVal){
+    const sel=document.getElementById(selId);
+    sel.innerHTML=Array.from({length:24},(_,i)=>`<option value="${i}"${i===defVal?' selected':''}>${String(i).padStart(2,'0')}</option>`).join('');
+}
+
 window.openShiftModal=function(dayStr='',hour=null,masterId=''){
     shiftType='day_off'; shiftRec='once';
     // Populate master select
@@ -799,19 +814,19 @@ window.openShiftModal=function(dayStr='',hour=null,masterId=''){
     // Prefill date
     document.getElementById('sh-date').value=dayStr||localDate(new Date());
 
-    // Prefill time
+    // Build 24h hour selects
+    const startH=hour!==null?hour:9;
+    const endH=hour!==null?hour+1:20;
+    buildHourOptions('sh-start-h',startH);
+    buildHourOptions('sh-end-h',endH);
+    document.getElementById('sh-start-m').value='00';
+    document.getElementById('sh-end-m').value='00';
+
+    // All day toggle
     const allDayChk=document.getElementById('sh-allday');
-    if(hour!==null){
-        allDayChk.checked=false;
-        document.getElementById('sh-time-wrap').classList.remove('hidden');
-        document.getElementById('sh-start').value=hhmm(hour)+':00';
-        document.getElementById('sh-end').value=hhmm(hour+1)+':00';
-    } else {
-        allDayChk.checked=true;
-        document.getElementById('sh-time-wrap').classList.add('hidden');
-        document.getElementById('sh-start').value='09:00:00';
-        document.getElementById('sh-end').value='20:00:00';
-    }
+    const isAllDay=(hour===null);
+    allDayChk.checked=isAllDay;
+    document.getElementById('sh-time-wrap').classList.toggle('hidden',isAllDay);
 
     // Reset type + recurrence buttons
     document.querySelectorAll('.shift-type-btn[data-type]').forEach(b=>b.classList.toggle('active',b.dataset.type==='day_off'));
@@ -844,22 +859,29 @@ window.selectShiftRec=function(rec){
 window.toggleShiftAllDay=function(){
     const allDay=document.getElementById('sh-allday').checked;
     document.getElementById('sh-time-wrap').classList.toggle('hidden',allDay);
+    // When switching to specific time, build hours if empty
+    if(!allDay){
+        const sh=document.getElementById('sh-start-h');
+        if(!sh.options.length){ buildHourOptions('sh-start-h',9); buildHourOptions('sh-end-h',10); }
+    }
 };
 
 window.saveShift=async function(){
     const staffId=document.getElementById('sh-master').value;
     if(!staffId){ alert('Оберіть майстра'); return; }
     const allDay=document.getElementById('sh-allday').checked;
-    const startRaw=document.getElementById('sh-start').value;
-    const endRaw=document.getElementById('sh-end').value;
+    const sH=String(document.getElementById('sh-start-h').value||9).padStart(2,'0');
+    const sM=document.getElementById('sh-start-m').value||'00';
+    const eH=String(document.getElementById('sh-end-h').value||20).padStart(2,'0');
+    const eM=document.getElementById('sh-end-m').value||'00';
 
     const payload={
         staff_id:staffId,
         type:shiftType,
         recurrence:shiftRec,
         all_day:allDay,
-        start_time:allDay?'09:00:00':(startRaw.length===5?startRaw+':00':startRaw),
-        end_time:allDay?'20:00:00':(endRaw.length===5?endRaw+':00':endRaw),
+        start_time:allDay?'09:00:00':`${sH}:${sM}:00`,
+        end_time:allDay?'20:00:00':`${eH}:${eM}:00`,
         note:document.getElementById('sh-note').value.trim()||null,
     };
     const dateVal=document.getElementById('sh-date').value;

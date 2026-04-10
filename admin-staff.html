@@ -86,6 +86,20 @@
 
         /* Avatar color ring */
         .avatar-ring { border:2px solid; border-radius:50%; }
+
+        /* Sort buttons */
+        .sort-btn { padding:5px 10px; border-radius:8px; font-size:9px; font-weight:800;
+            text-transform:uppercase; letter-spacing:.06em; cursor:pointer; transition:all .2s;
+            border:1px solid rgba(255,255,255,.06); color:#52525b; background:transparent; }
+        .sort-btn.active { background:rgba(244,63,94,.1); border-color:rgba(244,63,94,.3); color:#f43f5e; }
+        .sort-btn:hover:not(.active) { border-color:rgba(255,255,255,.12); color:#a1a1aa; }
+
+        /* Role access drawer */
+        #role-access-drawer { transform:translateX(100%); transition:transform .35s cubic-bezier(.4,0,.2,1); }
+        #role-access-drawer.open { transform:translateX(0); }
+        .role-tab { padding:7px 16px; border-radius:9px; font-size:10px; font-weight:800;
+            text-transform:uppercase; letter-spacing:.06em; cursor:pointer; transition:all .2s; color:#52525b; }
+        .role-tab.active { background:rgba(244,63,94,.12); color:#f43f5e; }
     </style>
 </head>
 <body class="flex min-h-screen">
@@ -110,7 +124,7 @@
             <div class="space-y-1">
                 <a href="admin-calendar.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-calendar-check w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span></a>
                 <a href="admin-staff.html" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition font-bold"><i class="fa-solid fa-users-gear w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span></a>
-                <a href="admin-access.html" class="sidebar-link flex items-center gap-3 p-3 pl-8 text-zinc-600 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-shield-halved w-3 text-[10px]"></i> <span class="hidden lg:block text-[10px] uppercase tracking-widest">Доступи по ролях</span></a>
+                <button onclick="openRoleAccess()" class="sidebar-link flex items-center gap-3 p-3 pl-8 text-zinc-600 hover:text-white transition rounded-r-xl w-full text-left"><i class="fa-solid fa-shield-halved w-3 text-[10px]"></i> <span class="hidden lg:block text-[10px] uppercase tracking-widest">Доступи по ролях</span></button>
                 <a href="admin-inventory.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-boxes-stacked w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Склад</span></a>
             </div>
         </div>
@@ -192,17 +206,26 @@
     <div class="glass-panel rounded-2xl p-5 lg:p-6 mb-8">
         <!-- Table toolbar -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-[11px]"></i>
-                    <input id="staff-search" oninput="filterStaff()" type="text" placeholder="Пошук по імені або посаді..."
-                        class="bg-white/5 border border-white/8 rounded-xl pl-8 pr-4 py-2.5 text-[11px] font-semibold text-zinc-300 placeholder-zinc-600 outline-none focus:border-rose-500/40 w-64 transition">
+                    <input id="staff-search" oninput="filterStaff()" type="text" placeholder="Пошук..."
+                        class="bg-white/5 border border-white/8 rounded-xl pl-8 pr-4 py-2.5 text-[11px] font-semibold text-zinc-300 placeholder-zinc-600 outline-none focus:border-rose-500/40 w-44 transition">
                 </div>
                 <span id="staff-count-label" class="text-[10px] text-zinc-600 font-bold hidden sm:block">0 працівників</span>
+                <!-- Sort buttons -->
+                <div class="flex items-center gap-1">
+                    <span class="text-[9px] text-zinc-600 font-black uppercase tracking-widest">Сорт:</span>
+                    <button onclick="setStaffSort('pin')"   id="sort-pin"   class="sort-btn active"><i class="fa-solid fa-thumbtack text-[8px]"></i></button>
+                    <button onclick="setStaffSort('role')"  id="sort-role"  class="sort-btn">Роль</button>
+                    <button onclick="setStaffSort('tenure')" id="sort-tenure" class="sort-btn">Стаж</button>
+                    <button onclick="setStaffSort('appointments')" id="sort-appointments" class="sort-btn">Записи</button>
+                    <button onclick="setStaffSort('earnings')" id="sort-earnings" class="sort-btn">Заробіток</button>
+                </div>
             </div>
             <button onclick="downloadLastMonthReport()" class="glass-panel px-4 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition whitespace-nowrap">
                 <i class="fa-solid fa-file-arrow-down text-xs"></i>
-                <span>Звіт за минулий місяць</span>
+                <span class="hidden sm:inline">Звіт за місяць</span>
             </button>
         </div>
 
@@ -515,6 +538,28 @@
 <div id="actions-portal" style="display:none; position:fixed; z-index:99999; min-width:168px;
      background:#111113; border:1px solid rgba(255,255,255,0.08); border-radius:12px;
      padding:6px; box-shadow:0 16px 40px rgba(0,0,0,0.75);">
+</div>
+
+<!-- ═══════════════════ ROLE ACCESS DRAWER ═══════════════════ -->
+<div id="role-access-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-[#0d0d0f] border-l border-white/8 overflow-y-auto" style="z-index:70">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Доступи по ролях</h3>
+            <button onclick="closeRoleAccess()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <p class="text-[10px] text-zinc-600 font-semibold mb-5 leading-relaxed">Налаштування за замовчуванням для кожної ролі. Індивідуальні доступи змінюються через картку працівника → ···</p>
+        <!-- Role tabs -->
+        <div class="flex gap-2 mb-5">
+            <button class="role-tab active" id="rtab-admin"  onclick="switchRoleTab('admin')">Адмін</button>
+            <button class="role-tab"        id="rtab-master" onclick="switchRoleTab('master')">Майстер</button>
+        </div>
+        <!-- Module list -->
+        <div id="role-perm-list" class="space-y-2"></div>
+        <div class="flex gap-3 mt-6">
+            <button onclick="closeRoleAccess()" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-500 hover:text-white transition">Скасувати</button>
+            <button onclick="saveRolePermissions()" class="flex-1 neo-gradient py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">Зберегти</button>
+        </div>
+    </div>
 </div>
 
 <!-- ═══════════════════ TEAM SCHEDULE MODAL ═══════════════════ -->
