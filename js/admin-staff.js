@@ -11,26 +11,33 @@ if (!staffId || !['owner','admin'].includes(staffRole)) {
 }
 
 // ── State ─────────────────────────────────────────────
-let allStaff        = [];   // active + trial
-let allReviews      = [];
-let allCandidates   = [];
-let editingStaffId  = null;
-let permStaffId     = null;
-let modalStaffData  = null;
-let archiveTab      = 'fired';
-let modalTab        = 'info';
-let modalChart      = null;
-let archiveStaff    = [];   // fired
+let allStaff       = [];
+let allReviews     = [];
+let allCandidates  = [];
+let editingStaffId = null;
+let permStaffId    = null;
+let modalStaffData = null;
+let archiveTab     = 'fired';
+let modalTab       = 'info';
+let modalChart     = null;
+let archiveStaff   = [];
 
 const MODULES = [
-    { key: 'dashboard',  label: 'Дашборд',       icon: 'fa-chart-pie'       },
-    { key: 'calendar',   label: 'Записи',         icon: 'fa-calendar-check'  },
-    { key: 'finance',    label: 'Фінанси',        icon: 'fa-wallet'          },
-    { key: 'clients',    label: 'Клієнти',        icon: 'fa-address-book'    },
-    { key: 'inventory',  label: 'Склад',          icon: 'fa-boxes-stacked'   },
-    { key: 'staff',      label: 'Персонал',       icon: 'fa-users-gear'      },
-    { key: 'bonuses',    label: 'Бонуси',         icon: 'fa-gift'            },
+    { key: 'dashboard',  label: 'Дашборд',   icon: 'fa-chart-pie'      },
+    { key: 'calendar',   label: 'Записи',     icon: 'fa-calendar-check' },
+    { key: 'finance',    label: 'Фінанси',    icon: 'fa-wallet'         },
+    { key: 'clients',    label: 'Клієнти',    icon: 'fa-address-book'   },
+    { key: 'inventory',  label: 'Склад',      icon: 'fa-boxes-stacked'  },
+    { key: 'staff',      label: 'Персонал',   icon: 'fa-users-gear'     },
+    { key: 'bonuses',    label: 'Бонуси',     icon: 'fa-gift'           },
 ];
+
+// Deterministic avatar color from staff id (no DB column needed)
+const AVATAR_COLORS = ['#f43f5e','#fb923c','#facc15','#4ade80','#34d399','#22d3ee','#818cf8','#c084fc','#f472b6'];
+function getAvatarColor(s) {
+    const hash = (s.id || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
 
 // ── Init ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -55,9 +62,16 @@ async function loadStaff() {
     if (error) { console.error(error); return; }
 
     const all = data || [];
-    allStaff      = all.filter(s => s.status === 'active' || s.status === 'trial');
-    allCandidates = all.filter(s => s.status === 'candidate');
-    archiveStaff  = all.filter(s => s.status === 'fired');
+
+    // Support both status column (new) and is_active fallback (existing)
+    const getStatus = s => s.status || (s.is_active ? 'active' : 'fired');
+
+    allStaff      = all.filter(s => ['active','trial'].includes(getStatus(s)));
+    allCandidates = all.filter(s => getStatus(s) === 'candidate');
+    archiveStaff  = all.filter(s => getStatus(s) === 'fired');
+
+    // Normalise status field on each record for uniform use downstream
+    all.forEach(s => { if (!s.status) s.status = getStatus(s); });
 
     document.getElementById('active-count').textContent =
         allStaff.filter(s => s.status === 'active').length;
@@ -69,7 +83,7 @@ async function loadStaff() {
 async function loadReviews() {
     const { data, error } = await window.db
         .from('reviews')
-        .select('*, staff:staff_id(name, color)')
+        .select('*, staff:staff_id(name), client:client_id(name)')
         .order('created_at', { ascending: false });
 
     if (error) { console.error(error); return; }
@@ -84,20 +98,15 @@ async function loadKPIs() {
         const avg = allReviews.reduce((s, r) => s + parseFloat(r.rating), 0) / allReviews.length;
         document.getElementById('kpi-rating').innerHTML =
             avg.toFixed(1) + '<span class="text-sm text-zinc-500 font-semibold"> / 5.0</span>';
+        const eff = (avg / 5 * 10).toFixed(1);
+        document.getElementById('kpi-efficiency').innerHTML =
+            eff + '<span class="text-sm text-zinc-500 font-semibold">/10</span>';
     } else {
         document.getElementById('kpi-rating').innerHTML =
             '—<span class="text-sm text-zinc-500 font-semibold"> / 5.0</span>';
     }
 
-    // Efficiency = avg rating scaled to /10
-    if (allReviews.length) {
-        const avgRating = allReviews.reduce((s, r) => s + parseFloat(r.rating), 0) / allReviews.length;
-        const eff = (avgRating / 5 * 10).toFixed(1);
-        document.getElementById('kpi-efficiency').innerHTML =
-            eff + '<span class="text-sm text-zinc-500 font-semibold">/10</span>';
-    }
-
-    // Payroll fund: sum of (staff.salary_percent / 100 * monthly revenue)
+    // Payroll fund = avg commission_rate % of monthly revenue
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
     const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
@@ -119,23 +128,42 @@ async function loadKPIs() {
         (txRes.data || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
 
     const avgPct = allStaff.length
-        ? allStaff.reduce((s, m) => s + (m.salary_percent || 40), 0) / allStaff.length
+        ? allStaff.reduce((s, m) => s + (m.commission_rate || 40), 0) / allStaff.length
         : 40;
 
     const fund = Math.round(revenue * avgPct / 100);
-    document.getElementById('kpi-payroll').textContent = fund
-        ? '₴' + fund.toLocaleString('uk-UA')
-        : '₴0';
+    document.getElementById('kpi-payroll').textContent = '₴' + fund.toLocaleString('uk-UA');
 }
 
 // ══════════════════════════════════════════════════════
-//  RENDER: STAFF TABLE
+//  HELPERS
 // ══════════════════════════════════════════════════════
 
 function getInitials(name) {
     if (!name) return '?';
     return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
 }
+
+function avatarEl(s, size = 'w-9 h-9', textSize = 'text-[11px]') {
+    const color = getAvatarColor(s);
+    if (s.avatar_url) {
+        return `<img src="${s.avatar_url}" alt="${s.name}"
+                    class="${size} rounded-xl object-cover flex-shrink-0"
+                    onerror="this.outerHTML=fallbackAvatar('${s.id}','${s.name}','${size}','${textSize}')">`;
+    }
+    return `<div class="${size} rounded-xl flex items-center justify-center ${textSize} font-black flex-shrink-0"
+                 style="background:${color}22; border:1.5px solid ${color}55; color:${color}">
+                ${getInitials(s.name)}
+            </div>`;
+}
+
+window.fallbackAvatar = function(id, name, size, textSize) {
+    const color = AVATAR_COLORS[(id || '').split('').reduce((a,c)=>a+c.charCodeAt(0),0) % AVATAR_COLORS.length];
+    return `<div class="${size} rounded-xl flex items-center justify-center ${textSize} font-black flex-shrink-0"
+                 style="background:${color}22;border:1.5px solid ${color}55;color:${color}">
+                ${(name||'?').split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')}
+            </div>`;
+};
 
 function statusBadge(status) {
     const map = {
@@ -149,8 +177,8 @@ function statusBadge(status) {
 }
 
 function starRating(rating) {
-    if (!rating) return '<span class="text-[10px] text-zinc-600">—</span>';
-    const full  = Math.round(parseFloat(rating));
+    if (rating === null || rating === undefined) return '<span class="text-[10px] text-zinc-600">—</span>';
+    const full = Math.round(parseFloat(rating));
     let html = '';
     for (let i = 1; i <= 5; i++) {
         html += `<i class="fa-solid fa-star text-[9px] ${i <= full ? 'star-full' : 'star-empty'}"></i>`;
@@ -168,21 +196,33 @@ function tenureDays(hireDate) {
     return y + ' р.' + (m ? ' ' + m + ' міс.' : '');
 }
 
+function pluralize(n, one, few, many) {
+    const mod10  = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return one;
+    if ([2,3,4].includes(mod10) && ![12,13,14].includes(mod100)) return few;
+    return many;
+}
+
+function getClientName(r) {
+    return r.client?.name || 'Клієнт';
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER: STAFF TABLE
+// ══════════════════════════════════════════════════════
+
 function staffRow(s, appointments = 0, revenue = 0) {
-    const avgRating = (() => {
-        const revs = allReviews.filter(r => r.staff_id === s.id);
-        if (!revs.length) return null;
-        return revs.reduce((sum, r) => sum + parseFloat(r.rating), 0) / revs.length;
-    })();
+    const revs = allReviews.filter(r => r.staff_id === s.id);
+    const avgRating = revs.length
+        ? revs.reduce((sum, r) => sum + parseFloat(r.rating), 0) / revs.length
+        : null;
 
     return `
     <tr class="border-b border-white/3 hover:bg-white/2 transition cursor-pointer" onclick="openProfile('${s.id}')">
         <td class="py-3 pr-4">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
-                     style="background:${s.color || '#f43f5e'}22; border:1.5px solid ${s.color || '#f43f5e'}55; color:${s.color || '#f43f5e'}">
-                    ${getInitials(s.name)}
-                </div>
+                ${avatarEl(s)}
                 <div>
                     <p class="text-[12px] font-bold text-white leading-tight">${s.name}</p>
                     <p class="text-[10px] text-zinc-500 font-semibold">${s.position || s.role || '—'}</p>
@@ -193,7 +233,7 @@ function staffRow(s, appointments = 0, revenue = 0) {
         <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-zinc-400 font-semibold">${appointments}</td>
         <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-white font-bold">₴${revenue.toLocaleString('uk-UA')}</td>
         <td class="py-3 pr-4">
-            <span class="text-[11px] font-bold text-rose-400">${s.salary_percent || 40}%</span>
+            <span class="text-[11px] font-bold text-rose-400">${s.commission_rate || 40}%</span>
         </td>
         <td class="py-3 pr-4">${starRating(avgRating)}</td>
         <td class="py-3 pr-4">${statusBadge(s.status)}</td>
@@ -234,7 +274,6 @@ async function renderStaffTable(list) {
         return;
     }
 
-    // Load monthly stats
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
     const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
@@ -262,15 +301,6 @@ async function renderStaffTable(list) {
         list.length + ' ' + pluralize(list.length, 'працівник', 'працівники', 'працівників');
 }
 
-function pluralize(n, one, few, many) {
-    const mod10  = n % 10;
-    const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return one;
-    if ([2,3,4].includes(mod10) && ![12,13,14].includes(mod100)) return few;
-    return many;
-}
-
-// ── Filter ────────────────────────────────────────────
 function filterStaff() {
     const q = document.getElementById('staff-search').value.toLowerCase().trim();
     const filtered = allStaff.filter(s =>
@@ -286,10 +316,7 @@ function filterStaff() {
 function candidateRow(s) {
     return `
     <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition cursor-pointer" onclick="openProfile('${s.id}')">
-        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black flex-shrink-0"
-             style="background:${s.color || '#818cf8'}22; color:${s.color || '#818cf8'}">
-            ${getInitials(s.name)}
-        </div>
+        ${avatarEl(s, 'w-8 h-8', 'text-[10px]')}
         <div class="flex-1 min-w-0">
             <p class="text-[11px] font-bold text-white truncate">${s.name}</p>
             <p class="text-[10px] text-zinc-500 font-semibold truncate">${s.position || 'Посада не вказана'}</p>
@@ -326,11 +353,12 @@ function reviewCard(r, showStaffName = false) {
     ).join('');
     const date = new Date(r.created_at).toLocaleDateString('uk-UA', { day:'2-digit', month:'2-digit', year:'2-digit' });
     const staffName = showStaffName && r.staff?.name ? `<span class="text-rose-400">${r.staff.name}</span> · ` : '';
+    const clientName = getClientName(r);
     return `
     <div class="p-3 rounded-xl border border-white/5 bg-white/2">
         <div class="flex items-start justify-between gap-2 mb-1.5">
             <div>
-                <p class="text-[11px] font-bold text-white">${r.client_name}</p>
+                <p class="text-[11px] font-bold text-white">${clientName}</p>
                 <p class="text-[9px] text-zinc-600 font-semibold">${staffName}${date}</p>
             </div>
             <div class="flex items-center gap-0.5 flex-shrink-0">${stars}</div>
@@ -346,6 +374,39 @@ function renderReviews(list) {
         return;
     }
     el.innerHTML = list.map(r => reviewCard(r, true)).join('');
+}
+
+// ══════════════════════════════════════════════════════
+//  PHOTO UPLOAD
+// ══════════════════════════════════════════════════════
+
+window.previewPhoto = function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const preview = document.getElementById('s-avatar-preview');
+        preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+    };
+    reader.readAsDataURL(file);
+};
+
+async function uploadPhoto(file, id) {
+    if (!file) return null;
+    const ext  = file.name.split('.').pop();
+    const path = `${id}.${ext}`;
+
+    const { error } = await window.db.storage
+        .from('staff-avatars')
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (error) { console.error('Photo upload error:', error); return null; }
+
+    const { data } = window.db.storage
+        .from('staff-avatars')
+        .getPublicUrl(path);
+
+    return data?.publicUrl || null;
 }
 
 // ══════════════════════════════════════════════════════
@@ -369,16 +430,27 @@ function openStaffDrawer(staffData = null) {
     editingStaffId = staffData ? staffData.id : null;
     document.getElementById('staff-drawer-title').textContent = staffData ? 'Редагування' : 'Новий працівник';
 
-    document.getElementById('s-name').value          = staffData?.name          || '';
-    document.getElementById('s-phone').value         = staffData?.phone         || '';
-    document.getElementById('s-position').value      = staffData?.position      || '';
-    document.getElementById('s-role').value          = staffData?.role          || 'master';
-    document.getElementById('s-status').value        = staffData?.status        || 'active';
-    document.getElementById('s-hire-date').value     = staffData?.hire_date     || '';
-    document.getElementById('s-salary-percent').value = staffData?.salary_percent ?? 40;
-    document.getElementById('s-color').value         = staffData?.color         || '#f43f5e';
-    document.getElementById('s-notes').value         = staffData?.notes         || '';
-    document.getElementById('s-password').value      = '';
+    document.getElementById('s-name').value           = staffData?.name            || '';
+    document.getElementById('s-phone').value          = staffData?.phone           || '';
+    document.getElementById('s-position').value       = staffData?.position        || '';
+    document.getElementById('s-role').value           = staffData?.role            || 'master';
+    document.getElementById('s-status').value         = staffData?.status          || 'active';
+    document.getElementById('s-hire-date').value      = staffData?.hire_date       || '';
+    document.getElementById('s-salary-percent').value = staffData?.commission_rate ?? 40;
+    document.getElementById('s-notes').value          = staffData?.notes           || '';
+    document.getElementById('s-password').value       = '';
+    document.getElementById('s-photo').value          = '';
+
+    // Avatar preview
+    const preview = document.getElementById('s-avatar-preview');
+    if (staffData?.avatar_url) {
+        preview.innerHTML = `<img src="${staffData.avatar_url}" class="w-full h-full object-cover">`;
+    } else {
+        const color = staffData ? getAvatarColor(staffData) : '#f43f5e';
+        preview.style.background = color + '22';
+        preview.style.color = color;
+        preview.innerHTML = staffData ? getInitials(staffData.name) : '?';
+    }
 
     document.getElementById('staff-drawer').classList.add('open');
     openOverlay();
@@ -393,30 +465,46 @@ window.saveStaff = async function() {
     const name = document.getElementById('s-name').value.trim();
     if (!name) { alert('Введіть ім\'я!'); return; }
 
+    const commissionRate = parseInt(document.getElementById('s-salary-percent').value) || 40;
+    const statusVal      = document.getElementById('s-status').value;
+
     const payload = {
         name,
-        phone:          document.getElementById('s-phone').value.trim() || null,
-        position:       document.getElementById('s-position').value.trim() || null,
-        role:           document.getElementById('s-role').value,
-        status:         document.getElementById('s-status').value,
-        hire_date:      document.getElementById('s-hire-date').value || null,
-        salary_percent: parseInt(document.getElementById('s-salary-percent').value) || 40,
-        color:          document.getElementById('s-color').value,
-        notes:          document.getElementById('s-notes').value.trim() || null,
+        phone:           document.getElementById('s-phone').value.trim() || null,
+        position:        document.getElementById('s-position').value.trim() || null,
+        role:            document.getElementById('s-role').value,
+        status:          statusVal,
+        is_active:       statusVal === 'active',
+        hire_date:       document.getElementById('s-hire-date').value || null,
+        commission_rate: commissionRate,
+        notes:           document.getElementById('s-notes').value.trim() || null,
     };
 
     const pwd = document.getElementById('s-password').value.trim();
     if (pwd) payload.password = pwd;
 
+    let savedId = editingStaffId;
     let error;
+
     if (editingStaffId) {
         ({ error } = await window.db.from('staff').update(payload).eq('id', editingStaffId));
     } else {
-        payload.is_active = true;
-        ({ error } = await window.db.from('staff').insert([payload]));
+        const { data, error: insErr } = await window.db.from('staff').insert([payload]).select().single();
+        error = insErr;
+        if (data) savedId = data.id;
     }
 
     if (error) { alert('Помилка: ' + error.message); return; }
+
+    // Upload photo if selected
+    const photoFile = document.getElementById('s-photo').files[0];
+    if (photoFile && savedId) {
+        const avatarUrl = await uploadPhoto(photoFile, savedId);
+        if (avatarUrl) {
+            await window.db.from('staff').update({ avatar_url: avatarUrl }).eq('id', savedId);
+        }
+    }
+
     closeAllDrawers();
     loadAll();
 };
@@ -438,9 +526,9 @@ window.switchArchiveTab = function(tab) {
 
 function renderArchiveList(tab) {
     let list;
-    if (tab === 'fired')     list = archiveStaff;
+    if (tab === 'fired')      list = archiveStaff;
     else if (tab === 'trial') list = allStaff.filter(s => s.status === 'trial');
-    else                      list = allCandidates;
+    else                       list = allCandidates;
 
     const el = document.getElementById('archive-list');
     if (!list.length) {
@@ -449,10 +537,7 @@ function renderArchiveList(tab) {
     }
     el.innerHTML = list.map(s => `
         <div class="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/2">
-            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black flex-shrink-0"
-                 style="background:${s.color||'#f43f5e'}22; color:${s.color||'#f43f5e'}">
-                ${getInitials(s.name)}
-            </div>
+            ${avatarEl(s, 'w-8 h-8', 'text-[10px]')}
             <div class="flex-1 min-w-0">
                 <p class="text-[11px] font-bold text-white truncate">${s.name}</p>
                 <p class="text-[10px] text-zinc-500 font-semibold">${s.position || s.role || '—'}</p>
@@ -501,13 +586,11 @@ window.openPermissions = async function(id) {
         </div>
     `).join('');
 
-    // Close other drawers but not overlay
     ['staff-drawer','archive-drawer','reviews-drawer','candidates-drawer'].forEach(id => {
         document.getElementById(id).classList.remove('open');
     });
     document.getElementById('permissions-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
-    // Permissions drawer needs separate close
 };
 
 window.closePermissions = function() {
@@ -534,7 +617,6 @@ window.savePermissions = async function() {
 
 // ── Reviews Drawer ────────────────────────────────────
 window.openReviewsDrawer = function() {
-    // Populate staff filter
     const staffSet = [...new Set(allReviews.map(r => r.staff_id))];
     const sel = document.getElementById('reviews-filter-staff');
     sel.innerHTML = '<option value="">Всі майстри</option>' +
@@ -557,10 +639,10 @@ function renderAllReviews(list) {
 }
 
 window.filterReviews = function() {
-    const q       = document.getElementById('reviews-search').value.toLowerCase().trim();
-    const staffF  = document.getElementById('reviews-filter-staff').value;
+    const q      = document.getElementById('reviews-search').value.toLowerCase().trim();
+    const staffF = document.getElementById('reviews-filter-staff').value;
     let list = allReviews;
-    if (q)      list = list.filter(r => r.client_name?.toLowerCase().includes(q) || r.comment?.toLowerCase().includes(q));
+    if (q)      list = list.filter(r => getClientName(r).toLowerCase().includes(q) || r.comment?.toLowerCase().includes(q));
     if (staffF) list = list.filter(r => r.staff_id === staffF);
     renderAllReviews(list);
 };
@@ -568,11 +650,9 @@ window.filterReviews = function() {
 // ── Candidates Drawer ─────────────────────────────────
 window.openCandidatesDrawer = function() {
     const el = document.getElementById('all-candidates-list');
-    if (!allCandidates.length) {
-        el.innerHTML = `<p class="text-[11px] text-zinc-600 text-center py-6 font-semibold">Кандидатів немає</p>`;
-    } else {
-        el.innerHTML = allCandidates.map(s => candidateRow(s)).join('');
-    }
+    el.innerHTML = allCandidates.length
+        ? allCandidates.map(s => candidateRow(s)).join('')
+        : `<p class="text-[11px] text-zinc-600 text-center py-6 font-semibold">Кандидатів немає</p>`;
     document.getElementById('candidates-drawer').classList.add('open');
     openOverlay();
 };
@@ -594,12 +674,11 @@ function closeActions() {
 
 document.addEventListener('click', () => closeActions());
 
-// ── Archive / Activate ────────────────────────────────
 window.archiveStaffMember = async function(id) {
     if (!confirm('Архівувати цього працівника?')) return;
     const { error } = await window.db
         .from('staff')
-        .update({ status: 'fired' })
+        .update({ status: 'fired', is_active: false })
         .eq('id', id);
     if (error) { alert(error.message); return; }
     loadAll();
@@ -623,14 +702,19 @@ window.openProfile = async function(id) {
     const s = [...allStaff, ...allCandidates, ...archiveStaff].find(x => x.id === id);
     if (!s) return;
     modalStaffData = s;
-    modalTab = 'info';
 
     // Avatar
-    const avatar = document.getElementById('modal-avatar');
-    avatar.textContent = getInitials(s.name);
-    avatar.style.background = (s.color || '#f43f5e') + '22';
-    avatar.style.border      = '2px solid ' + (s.color || '#f43f5e') + '55';
-    avatar.style.color        = s.color || '#f43f5e';
+    const avatarEl2 = document.getElementById('modal-avatar');
+    const color = getAvatarColor(s);
+    if (s.avatar_url) {
+        avatarEl2.innerHTML = `<img src="${s.avatar_url}" class="w-full h-full object-cover rounded-2xl">`;
+        avatarEl2.style = '';
+    } else {
+        avatarEl2.textContent = getInitials(s.name);
+        avatarEl2.style.background = color + '22';
+        avatarEl2.style.border = '2px solid ' + color + '55';
+        avatarEl2.style.color  = color;
+    }
 
     document.getElementById('modal-name').textContent     = s.name;
     document.getElementById('modal-position').textContent = s.position || s.role || '—';
@@ -638,22 +722,17 @@ window.openProfile = async function(id) {
     document.getElementById('modal-hire-date').textContent = s.hire_date
         ? new Date(s.hire_date).toLocaleDateString('uk-UA') : '—';
     document.getElementById('modal-tenure').textContent   = tenureDays(s.hire_date);
-    document.getElementById('modal-salary').textContent   = (s.salary_percent || 40) + '%';
+    document.getElementById('modal-salary').textContent   = (s.commission_rate || 40) + '%';
     document.getElementById('modal-notes').textContent    = s.notes || 'Немає нотаток';
 
-    // Rating from reviews
     const myRevs = allReviews.filter(r => r.staff_id === id);
     const avgR = myRevs.length
         ? (myRevs.reduce((s, r) => s + parseFloat(r.rating), 0) / myRevs.length).toFixed(1)
-        : '—';
-    document.getElementById('modal-rating').textContent = avgR === '—' ? '—' : '⭐ ' + avgR;
-
-    // Status badge
+        : null;
+    document.getElementById('modal-rating').textContent = avgR ? '⭐ ' + avgR : '—';
     document.getElementById('modal-status-badge').innerHTML = statusBadge(s.status);
 
-    // Reset tabs
     switchModalTab('info');
-
     document.getElementById('profile-modal').classList.add('open');
 };
 
@@ -666,43 +745,35 @@ window.closeProfileModal = function() {
 window.switchModalTab = function(tab) {
     modalTab = tab;
     ['info','chart','reviews'].forEach(t => {
-        document.getElementById('modal-tab-'   + t).classList.toggle('active', t === tab);
+        document.getElementById('modal-tab-' + t).classList.toggle('active', t === tab);
         document.getElementById('modal-' + t + '-tab').classList.toggle('hidden', t !== tab);
     });
 
-    if (tab === 'chart' && modalStaffData) {
-        renderModalChart(modalStaffData.id);
-    }
+    if (tab === 'chart' && modalStaffData) renderModalChart(modalStaffData.id);
     if (tab === 'reviews' && modalStaffData) {
         const myRevs = allReviews.filter(r => r.staff_id === modalStaffData.id);
-        const el = document.getElementById('modal-reviews-list');
-        el.innerHTML = myRevs.length
+        document.getElementById('modal-reviews-list').innerHTML = myRevs.length
             ? myRevs.map(r => reviewCard(r, false)).join('')
             : `<p class="text-[11px] text-zinc-600 text-center py-6 font-semibold">Відгуків немає</p>`;
     }
 };
 
-async function renderModalChart(staffId) {
+async function renderModalChart(sid) {
     if (modalChart) { modalChart.destroy(); modalChart = null; }
-
     const now = new Date();
-    const labels = [];
-    const values = [];
+    const labels = [], values = [];
 
-    // Last 6 months
     for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const d     = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const start = d.toISOString().slice(0, 10);
         const end   = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
         labels.push(d.toLocaleDateString('uk-UA', { month: 'short' }));
-
         const { data } = await window.db
             .from('appointment_history')
             .select('total_price')
-            .eq('staff_id', staffId)
+            .eq('staff_id', sid)
             .gte('date', start)
             .lte('date', end);
-
         values.push((data || []).reduce((s, r) => s + parseFloat(r.total_price || 0), 0));
     }
 
@@ -736,54 +807,50 @@ async function renderModalChart(staffId) {
 // ══════════════════════════════════════════════════════
 
 window.downloadLastMonthReport = async function() {
-    const now = new Date();
+    const now      = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastDay  = new Date(now.getFullYear(), now.getMonth(), 0);
-    const start = firstDay.toISOString().slice(0, 10);
-    const end   = lastDay.toISOString().slice(0, 10);
+    const start    = firstDay.toISOString().slice(0, 10);
+    const end      = lastDay.toISOString().slice(0, 10);
+    const label    = firstDay.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
 
-    const monthLabel = firstDay.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
-
-    // Fetch all appointments for last month
     const { data: appts } = await window.db
         .from('appointment_history')
-        .select('date, staff_id, total_price, service_name, payment_type')
+        .select('date, staff_id, total_price')
         .gte('date', start)
         .lte('date', end)
         .order('date');
 
-    // Build staff map
     const staffMap = {};
     [...allStaff, ...archiveStaff].forEach(s => { staffMap[s.id] = s; });
 
-    // Group by staff
     const report = {};
     (appts || []).forEach(a => {
-        const s = staffMap[a.staff_id];
+        const s    = staffMap[a.staff_id];
         const name = s?.name || 'Невідомий';
-        if (!report[name]) report[name] = { name, position: s?.position || '—', salary_percent: s?.salary_percent || 40, appointments: 0, revenue: 0 };
+        if (!report[name]) report[name] = {
+            name, position: s?.position || '—',
+            commission_rate: s?.commission_rate || 40,
+            appointments: 0, revenue: 0
+        };
         report[name].appointments++;
         report[name].revenue += parseFloat(a.total_price || 0);
     });
 
     const rows = Object.values(report).map(r => ({
-        ...r,
-        payroll: Math.round(r.revenue * r.salary_percent / 100)
+        ...r, payroll: Math.round(r.revenue * r.commission_rate / 100)
     }));
 
-    // CSV
-    const BOM = '\uFEFF';
-    const headers = ['Майстер','Посада','Записів','Виручка (₴)','% ЗП','Нарахування (₴)'];
-    const csv = BOM + [
-        headers.join(';'),
-        ...rows.map(r => [r.name, r.position, r.appointments, r.revenue.toFixed(2), r.salary_percent + '%', r.payroll.toFixed(2)].join(';'))
+    const BOM  = '\uFEFF';
+    const hdrs = ['Майстер','Посада','Записів','Виручка (₴)','% ЗП','Нарахування (₴)'];
+    const csv  = BOM + [
+        hdrs.join(';'),
+        ...rows.map(r => [r.name, r.position, r.appointments, r.revenue.toFixed(2), r.commission_rate+'%', r.payroll.toFixed(2)].join(';'))
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `Звіт_персонал_${monthLabel}.csv`;
-    a.click();
+    a.href = url; a.download = `Звіт_персонал_${label}.csv`; a.click();
     URL.revokeObjectURL(url);
 };
