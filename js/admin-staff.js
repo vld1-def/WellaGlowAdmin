@@ -227,7 +227,7 @@ function staffRow(s, appointments = 0, revenue = 0) {
         : null;
 
     return `
-    <tr class="border-b border-white/3 hover:bg-white/2 transition cursor-pointer" onclick="openProfile('${s.id}')">
+    <tr class="staff-row hover:bg-white/2 transition cursor-pointer" onclick="openProfile('${s.id}')">
         <td class="py-3 pr-4">
             <div class="flex items-center gap-3">
                 ${avatarEl(s)}
@@ -247,7 +247,7 @@ function staffRow(s, appointments = 0, revenue = 0) {
         <td class="py-3 pr-4">${statusBadge(s.status)}</td>
         <td class="py-3" onclick="event.stopPropagation()">
             <div class="relative inline-block">
-                <button onclick="toggleActions('${s.id}')"
+                <button onclick="toggleActions('${s.id}', this)"
                     class="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-600 hover:text-white hover:bg-white/5 transition">
                     <i class="fa-solid fa-ellipsis text-xs"></i>
                 </button>
@@ -362,14 +362,19 @@ function reviewCard(r, showStaffName = false) {
     const date = new Date(r.created_at).toLocaleDateString('uk-UA', { day:'2-digit', month:'2-digit', year:'2-digit' });
     const staffName = showStaffName && r.staff?.name ? `<span class="text-rose-400">${r.staff.name}</span> · ` : '';
     const clientName = getClientName(r);
+    const hasAppt = r.appointment_id;
     return `
-    <div class="p-3 rounded-xl border border-white/5 bg-white/2">
+    <div class="p-3 rounded-xl border border-white/5 bg-white/2 ${hasAppt ? 'cursor-pointer hover:border-white/10 hover:bg-white/3 transition' : ''}"
+         ${hasAppt ? `onclick="showReviewAppt('${r.appointment_id}')"` : ''}>
         <div class="flex items-start justify-between gap-2 mb-1.5">
             <div>
                 <p class="text-[11px] font-bold text-white">${clientName}</p>
                 <p class="text-[9px] text-zinc-600 font-semibold">${staffName}${date}</p>
             </div>
-            <div class="flex items-center gap-0.5 flex-shrink-0">${stars}</div>
+            <div class="flex items-center gap-0.5 flex-shrink-0">
+                ${stars}
+                ${hasAppt ? '<i class="fa-solid fa-chevron-right text-[8px] text-zinc-600 ml-1.5"></i>' : ''}
+            </div>
         </div>
         ${r.comment ? `<p class="text-[11px] text-zinc-400 font-semibold leading-relaxed line-clamp-2">${r.comment}</p>` : ''}
     </div>`;
@@ -669,11 +674,16 @@ window.openCandidatesDrawer = function() {
 //  ACTIONS DROPDOWN
 // ══════════════════════════════════════════════════════
 
-function toggleActions(id) {
+function toggleActions(id, btn) {
     const menu = document.getElementById('actions-' + id);
     const isOpen = menu.classList.contains('open');
     closeActions();
-    if (!isOpen) menu.classList.add('open');
+    if (!isOpen) {
+        const rect = btn.getBoundingClientRect();
+        menu.style.top  = (rect.bottom + 6) + 'px';
+        menu.style.right = (window.innerWidth - rect.right) + 'px';
+        menu.classList.add('open');
+    }
 }
 
 function closeActions() {
@@ -809,6 +819,76 @@ async function renderModalChart(sid) {
         }
     });
 }
+
+// ══════════════════════════════════════════════════════
+//  REPORT DOWNLOAD
+// ══════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════
+//  APPOINTMENT DETAIL MINI-MODAL (from review click)
+// ══════════════════════════════════════════════════════
+
+window.showReviewAppt = async function(apptId) {
+    const modal = document.getElementById('appt-modal');
+    const body  = document.getElementById('appt-modal-body');
+    body.innerHTML = `<div class="skeleton h-12 rounded-xl"></div><div class="skeleton h-12 rounded-xl"></div>`;
+    modal.classList.add('open');
+
+    const { data: appt, error } = await window.db
+        .from('appointment_history')
+        .select('*, service:service_id(name, category), client:client_id(full_name), master:master_id(name)')
+        .eq('id', apptId)
+        .single();
+
+    if (error || !appt) {
+        body.innerHTML = `<p class="text-[11px] text-zinc-500 text-center py-4">Запис не знайдено</p>`;
+        return;
+    }
+
+    const statusColor = appt.status === 'Виконано' ? 'text-emerald-400' : 'text-zinc-400';
+    const visitDate = appt.visit_date
+        ? new Date(appt.visit_date).toLocaleDateString('uk-UA', { day:'2-digit', month:'long', year:'numeric' })
+        : '—';
+
+    body.innerHTML = `
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass-panel rounded-xl p-3">
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Клієнт</p>
+                <p class="text-[12px] font-bold text-white">${appt.client?.full_name || '—'}</p>
+            </div>
+            <div class="glass-panel rounded-xl p-3">
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Майстер</p>
+                <p class="text-[12px] font-bold text-white">${appt.master?.name || '—'}</p>
+            </div>
+            <div class="glass-panel rounded-xl p-3">
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Послуга</p>
+                <p class="text-[12px] font-bold text-white">${appt.service?.name || '—'}</p>
+                ${appt.service?.category ? `<p class="text-[9px] text-zinc-600 mt-0.5">${appt.service.category}</p>` : ''}
+            </div>
+            <div class="glass-panel rounded-xl p-3">
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Дата</p>
+                <p class="text-[12px] font-bold text-white">${visitDate}</p>
+            </div>
+            <div class="glass-panel rounded-xl p-3">
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Сума</p>
+                <p class="text-[12px] font-bold text-rose-400">₴${parseFloat(appt.price || 0).toLocaleString('uk-UA')}</p>
+            </div>
+            <div class="glass-panel rounded-xl p-3">
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-1">Статус</p>
+                <p class="text-[12px] font-bold ${statusColor}">${appt.status || '—'}</p>
+            </div>
+        </div>
+    `;
+};
+
+window.closeApptModal = function() {
+    document.getElementById('appt-modal').classList.remove('open');
+};
+
+// Close on backdrop click
+document.getElementById('appt-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeApptModal();
+});
 
 // ══════════════════════════════════════════════════════
 //  REPORT DOWNLOAD
