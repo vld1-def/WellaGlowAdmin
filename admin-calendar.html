@@ -375,7 +375,7 @@
 <div id="shift-modal" class="fixed inset-0 flex items-center justify-center p-4" style="z-index:80;opacity:0;pointer-events:none">
     <div class="bg-[#0d0d0f] border border-white/8 rounded-2xl w-full max-w-md p-6 shadow-2xl" onclick="event.stopPropagation()">
         <div class="flex items-center justify-between mb-5">
-            <h3 class="text-sm font-black uppercase tracking-widest text-white">Вихідний / Зміна / Перерва</h3>
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Вихідний / Перерва</h3>
             <button onclick="closeShiftModal()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="space-y-4">
@@ -387,10 +387,9 @@
             <!-- Type -->
             <div>
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Тип</label>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 gap-2">
                     <button type="button" class="shift-type-btn active" data-type="day_off" onclick="selectShiftType('day_off')">Вихідний</button>
                     <button type="button" class="shift-type-btn" data-type="break" onclick="selectShiftType('break')">Перерва</button>
-                    <button type="button" class="shift-type-btn" data-type="shift" onclick="selectShiftType('shift')">Зміна</button>
                 </div>
             </div>
             <!-- All day -->
@@ -431,9 +430,8 @@
             <!-- Recurrence -->
             <div>
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Повторення</label>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 gap-2">
                     <button type="button" class="shift-type-btn active" data-rec="once" onclick="selectShiftRec('once')">Один раз</button>
-                    <button type="button" class="shift-type-btn" data-rec="weekly" onclick="selectShiftRec('weekly')">Щотижня</button>
                     <button type="button" class="shift-type-btn" data-rec="always" onclick="selectShiftRec('always')">Завжди</button>
                 </div>
             </div>
