@@ -300,6 +300,24 @@
     </div>
 </div>
 
+<!-- Write-off modal -->
+<div id="writeoff-modal" class="modal-backdrop" onclick="closeWriteoffModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Списання товару</h3>
+            <button onclick="closeWriteoffModal()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="writeoff-body" class="space-y-3 mb-5"></div>
+        <p class="text-[9px] text-zinc-600 mb-4 -mt-1">Буде автоматично створено витрату у фінансах.</p>
+        <div class="flex gap-2">
+            <button onclick="closeWriteoffModal()" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-500 hover:text-white transition">Скасувати</button>
+            <button onclick="confirmWriteoff()" class="flex-1 neo-gradient py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">
+                <i class="fa-solid fa-arrow-down-to-bracket mr-1"></i>Списати
+            </button>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-init.js"></script>
 <script src="js/admin-inventory.js"></script>

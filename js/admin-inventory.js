@@ -148,6 +148,7 @@ function renderTable(){
                     </button>
                     <div id="dot-${item.id}" class="dot-dropdown">
                         <div class="dot-item" onclick="openEditItem('${item.id}')"><i class="fa-solid fa-pen text-xs text-zinc-500"></i>Редагувати</div>
+                        <div class="dot-item" onclick="openWriteoffModal('${item.id}')"><i class="fa-solid fa-arrow-down-to-bracket text-xs text-zinc-500"></i>Списати</div>
                         <div class="dot-item" onclick="openOrderModal('${item.id}')"><i class="fa-solid fa-cart-plus text-xs text-zinc-500"></i>Замовити</div>
                         <div class="dot-item danger" onclick="deleteItem('${item.id}')"><i class="fa-solid fa-trash text-xs"></i>Видалити</div>
                     </div>
@@ -292,6 +293,81 @@ window.addToProc=function(){
     procList=procList.filter(p=>p.id!==item.id);
     procList.push({id:item.id,name:item.name,sku:item.sku||'',category:item.category||'',qty,unit:item.unit||'шт.',note,manual:true});
     saveProcList(); closeOrderModal(); renderProcList();
+};
+
+// ══ Write-off modal ═══════════════════════════════════
+let writeoffItemId = null;
+
+window.openWriteoffModal = function(id) {
+    document.querySelectorAll('.dot-dropdown.open').forEach(d=>{d.classList.remove('open');d.style.cssText='';});
+    const item = items.find(i=>i.id===id); if(!item) return;
+    writeoffItemId = id;
+    const cost = parseFloat(item.cost_per_unit||0);
+    document.getElementById('writeoff-body').innerHTML = `
+        <div class="p-3 rounded-xl" style="background:rgba(255,255,255,.04)">
+            <p class="text-xs font-bold text-white">${item.name}</p>
+            <p class="text-[10px] text-zinc-500 mt-1">Залишок: ${item.quantity||0} ${item.unit||'шт.'} · ₴${cost.toLocaleString('uk-UA')}/од.</p>
+        </div>
+        <div>
+            <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Кількість для списання</label>
+            <input id="writeoff-qty" type="number" min="1" max="${item.quantity||1}" value="1" class="inv-input" oninput="updateWriteoffTotal()">
+        </div>
+        <div>
+            <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Коментар</label>
+            <input id="writeoff-note" type="text" placeholder="Наприклад: Використано на послугу…" class="inv-input">
+        </div>
+        <div class="flex items-center justify-between px-1">
+            <span class="text-[9px] text-zinc-600 uppercase tracking-widest font-black">Сума витрати</span>
+            <span id="writeoff-total" class="text-sm font-black text-rose-400">₴${cost.toLocaleString('uk-UA')}</span>
+        </div>`;
+    document.getElementById('writeoff-modal').classList.add('open');
+};
+
+window.updateWriteoffTotal = function() {
+    const item = items.find(i=>i.id===writeoffItemId); if(!item) return;
+    const qty = parseInt(document.getElementById('writeoff-qty').value)||0;
+    const total = qty * parseFloat(item.cost_per_unit||0);
+    const el = document.getElementById('writeoff-total');
+    if(el) el.textContent = '₴' + total.toLocaleString('uk-UA', {minimumFractionDigits:2, maximumFractionDigits:2});
+};
+
+window.closeWriteoffModal = function() {
+    document.getElementById('writeoff-modal').classList.remove('open');
+    writeoffItemId = null;
+};
+
+window.confirmWriteoff = async function() {
+    const item = items.find(i=>i.id===writeoffItemId); if(!item) return;
+    const qty = parseInt(document.getElementById('writeoff-qty').value)||0;
+    if(qty <= 0) { alert('Введіть кількість більше нуля'); return; }
+    if(qty > parseInt(item.quantity||0)) { alert('Недостатньо товару на складі'); return; }
+
+    const note = document.getElementById('writeoff-note').value.trim();
+    const newQty = parseInt(item.quantity||0) - qty;
+    const amount = qty * parseFloat(item.cost_per_unit||0);
+    const today  = new Date().toISOString().slice(0,10);
+
+    // 1. Decrease inventory quantity
+    const { error: invErr } = await window.db
+        .from('inventory_items').update({ quantity: newQty }).eq('id', item.id);
+    if(invErr) { alert('Помилка складу: '+invErr.message); return; }
+
+    // 2. Create finance expense transaction
+    const txPayload = {
+        date: today,
+        type: 'expense',
+        category: 'materials',
+        subcategory: item.category || null,
+        amount: parseFloat(amount.toFixed(2)),
+        payment_method: 'cash',
+        comment: `Списання: ${item.name}${note?' — '+note:''}`,
+        staff_id: null,
+    };
+    const { error: txErr } = await window.db.from('transactions').insert([txPayload]);
+    if(txErr) { alert('Помилка фінансів: '+txErr.message); return; }
+
+    closeWriteoffModal();
+    await loadItems(); autoAddToProc(); renderKPIs(); renderTable(); renderProcList();
 };
 
 // ══ Procurement list ══════════════════════════════════
