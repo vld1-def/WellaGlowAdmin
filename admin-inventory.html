@@ -145,30 +145,33 @@
         </div>
     </div>
 
-    <!-- SEARCH + FILTER ROW -->
-    <div class="flex flex-col lg:flex-row gap-3 items-start lg:items-center">
-        <!-- Category tabs -->
+    <!-- CATEGORY TABS -->
+    <div>
         <div id="cat-tabs" class="flex gap-2 flex-wrap">
             <button class="cat-tab active" data-cat="" onclick="setCat(this,'')">Всі товари</button>
-            <button class="cat-tab" data-cat="Фарби" onclick="setCat(this,'Фарби')">Фарби</button>
-            <button class="cat-tab" data-cat="Догляд" onclick="setCat(this,'Догляд')">Догляд</button>
-            <button class="cat-tab" data-cat="Технічні" onclick="setCat(this,'Технічні')">Технічні</button>
+            <button class="cat-tab" data-cat="Манікюр" onclick="setCat(this,'Манікюр')">Манікюр</button>
+            <button class="cat-tab" data-cat="Макіяж" onclick="setCat(this,'Макіяж')">Макіяж</button>
+            <button class="cat-tab" data-cat="Колористика" onclick="setCat(this,'Колористика')">Колористика</button>
             <button class="cat-tab" data-cat="Розхідники" onclick="setCat(this,'Розхідники')">Розхідники</button>
         </div>
-        <!-- Search -->
-        <div class="relative ml-auto">
-            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-xs"></i>
-            <input id="inv-search" type="text" placeholder="Пошук по артикулу чи назві…"
-                oninput="renderTable()"
-                class="inv-input pl-9 w-72 text-xs">
-        </div>
+        <!-- Subcategory row (shown when category is selected) -->
+        <div id="subcat-tabs" class="hidden flex gap-2 flex-wrap mt-2"></div>
     </div>
 
     <!-- MAIN GRID: TABLE + PROCUREMENT -->
     <div class="flex gap-5 items-start">
 
         <!-- TABLE -->
-        <div class="glass-panel rounded-2xl flex-1 overflow-hidden">
+        <div class="glass-panel rounded-2xl flex-1" style="overflow:visible">
+            <!-- Search above table -->
+            <div class="px-4 pt-4 pb-2 flex justify-end">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-xs"></i>
+                    <input id="inv-search" type="text" placeholder="Пошук по артикулу чи назві…"
+                        oninput="renderTable()"
+                        class="inv-input pl-9 w-64 text-xs">
+                </div>
+            </div>
             <div class="overflow-x-auto">
                 <table class="inv-table">
                     <thead>
@@ -232,12 +235,32 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Категорія</label>
-                    <select id="f-category" class="inv-input">
-                        <option value="Фарби">Фарби</option>
-                        <option value="Догляд">Догляд</option>
-                        <option value="Технічні">Технічні</option>
+                    <select id="f-category" class="inv-input" onchange="onModalCatChange()">
+                        <option value="Манікюр">Манікюр</option>
+                        <option value="Макіяж">Макіяж</option>
+                        <option value="Колористика">Колористика</option>
                         <option value="Розхідники">Розхідники</option>
                     </select>
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Підкатегорія</label>
+                    <select id="f-subcategory" class="inv-input"></select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Залишок</label>
+                    <input id="f-qty" type="number" class="inv-input" placeholder="0" min="0">
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Мін. залишок</label>
+                    <input id="f-min-qty" type="number" class="inv-input" placeholder="0" min="0">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Собівартість (₴)</label>
+                    <input id="f-cost" type="number" class="inv-input" placeholder="0" min="0" step="0.01">
                 </div>
                 <div>
                     <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Од. виміру</label>
@@ -248,20 +271,6 @@
                         <option value="л.">л.</option>
                         <option value="уп.">уп.</option>
                     </select>
-                </div>
-            </div>
-            <div class="grid grid-cols-3 gap-3">
-                <div>
-                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Залишок</label>
-                    <input id="f-qty" type="number" class="inv-input" placeholder="0" min="0">
-                </div>
-                <div>
-                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Мін. залишок</label>
-                    <input id="f-min-qty" type="number" class="inv-input" placeholder="0" min="0">
-                </div>
-                <div>
-                    <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Собівартість</label>
-                    <input id="f-cost" type="number" class="inv-input" placeholder="0" min="0" step="0.01">
                 </div>
             </div>
             <div>
@@ -296,7 +305,7 @@
 <script src="js/admin-inventory.js"></script>
 <script>
 function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
-(function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='admin'?'Адміністратор':'Майстер';})();
+(function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='owner'?'Власник':r==='admin'?'Адміністратор':'Майстер';})();
 </script>
 </body>
 </html>

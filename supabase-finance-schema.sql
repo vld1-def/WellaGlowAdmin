@@ -25,6 +25,7 @@ create table if not exists transactions (
 
 -- ── Міграція (якщо таблиця вже існує) ──────────────────────────────────────
 -- alter table transactions add column if not exists created_by_id uuid references staff(id) on delete set null;
+-- alter table transactions add column if not exists subcategory text;
 
 -- Індекси для швидких запитів по місяцях
 create index if not exists idx_transactions_date     on transactions(date desc);

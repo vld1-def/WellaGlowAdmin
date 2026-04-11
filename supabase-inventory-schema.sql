@@ -5,7 +5,8 @@ create table if not exists inventory_items (
     id            uuid primary key default gen_random_uuid(),
     name          text not null,
     sku           text,
-    category      text,           -- Фарби | Догляд | Технічні | Розхідники
+    category      text,           -- Манікюр | Макіяж | Колористика | Розхідники
+    subcategory   text,           -- напр. Лак, Фарба, Фольга…
     unit          text default 'шт.',
     quantity      integer default 0,
     min_quantity  integer default 0,  -- threshold for low/critical status
@@ -23,6 +24,9 @@ begin new.updated_at = now(); return new; end $$;
 create trigger trg_inventory_updated
     before update on inventory_items
     for each row execute function set_updated_at();
+
+-- ── Міграція (якщо таблиця вже існує) ──────────────────────────────────────
+-- alter table inventory_items add column if not exists subcategory text;
 
 -- Indexes
 create index if not exists idx_inv_category on inventory_items(category);

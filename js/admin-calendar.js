@@ -231,10 +231,14 @@ const DAY_UA=['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
 
 function renderWeek(){
     document.getElementById('period-label').textContent=periodLabel();
+    const isMobile=window.innerWidth<640;
     const ws=weekStart(curDate);
     const today=localDate(new Date());
-    const days=Array.from({length:7},(_,i)=>{
-        const d=new Date(ws.getTime()+i*86400000);
+    const numDays=isMobile?3:7;
+    // On mobile, center 3-day window on curDate
+    const startOffset=isMobile?Math.max(0,Math.min((parseLD(localDate(curDate)).getDay()||7)-2,4)):0;
+    const days=Array.from({length:numDays},(_,i)=>{
+        const d=new Date(ws.getTime()+(startOffset+i)*86400000);
         return {d,str:localDate(d)};
     });
     filterMId ? renderTimeline(days,today) : renderLanes(days,today);
@@ -265,7 +269,7 @@ function renderTimeline(days, today){
             return `<div class="tl-cell${blocked?' blocked':''}" data-day="${str}" data-hour="${h}" ${handlers}>${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
         }).join('');
         return `<div class="tl-wrap">
-            <div class="tl-hour-label" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну в цей час">${hhmm(h)}</div>
+            <div class="tl-hour-label" data-hour="${h}" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну в цей час">${hhmm(h)}</div>
             ${cells}
         </div>`;
     }).join('');
@@ -273,14 +277,10 @@ function renderTimeline(days, today){
     document.getElementById('week-content').innerHTML=`<div onmouseleave="dragCancel()">${rows}</div>`;
 }
 
-function startHour(a){
-    const t=a._start||a.appointment_time;
-    return t ? parseInt(t.split(':')[0]) : null;
-}
-function endHour(a){
-    const t=a._end||a.end_time;
-    return t ? parseInt(t.split(':')[0]) : (startHour(a)!==null ? startHour(a)+1 : null);
-}
+function startHour(a){const t=a._start||a.appointment_time;return t?parseInt(t.split(':')[0]):null;}
+function startMin(a){const t=a._start||a.appointment_time;return t?parseInt(t.split(':')[1]||0):0;}
+function endHour(a){const t=a._end||a.end_time;return t?parseInt(t.split(':')[0]):(startHour(a)!==null?startHour(a)+1:null);}
+function endMin(a){const t=a._end||a.end_time;return t?parseInt(t.split(':')[1]||0):0;}
 
 // ── Shift helpers ─────────────────────────────────────
 function dayOfWeek(dateStr){ const d=parseLD(dateStr); return d?(d.getDay()||7):0; }
@@ -332,10 +332,11 @@ function apptBlockHTML(a){
     const client=clients.find(c=>c.id===a.client_id);
     const svc=services.find(s=>s.id===a.service_id);
     const color=mColor(a.master_id);
-    const sh=startHour(a), eh=endHour(a);
-    const durH=(eh&&sh) ? eh-sh : 1;
-    const pxH=60; // px per hour
-    const top=2, height=Math.max(durH*pxH-6,28);
+    const sh=startHour(a),sm=startMin(a),eh=endHour(a),em=endMin(a);
+    const durMin=(eh!==null&&sh!==null)?((eh*60+em)-(sh*60+sm)):60;
+    const pxH=60;
+    const top=2+(sm/60*pxH);
+    const height=Math.max(durMin/60*pxH-6,24);
     const si=sBadge(a.status);
     const t=a._start?a._start.slice(0,5):'';
     return `<div class="appt-block" style="top:${top}px;height:${height}px;background:${color}20;border-left-color:${color}"
@@ -427,9 +428,15 @@ function highlightDrag(){
         if(cell.dataset.day===dragStart.dayStr && ch>=sh && ch<=eh)
             cell.classList.add('selecting');
     });
+    // Highlight hour labels on left
+    document.querySelectorAll('.tl-hour-label[data-hour]').forEach(lbl=>{
+        const lh=parseInt(lbl.dataset.hour);
+        lbl.classList.toggle('drag-hl', lh>=sh && lh<=eh);
+    });
 }
 function clearDragHighlight(){
     document.querySelectorAll('.tl-cell.selecting').forEach(c=>c.classList.remove('selecting'));
+    document.querySelectorAll('.tl-hour-label.drag-hl').forEach(l=>l.classList.remove('drag-hl'));
 }
 
 // ══ Month View ════════════════════════════════════════
