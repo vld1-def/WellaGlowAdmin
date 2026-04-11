@@ -292,11 +292,21 @@
             </div>
             <div>
                 <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Категорія</label>
-                <select id="fin-category" class="fin-input">
+                <select id="fin-category" class="fin-input" onchange="onFinCatChange()">
                     <option value="salary">Виплата ЗП</option>
                     <option value="rent_utilities">Оренда / Комунальні</option>
                     <option value="materials">Матеріали</option>
                     <option value="other">Інше</option>
+                </select>
+            </div>
+            <div id="fin-subcategory-row" class="hidden">
+                <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-2">Підкатегорія</label>
+                <select id="fin-subcategory" class="fin-input">
+                    <option value="">— вибрати —</option>
+                    <option value="Манікюр">Манікюр</option>
+                    <option value="Макіяж">Макіяж</option>
+                    <option value="Колористика">Колористика</option>
+                    <option value="Розхідники">Розхідники</option>
                 </select>
             </div>
             <div>
@@ -479,7 +489,7 @@
     <script src="js/admin-finance.js"></script>
     <script>
     function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
-    (function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='admin'?'Адміністратор':'Майстер';})();
+    (function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='owner'?'Власник':r==='admin'?'Адміністратор':'Майстер';})();
     </script>
 </body>
 </html>

@@ -427,6 +427,12 @@ window.editTransaction = async function (id) {
     const opt = catSelect.querySelector(`option[value="${t.category}"]`);
     if (opt) catSelect.value = t.category;
 
+    // Підкатегорія матеріалів
+    onFinCatChange();
+    if (t.category === 'materials' && t.subcategory) {
+        document.getElementById('fin-subcategory').value = t.subcategory;
+    }
+
     // Майстер
     document.getElementById('fin-staff').value = t.staff_id || '';
 
@@ -449,6 +455,17 @@ async function loadStaffList() {
 }
 
 // ─── form: тип / метод ────────────────────────────────────────────────────────
+window.onFinCatChange = function () {
+    const val = document.getElementById('fin-category').value;
+    const row = document.getElementById('fin-subcategory-row');
+    if (val === 'materials') {
+        row.classList.remove('hidden');
+    } else {
+        row.classList.add('hidden');
+        document.getElementById('fin-subcategory').value = '';
+    }
+};
+
 window.setType = function (type) {
     drawerType = type;
     document.getElementById('btn-expense').classList.toggle('active', type === 'expense');
@@ -458,6 +475,7 @@ window.setType = function (type) {
     if (type === 'income') {
         select.innerHTML = `<option value="income">Оплата за послугу</option>
                             <option value="other">Інший дохід</option>`;
+        document.getElementById('fin-subcategory-row').classList.add('hidden');
     } else {
         select.innerHTML = `<option value="salary">Виплата ЗП</option>
                             <option value="rent_utilities">Оренда / Комунальні</option>
@@ -491,11 +509,15 @@ window.submitTransaction = async function () {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
     btn.disabled  = true;
 
+    const subcatEl = document.getElementById('fin-subcategory');
+    const subcategory = (category === 'materials' && subcatEl.value) ? subcatEl.value : null;
+
     const payload = {
         date, type: drawerType, category, amount,
         payment_method: drawerMethod,
         comment:  comment  || null,
         staff_id: staffSel || null,
+        subcategory,
     };
 
     let error;

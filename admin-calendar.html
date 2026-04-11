@@ -58,7 +58,9 @@
             text-transform:uppercase;letter-spacing:.1em;color:#52525b;line-height:1.1}
         .tl-col-header.today-hdr{color:#f43f5e}
         .tl-hour-label{padding:0 8px 0 0;font-size:9px;font-weight:800;color:#3f3f46;
-            text-align:right;display:flex;align-items:flex-start;padding-top:5px;height:60px}
+            text-align:right;display:flex;align-items:flex-start;padding-top:5px;height:60px;
+            transition:color .1s,background .1s;border-radius:6px;padding-left:2px}
+        .tl-hour-label.drag-hl{color:#f43f5e !important;background:rgba(244,63,94,.1)}
         .tl-cell{height:60px;border-left:1px solid rgba(255,255,255,.04);
             border-bottom:1px solid rgba(255,255,255,.03);padding:2px 3px;
             position:relative;cursor:pointer;transition:background .1s;box-sizing:border-box}
@@ -491,7 +493,7 @@
 <script src="js/admin-calendar.js"></script>
 <script>
 function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
-(function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='admin'?'Адміністратор':'Майстер';})();
+(function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='owner'?'Власник':r==='admin'?'Адміністратор':'Майстер';})();
 </script>
 </body>
 </html>

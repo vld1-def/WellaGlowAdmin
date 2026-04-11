@@ -600,7 +600,7 @@
 <script src="js/admin-staff.js"></script>
 <script>
 function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
-(function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='admin'?'Адміністратор':'Майстер';})();
+(function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='owner'?'Власник':r==='admin'?'Адміністратор':'Майстер';})();
 </script>
 </body>
 </html>
