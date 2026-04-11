@@ -27,9 +27,16 @@ let dragStart     = null;        // { dayStr, hour }
 let dragEnd       = null;
 let isDragging    = false;
 
-// Selected slots in drawer
+// Selected slots in drawer (half-hour precision)
 let selStartHour  = null;        // 9
 let selEndHour    = null;        // 11  (end = 11:00, so slot 9-11 = 2h)
+let selStartMin   = 0;           // 0 or 30
+let selEndMin     = 0;           // 0 or 30
+
+// Shift detail state
+let _shiftDetailId = null;
+// Day-list context for "back" button
+let _dayListCtx = null;
 
 // Autocomplete state
 const acState = {
@@ -44,7 +51,9 @@ function mColor(id){ const h=(id||'').split('').reduce((a,c)=>a+c.charCodeAt(0),
 // Date helpers
 function localDate(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function parseLD(s){ if(!s)return null; const[y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
-function hhmm(h){ return String(h).padStart(2,'0')+':00'; }
+function hhmm(h,m=0){ return String(h).padStart(2,'0')+':'+(m===30?'30':'00'); }
+function toMinutes(h,m){return h*60+(m||0);}
+function slotKey(h,m){return h*2+(m===30?1:0);}
 
 // Work hours 9-20
 const HOURS = Array.from({length:12},(_,i)=>i+9); // [9,10,...,20]
@@ -252,7 +261,7 @@ function renderTimeline(days, today){
             const blockAppts=allAppts().filter(a=>a.master_id===masterId&&a._date===str&&startHour(a)===h);
             const shiftOverlay=shiftCellOverlay(str,masterId,h);
             const blocked=isCellBlocked(str,masterId,h);
-            const handlers=blocked?'':`onmousedown="dragBegin(event,'${str}',${h})" onmouseenter="dragMove(event,'${str}',${h})" onmouseup="dragEnd_(event,'${str}',${h})"`;
+            const handlers=blocked?`onclick="openShiftCell('${str}',${h},'${masterId}')"`:`onmousedown="dragBegin(event,'${str}',${h})" onmouseenter="dragMove(event,'${str}',${h})" onmouseup="dragEnd_(event,'${str}',${h})"`;
             return `<div class="tl-cell${blocked?' blocked':''}" data-day="${str}" data-hour="${h}" ${handlers}>${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
         }).join('');
         return `<div class="tl-wrap">
@@ -503,10 +512,10 @@ function closeAcAll(){
 }
 
 // ══ Drawer: open ══════════════════════════════════════
-window.openApptDrawer=function(prefillDate='',prefillTime='',prefillMasterId='',prefillStartH=null,prefillEndH=null){
+window.openApptDrawer=function(prefillDate='',prefillTime='',prefillMasterId='',prefillStartH=null,prefillEndH=null,prefillStartM=0,prefillEndM=0){
     editingId=null;
-    selStartHour=prefillStartH;
-    selEndHour=prefillEndH;
+    selStartHour=prefillStartH; selStartMin=prefillStartM;
+    selEndHour=prefillEndH;     selEndMin=prefillEndM;
     document.getElementById('drawer-title').textContent='Новий запис';
     document.getElementById('client-search').value='';
     document.getElementById('service-search').value='';
@@ -525,7 +534,7 @@ window.openApptDrawer=function(prefillDate='',prefillTime='',prefillMasterId='',
 
     if(document.getElementById('a-master').value && document.getElementById('a-date').value)
         onMasterOrDateChange();
-    else renderSlotGrid([],selStartHour,selEndHour);
+    else renderSlotGrid([],selStartHour,selStartMin,selEndHour,selEndMin);
 };
 
 function onServicePicked(serviceId){
@@ -558,7 +567,7 @@ function populateMasterSelect(serviceId){
 window.onMasterOrDateChange=async function(){
     const masterId=document.getElementById('a-master').value;
     const date=document.getElementById('a-date').value;
-    if(!masterId||!date){ renderSlotGrid([],selStartHour,selEndHour); return; }
+    if(!masterId||!date){ renderSlotGrid([],selStartHour,selStartMin,selEndHour,selEndMin); return; }
 
     // Fetch booked slots for this master+date
     const {data}=await window.db.from('appointments')
@@ -566,26 +575,39 @@ window.onMasterOrDateChange=async function(){
         .eq('master_id',masterId).eq('appointment_date',date)
         .neq('status','cancelled');
     const booked=new Set();
+    function addHalfRange(sh,sm,eh,em){
+        let ch=sh,cm=sm;
+        while(toMinutes(ch,cm)<toMinutes(eh,em)){
+            booked.add(slotKey(ch,cm));
+            if(cm===30){ch++;cm=0;}else cm=30;
+        }
+    }
     (data||[]).forEach(a=>{
         if(!a.appointment_time) return;
-        const sh=parseInt(a.appointment_time.split(':')[0]);
-        const eh=a.end_time ? parseInt(a.end_time.split(':')[0]) : sh+1;
-        for(let h=sh;h<eh;h++) booked.add(h);
+        const parts=a.appointment_time.split(':');
+        const sh=parseInt(parts[0]),sm=parseInt(parts[1]||0);
+        const ep=a.end_time?a.end_time.split(':'):null;
+        const eh=ep?parseInt(ep[0]):sh+1, em=ep?parseInt(ep[1]||0):0;
+        addHalfRange(sh,sm,eh,em);
     });
     // Also block hours covered by shifts (day_off / break)
     shiftsForMasterDay(masterId, date).forEach(s=>{
-        if(s.type==='shift') return; // working shift — not blocked
-        if(s.all_day){ HOURS.forEach(h=>booked.add(h)); }
-        else { for(let h=shiftH(s.start_time);h<shiftH(s.end_time);h++) booked.add(h); }
+        if(s.type==='shift') return;
+        if(s.all_day){ HOURS.forEach(h=>{booked.add(slotKey(h,0));booked.add(slotKey(h,30));}); }
+        else {
+            const parts=s.start_time?.split(':')||['9','0'];
+            const ep=s.end_time?.split(':')||['10','0'];
+            addHalfRange(parseInt(parts[0]),parseInt(parts[1]||0),parseInt(ep[0]),parseInt(ep[1]||0));
+        }
     });
-    renderSlotGrid(booked, selStartHour, selEndHour, date);
+    renderSlotGrid(booked, selStartHour, selStartMin, selEndHour, selEndMin, date);
 };
 
-function renderSlotGrid(bookedSet, startH, endH, dateStr=''){
+function renderSlotGrid(bookedSet, startH, startM, endH, endM, dateStr=''){
     const grid=document.getElementById('slot-grid');
     const legend=document.getElementById('slot-legend');
     const badge=document.getElementById('time-range-badge');
-    const now=new Date(), todayStr=localDate(now), nowH=now.getHours();
+    const now=new Date(), todayStr=localDate(now), nowH=now.getHours(), nowMin=now.getMinutes();
 
     if(!bookedSet||(!bookedSet.size&&!bookedSet.has)){
         grid.innerHTML='<p class="col-span-4 text-[10px] text-zinc-600 font-semibold py-1">Оберіть майстра та дату</p>';
@@ -593,58 +615,65 @@ function renderSlotGrid(bookedSet, startH, endH, dateStr=''){
     }
     legend.classList.remove('hidden');
 
-    grid.innerHTML=HOURS.map(h=>{
-        const isPast=dateStr===todayStr&&h<=nowH;
-        const isBooked=bookedSet.has&&bookedSet.has(h);
-        const inRange=startH!==null&&endH!==null&&h>=startH&&h<endH;
+    const HALF_SLOTS=HOURS.flatMap(h=>[{h,m:0},{h,m:30}]);
+    const startSlot=startH!==null?slotKey(startH,startM):null;
+    const endSlot=endH!==null?slotKey(endH,endM):null;
+
+    grid.innerHTML=HALF_SLOTS.map(({h,m})=>{
+        const sk=slotKey(h,m);
+        const isPast=dateStr===todayStr&&(h<nowH||(h===nowH&&m<=nowMin));
+        const isBooked=bookedSet.has&&bookedSet.has(sk);
+        const inRange=startSlot!==null&&endSlot!==null&&sk>=startSlot&&sk<endSlot;
         let cls='time-slot';
         if(isBooked) cls+=' booked-slot';
         else if(isPast) cls+=' past-slot';
         else if(inRange) cls+=' sel-slot';
         const dis=isBooked||isPast;
-        return `<button class="${cls}" ${dis?'disabled':''} onclick="slotClick(${h})"
+        return `<button class="${cls}" ${dis?'disabled':''} onclick="slotClick(${h},${m})"
             style="${inRange?'background:rgba(244,63,94,.25);border-color:rgba(244,63,94,.5);color:#fff':''}
                    ${isBooked?'opacity:.3;text-decoration:line-through;cursor:not-allowed':''}
                    ${isPast?'opacity:.2;cursor:not-allowed':''}
-                   padding:9px 6px;border-radius:10px;font-size:11px;font-weight:800;text-align:center;
-                   border:1px solid rgba(255,255,255,.08);background:${inRange?'rgba(244,63,94,.25)':isBooked?'rgba(255,255,255,.04)':'rgba(255,255,255,.04)'};
+                   padding:6px 4px;border-radius:8px;font-size:10px;font-weight:800;text-align:center;
+                   border:1px solid rgba(255,255,255,.08);background:${inRange?'rgba(244,63,94,.25)':'rgba(255,255,255,.04)'};
                    color:${inRange?'#fff':'#a1a1aa'};transition:all .18s;line-height:1;width:100%">
-            ${hhmm(h)}</button>`;
+            ${hhmm(h,m)}</button>`;
     }).join('');
 
     updateTimeBadge();
 }
 
-window.slotClick=function(h){
-    if(selStartHour===null||selEndHour===null){
-        // No selection → start fresh
-        selStartHour=h; selEndHour=h+1;
-    } else if(h<selStartHour){
-        // Extend range downward
-        selStartHour=h;
-    } else if(h>=selEndHour){
-        // Extend range upward
-        selEndHour=h+1;
-    } else if(h===selStartHour&&selEndHour===h+1){
-        // Click same single-hour slot → deselect
-        selStartHour=null; selEndHour=null;
+window.slotClick=function(h,m=0){
+    // Compute next half-slot after (h:m)
+    const nextH=m===30?h+1:h, nextM=m===30?0:30;
+    const clickMin=toMinutes(h,m);
+    const startMin=selStartHour!==null?toMinutes(selStartHour,selStartMin):null;
+    const endMin=selEndHour!==null?toMinutes(selEndHour,selEndMin):null;
+    const nextMin=toMinutes(nextH,nextM);
+
+    if(startMin===null){
+        selStartHour=h; selStartMin=m; selEndHour=nextH; selEndMin=nextM;
+    } else if(clickMin<startMin){
+        selStartHour=h; selStartMin=m;
+    } else if(clickMin>=endMin){
+        selEndHour=nextH; selEndMin=nextM;
+    } else if(clickMin===startMin&&endMin===nextMin){
+        selStartHour=null; selStartMin=0; selEndHour=null; selEndMin=0;
     } else {
-        // Click inside multi-hour range → reset to that hour
-        selStartHour=h; selEndHour=h+1;
+        selStartHour=h; selStartMin=m; selEndHour=nextH; selEndMin=nextM;
     }
-    // Re-render keeping booked state
     const masterId=document.getElementById('a-master').value;
     const date=document.getElementById('a-date').value;
     if(masterId&&date) onMasterOrDateChange();
-    else { renderSlotGrid(new Set(),selStartHour,selEndHour,date); }
+    else { renderSlotGrid(new Set(),selStartHour,selStartMin,selEndHour,selEndMin,date); }
     updateTimeBadge();
 };
 
 function updateTimeBadge(){
     const badge=document.getElementById('time-range-badge');
     if(selStartHour!==null&&selEndHour!==null){
-        const dur=selEndHour-selStartHour;
-        badge.textContent=`${hhmm(selStartHour)} – ${hhmm(selEndHour)} (${dur}год)`;
+        const durMin=toMinutes(selEndHour,selEndMin)-toMinutes(selStartHour,selStartMin);
+        const durStr=durMin>=60?(durMin%60===0?`${durMin/60}год`:`${Math.floor(durMin/60)}г ${durMin%60}хв`):`${durMin}хв`;
+        badge.textContent=`${hhmm(selStartHour,selStartMin)} – ${hhmm(selEndHour,selEndMin)} (${durStr})`;
         badge.classList.remove('hidden');
     } else badge.classList.add('hidden');
 }
@@ -669,8 +698,8 @@ window.saveAppt=async function(){
         service_id:serviceId||null,
         service_name:svc?.name||'',
         appointment_date:date,
-        appointment_time:hhmm(selStartHour)+':00',
-        end_time:hhmm(selEndHour)+':00',
+        appointment_time:hhmm(selStartHour,selStartMin)+':00',
+        end_time:hhmm(selEndHour,selEndMin)+':00',
         price:price||svc?.price||0,
         status:'waiting',
         client_id:clientId,
@@ -684,7 +713,7 @@ window.saveAppt=async function(){
     }
     if(error){alert('Помилка: '+error.message);return;}
     closeAllDrawers();
-    selStartHour=null; selEndHour=null;
+    selStartHour=null; selEndHour=null; selStartMin=0; selEndMin=0;
     await refreshAppts(); render(); renderKPIs();
 };
 
@@ -702,6 +731,7 @@ window.openDetail=function(id,tbl){
     const timeStr=sh?(sh+(eh?' – '+eh:'')):'';
 
     document.getElementById('detail-body').innerHTML=`
+        ${_dayListCtx?`<button onclick="showDayList(_dayListCtx.dStr,_dayListCtx.da)" style="font-size:10px;font-weight:800;color:#71717a;margin-bottom:10px;display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:0"><i class="fa-solid fa-arrow-left text-xs"></i> Назад до списку</button>`:''}
         <div class="p-3 rounded-xl flex items-center justify-between" style="background:${color}15;border:1px solid ${color}33">
             <div>
                 <p style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:${color}">Запис</p>
@@ -771,8 +801,36 @@ async function updateStatus(id,tbl,status){
     closeAllDrawers(); await refreshAppts(); render(); renderKPIs();
 }
 
+// ══ Shift cell detail ════════════════════════════════
+window.openShiftCell=function(dateStr,h,masterId){
+    const sh=shiftsForMasterDay(masterId,dateStr).find(s=>s.all_day||(h>=shiftH(s.start_time)&&h<shiftH(s.end_time)));
+    if(!sh) return;
+    _shiftDetailId=sh.id;
+    const typeLabel=sh.type==='day_off'?'Вихідний':'Перерва';
+    const timeStr=sh.all_day?'Весь день':`${sh.start_time?.slice(0,5)} – ${sh.end_time?.slice(0,5)}`;
+    const recLabel=sh.recurrence==='always'?'Завжди':sh.recurrence==='weekly'?'Щотижня':'Один раз';
+    document.getElementById('sdm-title').textContent=typeLabel;
+    document.getElementById('sdm-body').innerHTML=`
+        <div class="flex justify-between items-center p-3 rounded-xl" style="background:rgba(255,255,255,.04)"><span style="font-size:10px;color:#71717a;font-weight:700">Час</span><span style="font-size:11px;color:#fff;font-weight:800">${timeStr}</span></div>
+        <div class="flex justify-between items-center p-3 rounded-xl" style="background:rgba(255,255,255,.04)"><span style="font-size:10px;color:#71717a;font-weight:700">Повторення</span><span style="font-size:11px;color:#fff;font-weight:800">${recLabel}</span></div>
+        ${sh.note?`<div class="p-3 rounded-xl" style="background:rgba(255,255,255,.04)"><span style="font-size:10px;color:#71717a;font-weight:700">Примітка</span><p style="font-size:11px;color:#fff;font-weight:700;margin-top:4px">${sh.note}</p></div>`:''}`;
+    const m=document.getElementById('shift-detail-modal');
+    m.style.opacity='1'; m.style.pointerEvents='all';
+};
+window.closeShiftDetail=function(){
+    const m=document.getElementById('shift-detail-modal');
+    m.style.opacity='0'; m.style.pointerEvents='none'; _shiftDetailId=null;
+};
+window.deleteShiftById=async function(){
+    if(!_shiftDetailId) return;
+    const{error}=await window.db.from('staff_shifts').delete().eq('id',_shiftDetailId);
+    if(error){alert(error.message);return;}
+    closeShiftDetail(); await loadShifts(); render();
+};
+
 // ══ Day list (month click) ════════════════════════════
 function showDayList(dStr,da){
+    _dayListCtx={dStr,da};
     const date=parseLD(dStr)?.toLocaleDateString('uk-UA',{day:'numeric',month:'long'});
     document.getElementById('detail-body').innerHTML=`
         <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#52525b;margin-bottom:12px">${date}</p>
@@ -802,7 +860,7 @@ function closeAllDrawers(){
     ['appt-drawer','detail-drawer'].forEach(id=>document.getElementById(id).classList.remove('open'));
     document.getElementById('drawer-overlay').classList.remove('open');
     ['d-edit','d-done','d-cancel'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});
-    editingId=null; closeAcAll();
+    editingId=null; _dayListCtx=null; closeAcAll();
 }
 
 // ══════════════════════════════════════════════════════
