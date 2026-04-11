@@ -112,7 +112,8 @@
         #drag-hint.show{opacity:1}
 
         /* Blocked cells */
-        .tl-cell.blocked{cursor:not-allowed}
+        .tl-cell.blocked{cursor:pointer}
+        .tl-cell::after{content:'';position:absolute;left:0;right:0;top:30px;border-top:1px dashed rgba(255,255,255,.04);pointer-events:none}
         .tl-cell.blocked:hover{background:transparent}
 
         /* Shift modal */
@@ -169,7 +170,7 @@
         <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none lg:hidden">W</h1>
         <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] mt-1 uppercase hidden lg:block">studio</p>
     </div>
-    <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto pb-10">
+    <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto pb-4">
         <div>
             <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Аналітика</p>
             <div class="space-y-1">
@@ -193,6 +194,22 @@
             </div>
         </div>
     </nav>
+    <!-- ── Profile + Logout ── -->
+    <div class="border-t border-white/5 p-3">
+        <div class="flex items-center gap-3">
+            <div id="sidebar-avatar" class="w-8 h-8 rounded-full neo-gradient flex-shrink-0 flex items-center justify-center text-white font-black text-xs">A</div>
+            <div class="hidden lg:block flex-1 min-w-0">
+                <p id="sidebar-uname" class="text-xs font-bold text-white truncate">—</p>
+                <p id="sidebar-urole" class="text-[9px] text-zinc-500 uppercase tracking-widest">—</p>
+            </div>
+            <button onclick="doLogout()" title="Вийти" class="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition flex-shrink-0">
+                <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            </button>
+        </div>
+        <button onclick="doLogout()" class="lg:hidden mt-2 w-full flex items-center justify-center p-2 rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition">
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+    </div>
 </aside>
 
 <!-- ═════════ MAIN ═════════ -->
@@ -453,8 +470,28 @@
     </div>
 </div>
 
+<!-- ═════════ SHIFT DETAIL MODAL ═════════ -->
+<div id="shift-detail-modal" class="fixed inset-0 flex items-center justify-center p-4" style="z-index:90;opacity:0;pointer-events:none;transition:opacity .2s">
+    <div class="absolute inset-0 bg-black/60" onclick="closeShiftDetail()"></div>
+    <div class="relative bg-[#0d0d0f] border border-white/8 rounded-2xl w-full max-w-sm p-5 shadow-2xl" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="sdm-title" class="text-sm font-black uppercase tracking-widest text-white">—</h3>
+            <button onclick="closeShiftDetail()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="sdm-body" class="space-y-2 mb-5"></div>
+        <div class="flex gap-2">
+            <button onclick="closeShiftDetail()" class="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-500 hover:text-white transition">Закрити</button>
+            <button onclick="deleteShiftById()" class="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition">Видалити</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-init.js"></script>
 <script src="js/admin-calendar.js"></script>
+<script>
+function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
+(function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='admin'?'Адміністратор':'Майстер';})();
+</script>
 </body>
 </html>

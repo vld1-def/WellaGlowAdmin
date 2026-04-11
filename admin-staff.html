@@ -111,7 +111,7 @@
         <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none lg:hidden">W</h1>
         <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] mt-1 uppercase hidden lg:block">studio</p>
     </div>
-    <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto pb-10">
+    <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto pb-4">
         <div>
             <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Аналітика</p>
             <div class="space-y-1">
@@ -136,6 +136,22 @@
             </div>
         </div>
     </nav>
+    <!-- ── Profile + Logout ── -->
+    <div class="border-t border-white/5 p-3">
+        <div class="flex items-center gap-3">
+            <div id="sidebar-avatar" class="w-8 h-8 rounded-full neo-gradient flex-shrink-0 flex items-center justify-center text-white font-black text-xs">A</div>
+            <div class="hidden lg:block flex-1 min-w-0">
+                <p id="sidebar-uname" class="text-xs font-bold text-white truncate">—</p>
+                <p id="sidebar-urole" class="text-[9px] text-zinc-500 uppercase tracking-widest">—</p>
+            </div>
+            <button onclick="doLogout()" title="Вийти" class="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition flex-shrink-0">
+                <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            </button>
+        </div>
+        <button onclick="doLogout()" class="lg:hidden mt-2 w-full flex items-center justify-center p-2 rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition">
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+    </div>
 </aside>
 
 <!-- ═══════════════════ MAIN ═══════════════════ -->
@@ -582,5 +598,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-init.js"></script>
 <script src="js/admin-staff.js"></script>
+<script>
+function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
+(function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='admin'?'Адміністратор':'Майстер';})();
+</script>
 </body>
 </html>
