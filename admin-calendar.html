@@ -64,8 +64,13 @@
         .tl-cell{height:60px;border-left:1px solid rgba(255,255,255,.04);
             border-bottom:1px solid rgba(255,255,255,.03);padding:2px 3px;
             position:relative;cursor:pointer;transition:background .1s;box-sizing:border-box}
-        .tl-cell:hover{background:rgba(255,255,255,.025)}
+        /* 30-min half hover — overlay ::before covers only the hovered half */
+        .tl-cell::before{content:'';position:absolute;left:0;right:0;height:0;top:0;background:transparent;pointer-events:none;z-index:0;transition:background .08s}
+        .tl-cell.hov-top::before{top:0;height:30px;background:rgba(255,255,255,.032)}
+        .tl-cell.hov-bot::before{top:30px;height:30px;background:rgba(255,255,255,.032)}
         .tl-cell.selecting{background:rgba(244,63,94,.08);border-color:rgba(244,63,94,.2)}
+        .tl-cell.sel-top::before{top:0;height:30px;background:rgba(244,63,94,.12)!important}
+        .tl-cell.sel-bot::before{top:30px;height:30px;background:rgba(244,63,94,.12)!important}
         .tl-cell.selected-range{background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.25)}
 
         /* Appointment block in timeline */
@@ -115,7 +120,7 @@
 
         /* Blocked cells */
         .tl-cell.blocked{cursor:pointer}
-        .tl-cell::after{content:'';position:absolute;left:0;right:0;top:30px;border-top:1px dashed rgba(255,255,255,.04);pointer-events:none}
+        .tl-cell::after{content:'';position:absolute;left:0;right:0;top:30px;border-top:1px dashed rgba(255,255,255,.05);pointer-events:none;z-index:0}
         .tl-cell.blocked:hover{background:transparent}
 
         /* Shift modal */

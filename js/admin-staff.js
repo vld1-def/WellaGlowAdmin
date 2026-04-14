@@ -90,6 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAll();
 });
 
+// Reload KPIs when month selector changes
+window.addEventListener('monthchange', () => loadKPIs());
+
 async function loadAll() {
     await Promise.all([loadStaff(), loadReviews()]);
     loadKPIs();
@@ -1459,14 +1462,20 @@ async function loadPayrollData(from, to, periodLabel) {
 }
 
 // ── open / close ──────────────────────────────────────
+function getPayrollMonth() {
+    const ym = localStorage.getItem('wella_current_month');
+    if(ym) { const [y,m]=ym.split('-').map(Number); return {y,m}; }
+    const n=new Date(); return {y:n.getFullYear(), m:n.getMonth()+1};
+}
+
 window.openPayrollModal = async function() {
     payrollMode = 'month';
     payrollWeekDate = new Date();
     setPayrollModeUI('month');
-    const now = new Date();
-    const from  = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
-    const to    = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-    const label = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+    const {y,m} = getPayrollMonth();
+    const from  = localDate(new Date(y, m-1, 1));
+    const to    = localDate(new Date(y, m, 0));
+    const label = new Date(y, m-1, 1).toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
     await loadPayrollData(from, to, label);
     document.getElementById('payroll-modal').classList.remove('hidden');
 };
@@ -1498,10 +1507,10 @@ window.payrollWeekStep = async function(dir) {
 
 async function refreshPayrollPeriod() {
     if (payrollMode === 'month') {
-        const now  = new Date();
-        const from = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
-        const to   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-        const label = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+        const {y,m} = getPayrollMonth();
+        const from = localDate(new Date(y, m-1, 1));
+        const to   = localDate(new Date(y, m, 0));
+        const label = new Date(y, m-1, 1).toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
         await loadPayrollData(from, to, label);
     } else {
         const { from, to, mon, sun } = payrollWeekBounds(payrollWeekDate);

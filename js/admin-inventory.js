@@ -57,6 +57,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     onModalCatChange();
 });
 
+// Reload "this month" KPI when month selector changes
+window.addEventListener('monthchange', () => renderKPIs());
+
 // ══ Load ═════════════════════════════════════════════
 async function loadItems() {
     const { data, error } = await window.db
@@ -81,9 +84,8 @@ async function renderKPIs() {
         .eq('type','expense')
         .eq('category','materials');
     const spentTotal = (txAll||[]).reduce((s,t)=>s+parseFloat(t.amount||0),0);
-    const nowY = new Date().getFullYear(), nowM = new Date().getMonth()+1;
-    const monthPrefix = `${nowY}-${String(nowM).padStart(2,'0')}`;
-    const spentMonth = (txAll||[]).filter(t=>(t.date||'').startsWith(monthPrefix))
+    const selYM = localStorage.getItem('wella_current_month') || (() => { const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`; })();
+    const spentMonth = (txAll||[]).filter(t=>(t.date||'').startsWith(selYM))
         .reduce((s,t)=>s+parseFloat(t.amount||0),0);
     document.getElementById('kpi-spent-total').textContent = '₴'+spentTotal.toLocaleString('uk-UA');
     document.getElementById('kpi-spent-month').textContent = '₴'+spentMonth.toLocaleString('uk-UA');
@@ -358,15 +360,18 @@ window.deleteItem=async function(id){
 // ══ Restock modal (Поповнити) ═════════════════════════
 let restockItemId = null;
 
+let _restockManual = false; // user manually edited restock amount
+
 window.openRestockModal = function(id) {
     closeDotPortal();
     const item = items.find(i=>i.id===id); if(!item) return;
     restockItemId = id;
-    const autoAmt = parseFloat(item.cost_per_unit||0).toFixed(2);
+    _restockManual = false;
+    const autoAmt = (parseFloat(item.cost_per_unit||0) * 1).toFixed(2); // default qty=1
     document.getElementById('restock-body').innerHTML = `
         <div class="p-3 rounded-xl" style="background:rgba(255,255,255,.04)">
             <p class="text-xs font-bold text-white">${item.name}</p>
-            <p class="text-[10px] text-zinc-500 mt-1">Поточний залишок: <span class="font-black text-white">${item.quantity||0} ${item.unit||'шт.'}</span> · Собівартість: <span class="font-black text-white">₴${autoAmt}/${item.unit||'шт.'}</span></p>
+            <p class="text-[10px] text-zinc-500 mt-1">Поточний залишок: <span class="font-black text-white">${item.quantity||0} ${item.unit||'шт.'}</span> · Собівартість: <span class="font-black text-white">₴${parseFloat(item.cost_per_unit||0).toFixed(2)}/${item.unit||'шт.'}</span></p>
         </div>
         <div>
             <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Додати кількість</label>
@@ -374,7 +379,7 @@ window.openRestockModal = function(id) {
         </div>
         <div style="background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.15)" class="p-3 rounded-xl">
             <label class="text-[9px] text-rose-400 font-black uppercase tracking-widest block mb-1.5">Сума закупки (₴) — запишеться у витрати</label>
-            <input id="restock-amt" type="number" min="0" step="0.01" value="${autoAmt}" class="inv-input">
+            <input id="restock-amt" type="number" min="0" step="0.01" value="${autoAmt}" class="inv-input" oninput="_restockManual=true">
             <p class="text-[9px] text-zinc-600 mt-1.5">Авто-розрахунок: собівартість × кількість, але можна редагувати</p>
         </div>`;
     // store cost_per_unit for auto-calc
@@ -388,6 +393,7 @@ window.closeRestockModal = function() {
 };
 
 window.calcRestockAmt = function(){
+    if(_restockManual) return; // user edited manually — don't override
     const cost = parseFloat(document.getElementById('restock-modal').dataset.cost||0);
     const qty  = parseInt(document.getElementById('restock-qty')?.value)||0;
     const el   = document.getElementById('restock-amt');
@@ -500,27 +506,11 @@ window.confirmWriteoff = async function() {
 
     const note = document.getElementById('writeoff-note').value.trim();
     const newQty = parseInt(item.quantity||0) - qty;
-    const amount = qty * parseFloat(item.cost_per_unit||0);
-    const today  = new Date().toISOString().slice(0,10);
 
-    // 1. Decrease inventory quantity
+    // Decrease inventory quantity only (no finance transaction for write-off)
     const { error: invErr } = await window.db
         .from('inventory_items').update({ quantity: newQty }).eq('id', item.id);
     if(invErr) { alert('Помилка складу: '+invErr.message); return; }
-
-    // 2. Create finance expense transaction
-    const txPayload = {
-        date: today,
-        type: 'expense',
-        category: 'materials',
-        subcategory: item.category || null,
-        amount: parseFloat(amount.toFixed(2)),
-        payment_method: 'cash',
-        comment: `Списання: ${item.name} — ${qty} ${item.unit||'шт.'} × ₴${parseFloat(item.cost_per_unit||0).toFixed(2)}/од.${note?' | '+note:''}`,
-        staff_id: null,
-    };
-    const { error: txErr } = await window.db.from('transactions').insert([txPayload]);
-    if(txErr) { alert('Помилка фінансів: '+txErr.message); return; }
 
     closeWriteoffModal();
     await loadItems(); autoAddToProc(); await renderKPIs(); renderTable(); renderProcList();
