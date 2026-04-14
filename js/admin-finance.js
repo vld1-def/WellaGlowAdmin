@@ -56,11 +56,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadTransactions(false);
 });
 
+// Reload when month selector changes
+window.addEventListener('monthchange', async () => {
+    setPeriodLabel();
+    await Promise.all([loadKPIs()]);
+    await loadTransactions(false);
+});
+
 // ─── період ───────────────────────────────────────────────────────────────────
+function getSelectedYM() {
+    const ym = localStorage.getItem('wella_current_month');
+    if(ym) { const [y,m]=ym.split('-').map(Number); return {y,m}; }
+    const n=new Date(); return {y:n.getFullYear(), m:n.getMonth()+1};
+}
+
 function getPeriodRange() {
-    const now   = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const {y,m} = getSelectedYM();
+    const start = new Date(y, m-1, 1);
+    const end   = new Date(y, m, 0);
     return {
         start: start.toISOString().split('T')[0],
         end:   end.toISOString().split('T')[0],
@@ -71,9 +84,8 @@ function getPeriodRange() {
 function setPeriodLabel() {
     const months = ['Січень','Лютий','Березень','Квітень','Травень','Червень',
                     'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
-    const now = new Date();
-    document.getElementById('period-label').textContent =
-        `${months[now.getMonth()]} ${now.getFullYear()}`;
+    const {y,m} = getSelectedYM();
+    document.getElementById('period-label').textContent = `${months[m-1]} ${y}`;
 }
 
 function setDefaultDate() {

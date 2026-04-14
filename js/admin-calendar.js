@@ -104,6 +104,16 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     });
 });
 
+// Navigate calendar to selected month when month selector changes
+window.addEventListener('monthchange', async ()=>{
+    const ym=localStorage.getItem('wella_current_month');
+    if(!ym) return;
+    const [y,m]=ym.split('-').map(Number);
+    curDate=new Date(y,m-1,1);
+    await Promise.all([refreshAppts(),loadShifts()]);
+    render(); renderKPIs();
+});
+
 // ══ Loaders ══════════════════════════════════════════
 async function loadMasters(){
     const {data}=await window.db.from('staff').select('id,name,role,position,is_active').eq('is_active',true).neq('role','owner').order('name');
@@ -289,7 +299,7 @@ function renderTimeline(days, today){
             const shiftOverlay=shiftCellOverlay(str,masterId,h);
             const blocked=isCellBlocked(str,masterId,h);
             const handlers=blocked?`onclick="openShiftCell('${str}',${h},'${masterId}')"`:`onmousedown="dragBegin(event,'${str}',${h})" onmouseenter="dragMove(event,'${str}',${h})" onmouseup="dragEnd_(event,'${str}',${h})"`;
-            return `<div class="tl-cell${blocked?' blocked':''}" data-day="${str}" data-hour="${h}" ${handlers}>${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
+            return `<div class="tl-cell${blocked?' blocked':''}" data-day="${str}" data-hour="${h}" ${handlers} onmousemove="halfHover(event)" onmouseleave="clearHalfHover(event)">${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
         }).join('');
         return `<div class="tl-wrap">
             <div class="tl-hour-label" data-hour="${h}" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну в цей час">${hhmm(h)}</div>
@@ -410,6 +420,19 @@ function renderLanes(days, today){
     document.getElementById('week-content').innerHTML=`<div>${rows}</div>`;
 }
 
+// ══ Half-hour hover ══════════════════════════════════
+window.halfHover=function(e){
+    const cell=e.currentTarget;
+    const rect=cell.getBoundingClientRect();
+    const isTop=(e.clientY-rect.top)<rect.height/2;
+    cell.classList.toggle('hov-top',isTop);
+    cell.classList.toggle('hov-bot',!isTop);
+};
+window.clearHalfHover=function(e){
+    const cell=e.currentTarget;
+    cell.classList.remove('hov-top','hov-bot');
+};
+
 // ══ Drag-to-select (timeline cells) ══════════════════
 function getSlotMinute(e, cell){
     const rect=cell.getBoundingClientRect();
@@ -460,11 +483,15 @@ function highlightDrag(){
     const startTotal=toMinutes(dragStart.h,dragStart.m||0);
     const endTotal=toMinutes(dragEnd.h,dragEnd.m||0);
     const lo=Math.min(startTotal,endTotal), hi=Math.max(startTotal,endTotal);
-    const shH=Math.floor(lo/60), ehH=Math.floor(hi/60);
+    const shH=Math.floor(lo/60), shM=lo%60;
+    const ehH=Math.floor(hi/60), ehM=hi%60;
     document.querySelectorAll('.tl-cell').forEach(cell=>{
         const ch=parseInt(cell.dataset.hour);
-        if(cell.dataset.day===dragStart.dayStr && ch>=shH && ch<=ehH)
-            cell.classList.add('selecting');
+        if(cell.dataset.day!==dragStart.dayStr||ch<shH||ch>ehH) return;
+        cell.classList.add('selecting');
+        // Partial highlight for first/last cells
+        if(ch===shH && shM===30) cell.classList.add('sel-bot');
+        if(ch===ehH && ehM===0 && ch!==shH) cell.classList.add('sel-top');
     });
     document.querySelectorAll('.tl-hour-label[data-hour]').forEach(lbl=>{
         const lh=parseInt(lbl.dataset.hour);
@@ -472,7 +499,9 @@ function highlightDrag(){
     });
 }
 function clearDragHighlight(){
-    document.querySelectorAll('.tl-cell.selecting').forEach(c=>c.classList.remove('selecting'));
+    document.querySelectorAll('.tl-cell.selecting').forEach(c=>{
+        c.classList.remove('selecting','sel-top','sel-bot');
+    });
     document.querySelectorAll('.tl-hour-label.drag-hl').forEach(l=>l.classList.remove('drag-hl'));
 }
 
