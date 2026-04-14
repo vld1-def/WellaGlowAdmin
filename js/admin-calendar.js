@@ -658,15 +658,23 @@ window.slotClick=function(h,m=0){
     const nextMin=toMinutes(nextH,nextM);
 
     if(startMin===null){
+        // No selection yet → start here, end at next half-slot
         selStartHour=h; selStartMin=m; selEndHour=nextH; selEndMin=nextM;
+    } else if(clickMin===startMin&&endMin===nextMin){
+        // Tap the single selected slot → deselect
+        selStartHour=null; selStartMin=0; selEndHour=null; selEndMin=0;
     } else if(clickMin<startMin){
+        // Before current start → move start backwards
         selStartHour=h; selStartMin=m;
     } else if(clickMin>=endMin){
+        // After current end → extend end forwards
         selEndHour=nextH; selEndMin=nextM;
-    } else if(clickMin===startMin&&endMin===nextMin){
-        selStartHour=null; selStartMin=0; selEndHour=null; selEndMin=0;
-    } else {
+    } else if(clickMin===startMin){
+        // Tap start slot again when range>1 → collapse to just this slot
         selStartHour=h; selStartMin=m; selEndHour=nextH; selEndMin=nextM;
+    } else {
+        // Tap within range → trim end to clicked time (exclusive)
+        selEndHour=h; selEndMin=m;
     }
     const masterId=document.getElementById('a-master').value;
     const date=document.getElementById('a-date').value;
@@ -778,7 +786,8 @@ function dRow(icon,label,main,sub,extra=''){
 
 function openEditDrawer(a,tbl){
     editingId=a.id; editingTable=tbl;
-    selStartHour=startHour(a); selEndHour=endHour(a);
+    selStartHour=startHour(a); selStartMin=startMin(a);
+    selEndHour=endHour(a);     selEndMin=endMin(a);
     document.getElementById('drawer-title').textContent='Редагувати запис';
     const client=clients.find(c=>c.id===a.client_id);
     const svc=services.find(s=>s.id===a.service_id);

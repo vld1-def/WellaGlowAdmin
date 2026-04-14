@@ -373,6 +373,83 @@ async function renderStaffTable(list) {
         list.length + ' ' + pluralize(list.length, 'працівник', 'працівники', 'працівників');
 }
 
+// ── Report dropdown ───────────────────────────────────
+window.toggleReportDropdown = function() {
+    const dd = document.getElementById('report-dropdown');
+    dd.classList.toggle('hidden');
+};
+document.addEventListener('click', e => {
+    if (!e.target.closest('#report-dropdown-wrap')) {
+        document.getElementById('report-dropdown')?.classList.add('hidden');
+    }
+});
+
+async function buildMonthReportData() {
+    const now = new Date();
+    const monthStart = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    const monthEnd   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    const { data: appts } = await window.db
+        .from('appointment_history').select('master_id, price')
+        .gte('visit_date', monthStart).lte('visit_date', monthEnd);
+    const apptMap = {};
+    (appts || []).forEach(a => {
+        if (!a.master_id) return;
+        if (!apptMap[a.master_id]) apptMap[a.master_id] = { count: 0, revenue: 0 };
+        apptMap[a.master_id].count++;
+        apptMap[a.master_id].revenue += parseFloat(a.price || 0);
+    });
+    return { apptMap, month: now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' }) };
+}
+
+window.downloadLastMonthCSV = async function() {
+    const { apptMap, month } = await buildMonthReportData();
+    let csv = `Звіт персоналу — ${month}\n`;
+    csv += 'Майстер,Посада,Записи,Виручка (₴),Зароблено (₴),% ЗП\n';
+    allStaff.forEach(s => {
+        const stat = apptMap[s.id] || { count: 0, revenue: 0 };
+        const earned = Math.round(stat.revenue * (s.commission_rate || 40) / 100);
+        csv += `"${s.name}","${s.position||s.role||''}",${stat.count},${stat.revenue.toFixed(2)},${earned},${s.commission_rate||40}%\n`;
+    });
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `staff_report_${new Date().getFullYear()}_${String(new Date().getMonth()+1).padStart(2,'0')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+window.downloadLastMonthPDF = async function() {
+    const { apptMap, month } = await buildMonthReportData();
+    const rows = allStaff.map((s, i) => {
+        const stat = apptMap[s.id] || { count: 0, revenue: 0 };
+        const earned = Math.round(stat.revenue * (s.commission_rate || 40) / 100);
+        return `<tr>
+            <td>${i+1}</td><td>${s.name}</td><td>${s.position||s.role||'—'}</td>
+            <td style="text-align:right">${stat.count}</td>
+            <td style="text-align:right">₴${stat.revenue.toLocaleString('uk-UA')}</td>
+            <td style="text-align:right">₴${earned.toLocaleString('uk-UA')}</td>
+            <td style="text-align:right">${s.commission_rate||40}%</td>
+        </tr>`;
+    }).join('');
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+        <style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h2{margin-bottom:4px}
+        p{color:#666;font-size:13px;margin-bottom:20px}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;text-align:left}
+        th{background:#f9fafb;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+        </style></head><body>
+        <h2>Звіт персоналу</h2><p>${month} · Дата: ${new Date().toLocaleDateString('uk-UA')}</p>
+        <table><thead><tr><th>#</th><th>Майстер</th><th>Посада</th>
+        <th style="text-align:right">Записи</th><th style="text-align:right">Виручка</th>
+        <th style="text-align:right">Зароблено</th><th style="text-align:right">% ЗП</th>
+        </tr></thead><tbody>${rows}</tbody></table>
+        <script>window.onload=()=>{window.print();}<\/script></body></html>`;
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+};
+
 window.loadMoreStaff = function() {
     staffVisibleCount += 5;
     const q = document.getElementById('staff-search').value.toLowerCase().trim();
@@ -944,20 +1021,56 @@ window.closeProfileModal = function() {
 
 window.switchModalTab = function(tab) {
     modalTab = tab;
-    ['info','chart','reviews','shifts'].forEach(t => {
+    ['info','chart','reviews','shifts','payments'].forEach(t => {
         document.getElementById('modal-tab-' + t)?.classList.toggle('active', t === tab);
         document.getElementById('modal-' + t + '-tab')?.classList.toggle('hidden', t !== tab);
     });
 
-    if (tab === 'chart' && modalStaffData) renderModalChart(modalStaffData.id);
-    if (tab === 'reviews' && modalStaffData) {
+    if (tab === 'chart'    && modalStaffData) renderModalChart(modalStaffData.id);
+    if (tab === 'reviews'  && modalStaffData) {
         const myRevs = allReviews.filter(r => r.staff_id === modalStaffData.id);
         document.getElementById('modal-reviews-list').innerHTML = myRevs.length
             ? myRevs.map(r => reviewCard(r, false)).join('')
             : `<p class="text-[11px] text-zinc-600 text-center py-6 font-semibold">Відгуків немає</p>`;
     }
-    if (tab === 'shifts' && modalStaffData) renderModalShifts(modalStaffData.id);
+    if (tab === 'shifts'   && modalStaffData) renderModalShifts(modalStaffData.id);
+    if (tab === 'payments' && modalStaffData) renderModalPayments(modalStaffData.id);
 };
+
+async function renderModalPayments(staffId) {
+    const el = document.getElementById('modal-payments-list');
+    el.innerHTML = `<p class="text-[10px] text-zinc-600 text-center py-4">Завантаження…</p>`;
+
+    const { data, error } = await window.db
+        .from('transactions')
+        .select('date, amount, comment, payment_method, subcategory')
+        .eq('type', 'expense')
+        .eq('category', 'salary')
+        .eq('staff_id', staffId)
+        .order('date', { ascending: false })
+        .limit(50);
+
+    if (error || !data?.length) {
+        el.innerHTML = `<p class="text-[11px] text-zinc-600 text-center py-6 font-semibold">Виплат не знайдено</p>`;
+        return;
+    }
+
+    const fmtDate = d => new Date(d).toLocaleDateString('uk-UA', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const METHOD = { cash:'Готівка', card:'Картка', transfer:'Переказ' };
+
+    el.innerHTML = data.map(t => `
+        <div class="flex items-center justify-between py-3 border-b border-white/5">
+            <div>
+                <p class="text-[11px] font-bold text-white">${fmtDate(t.date)}</p>
+                <p class="text-[10px] text-zinc-500 mt-0.5">${t.comment || '—'}</p>
+                ${t.subcategory ? `<p class="text-[9px] text-zinc-600">${t.subcategory}</p>` : ''}
+            </div>
+            <div class="text-right flex-shrink-0 ml-4">
+                <p class="text-sm font-black text-rose-400">−₴${parseFloat(t.amount).toLocaleString('uk-UA')}</p>
+                <p class="text-[9px] text-zinc-600 mt-0.5">${METHOD[t.payment_method] || t.payment_method || '—'}</p>
+            </div>
+        </div>`).join('');
+}
 
 async function renderModalChart(sid) {
     if (modalChart) { modalChart.destroy(); modalChart = null; }
@@ -1275,23 +1388,28 @@ async function renderTeamSchedule() {
 //  PAYROLL MODAL
 // ══════════════════════════════════════════════════════
 
-// payrollData: [{ staff, earned, amount }]  (amount is editable)
-let payrollData = [];
+// payrollData: [{ staff, earned, alrPaid, amount }]
+let payrollData  = [];
+let payrollMode  = 'month';   // 'month' | 'week'
+let payrollWeekDate = new Date(); // anchor date for week navigation
 
-window.openPayrollModal = async function() {
-    const now = new Date();
-    const monthStart = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
-    const monthEnd   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+// ── helpers ───────────────────────────────────────────
+function payrollWeekBounds(anchor) {
+    const d   = new Date(anchor);
+    const dow = d.getDay() || 7;
+    const mon = new Date(d); mon.setDate(d.getDate() - (dow - 1)); mon.setHours(0,0,0,0);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return { from: localDate(mon), to: localDate(sun), mon, sun };
+}
 
-    // Fetch appointments this month + already-paid salary
+async function loadPayrollData(from, to, periodLabel) {
     const [apptRes, paidRes] = await Promise.all([
         window.db.from('appointment_history').select('master_id, price')
-            .gte('visit_date', monthStart).lte('visit_date', monthEnd),
+            .gte('visit_date', from).lte('visit_date', to),
         window.db.from('transactions').select('amount, staff_id')
             .eq('type', 'expense').eq('category', 'salary')
-            .gte('date', monthStart).lte('date', monthEnd),
+            .gte('date', from).lte('date', to),
     ]);
-
     const earningsMap = {};
     (apptRes.data || []).forEach(a => {
         if (!a.master_id) return;
@@ -1313,16 +1431,63 @@ window.openPayrollModal = async function() {
             return { staff: s, earned, alrPaid, amount: toPay };
         });
 
-    const monthLabel = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
-    document.getElementById('payroll-month-label').textContent = monthLabel;
-
+    document.getElementById('payroll-period-label').textContent = periodLabel;
     renderPayrollRows();
+}
+
+// ── open / close ──────────────────────────────────────
+window.openPayrollModal = async function() {
+    payrollMode = 'month';
+    payrollWeekDate = new Date();
+    setPayrollModeUI('month');
+    const now = new Date();
+    const from  = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    const to    = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    const label = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+    await loadPayrollData(from, to, label);
     document.getElementById('payroll-modal').classList.remove('hidden');
 };
 
 window.closePayrollModal = function() {
     document.getElementById('payroll-modal').classList.add('hidden');
 };
+
+// ── period selector ───────────────────────────────────
+window.setPayrollMode = async function(mode) {
+    payrollMode = mode;
+    setPayrollModeUI(mode);
+    await refreshPayrollPeriod();
+};
+
+function setPayrollModeUI(mode) {
+    const btnM = document.getElementById('pr-mode-month');
+    const btnW = document.getElementById('pr-mode-week');
+    const nav  = document.getElementById('pr-week-nav');
+    btnM.className = `px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition ${mode==='month'?'bg-rose-500/15 text-rose-400':'text-zinc-500 hover:text-white'}`;
+    btnW.className = `px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition ${mode==='week' ?'bg-rose-500/15 text-rose-400':'text-zinc-500 hover:text-white'}`;
+    nav.classList.toggle('hidden', mode !== 'week');
+}
+
+window.payrollWeekStep = async function(dir) {
+    payrollWeekDate = new Date(payrollWeekDate.getTime() + dir * 7 * 86400000);
+    await refreshPayrollPeriod();
+};
+
+async function refreshPayrollPeriod() {
+    if (payrollMode === 'month') {
+        const now  = new Date();
+        const from = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
+        const to   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+        const label = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+        await loadPayrollData(from, to, label);
+    } else {
+        const { from, to, mon, sun } = payrollWeekBounds(payrollWeekDate);
+        const fmt = d => d.toLocaleDateString('uk-UA', { day:'2-digit', month:'2-digit' });
+        const label = `${fmt(mon)} — ${fmt(sun)}`;
+        document.getElementById('pr-week-label').textContent = label;
+        await loadPayrollData(from, to, label);
+    }
+}
 
 function renderPayrollRows() {
     const tbody = document.getElementById('payroll-rows');
@@ -1388,7 +1553,7 @@ window.confirmPayroll = async function() {
         subcategory: null,
         amount: r.amount,
         payment_method: 'cash',
-        comment: `Виплата ЗП: ${r.staff.name}`,
+        comment: `Виплата ЗП: ${r.staff.name} (${document.getElementById('payroll-period-label').textContent})`,
         staff_id: r.staff.id,
     }));
 
@@ -1403,7 +1568,7 @@ window.confirmPayroll = async function() {
 // ── CSV export ────────────────────────────────────────
 window.generatePayrollCSV = function() {
     const now = new Date();
-    const month = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+    const month = document.getElementById('payroll-period-label').textContent || now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
     let csv = `Звіт виплат ЗП — ${month}\n`;
     csv += 'Майстер,Зароблено (₴),До виплати (₴)\n';
     payrollData.forEach(r => {
@@ -1424,7 +1589,7 @@ window.generatePayrollCSV = function() {
 // ── PDF export ────────────────────────────────────────
 window.generatePayrollPDF = function() {
     const now = new Date();
-    const month = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+    const month = document.getElementById('payroll-period-label').textContent || now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
     const total = payrollData.reduce((s,r)=>s+r.amount,0);
 
     const rows = payrollData.map((r, i) => `

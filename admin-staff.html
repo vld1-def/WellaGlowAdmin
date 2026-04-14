@@ -242,10 +242,21 @@
                     <button onclick="setStaffSort('earnings')" id="sort-earnings" class="sort-btn">Заробіток</button>
                 </div>
             </div>
-            <button onclick="downloadLastMonthReport()" class="glass-panel px-4 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition whitespace-nowrap">
-                <i class="fa-solid fa-file-arrow-down text-xs"></i>
-                <span class="hidden sm:inline">Звіт за місяць</span>
-            </button>
+            <div class="relative" id="report-dropdown-wrap">
+                <button onclick="toggleReportDropdown()" class="glass-panel px-4 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition whitespace-nowrap">
+                    <i class="fa-solid fa-file-arrow-down text-xs"></i>
+                    <span class="hidden sm:inline">Звіт за місяць</span>
+                    <i class="fa-solid fa-chevron-down text-[8px]"></i>
+                </button>
+                <div id="report-dropdown" class="hidden absolute right-0 top-full mt-1 bg-[#111113] border border-white/10 rounded-xl p-1 z-50 min-w-[140px] shadow-xl">
+                    <button onclick="downloadLastMonthCSV();toggleReportDropdown()" class="w-full text-left px-3 py-2 rounded-lg text-[11px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-csv text-xs text-zinc-600"></i>CSV
+                    </button>
+                    <button onclick="downloadLastMonthPDF();toggleReportDropdown()" class="w-full text-left px-3 py-2 rounded-lg text-[11px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf text-xs text-zinc-600"></i>PDF
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Table -->
@@ -482,6 +493,7 @@
             <button class="tab-btn" id="modal-tab-chart" onclick="switchModalTab('chart')">Динаміка</button>
             <button class="tab-btn" id="modal-tab-reviews" onclick="switchModalTab('reviews')">Відгуки</button>
             <button class="tab-btn" id="modal-tab-shifts" onclick="switchModalTab('shifts')">Графік</button>
+            <button class="tab-btn" id="modal-tab-payments" onclick="switchModalTab('payments')">Виплати</button>
         </div>
         <!-- Content -->
         <div class="p-6">
@@ -526,6 +538,10 @@
             <!-- Reviews tab -->
             <div id="modal-reviews-tab" class="hidden">
                 <div id="modal-reviews-list" class="space-y-3"></div>
+            </div>
+            <!-- Payments tab -->
+            <div id="modal-payments-tab" class="hidden">
+                <div id="modal-payments-list" class="space-y-2"></div>
             </div>
             <!-- Shifts tab -->
             <div id="modal-shifts-tab" class="hidden">
@@ -604,9 +620,21 @@
         <div class="px-6 py-5 border-b border-white/5 flex items-center justify-between shrink-0">
             <div>
                 <h3 class="text-sm font-black uppercase tracking-widest text-white">Виплата заробітної плати</h3>
-                <p id="payroll-month-label" class="text-[10px] text-zinc-500 mt-0.5 font-semibold"></p>
+                <p id="payroll-period-label" class="text-[10px] text-zinc-500 mt-0.5 font-semibold"></p>
             </div>
             <button onclick="closePayrollModal()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <!-- Period selector -->
+        <div class="px-6 pt-4 pb-2 border-b border-white/5 flex items-center gap-2 shrink-0">
+            <div class="flex rounded-xl overflow-hidden border border-white/10">
+                <button id="pr-mode-month" onclick="setPayrollMode('month')" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-rose-500/15 text-rose-400 transition">Місяць</button>
+                <button id="pr-mode-week"  onclick="setPayrollMode('week')"  class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-white transition">Тиждень</button>
+            </div>
+            <div id="pr-week-nav" class="hidden flex items-center gap-1 ml-auto">
+                <button onclick="payrollWeekStep(-1)" class="w-7 h-7 rounded-lg glass-panel text-zinc-500 hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-chevron-left text-[9px]"></i></button>
+                <span id="pr-week-label" class="text-[10px] font-bold text-zinc-400 whitespace-nowrap px-1"></span>
+                <button onclick="payrollWeekStep(1)"  class="w-7 h-7 rounded-lg glass-panel text-zinc-500 hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-chevron-right text-[9px]"></i></button>
+            </div>
         </div>
         <div class="overflow-y-auto flex-1 px-6 py-4">
             <table class="w-full">

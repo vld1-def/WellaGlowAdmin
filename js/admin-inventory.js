@@ -143,7 +143,7 @@ function renderTable(){
                 <td><span class="text-zinc-300 font-bold text-xs">${costStr}</span></td>
                 <td><span class="font-black text-white text-xs">₴${totalSum.toLocaleString('uk-UA')}</span></td>
                 <td style="position:relative">
-                    <button onclick="toggleDot(event,'dot-${item.id}')" class="w-7 h-7 rounded-lg text-zinc-600 hover:text-white hover:bg-white/5 transition flex items-center justify-center text-sm">
+                    <button onclick="toggleDot(event,'${item.id}')" class="w-7 h-7 rounded-lg text-zinc-600 hover:text-white hover:bg-white/5 transition flex items-center justify-center text-sm">
                         <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
                 </td>
