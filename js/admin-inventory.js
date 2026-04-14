@@ -25,13 +25,35 @@ let orderItemId= null;
 let procList   = JSON.parse(localStorage.getItem('wella_proc_list') || '[]');
 
 // ══ Boot ═════════════════════════════════════════════
+// ── Month Selector (sidebar) ─────────────────────────
+const _MONTHS_UA=['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+function initSidebarMonth(){
+    let ym=localStorage.getItem('wella_current_month');
+    if(!ym){const n=new Date();ym=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+    localStorage.setItem('wella_current_month',ym);
+    const[y,m]=ym.split('-').map(Number);
+    const el=document.getElementById('sidebar-month-label');
+    if(el)el.textContent=`${_MONTHS_UA[m-1]} ${y}`;
+}
+window.monthStep=function(dir){
+    let ym=localStorage.getItem('wella_current_month')||`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+    let[y,m]=ym.split('-').map(Number);
+    m+=dir;if(m>12){m=1;y++;}if(m<1){m=12;y--;}
+    const next=`${y}-${String(m).padStart(2,'0')}`;
+    localStorage.setItem('wella_current_month',next);
+    const[ny,nm]=next.split('-').map(Number);
+    const el=document.getElementById('sidebar-month-label');
+    if(el)el.textContent=`${_MONTHS_UA[nm-1]} ${ny}`;
+    window.dispatchEvent(new Event('monthchange'));
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
+    initSidebarMonth();
     await loadItems();
     autoAddToProc();
-    renderKPIs();
+    await renderKPIs();
     renderTable();
     renderProcList();
-    // Init subcategory on modal open
     onModalCatChange();
 });
 
@@ -44,14 +66,27 @@ async function loadItems() {
 }
 
 // ══ KPIs ═════════════════════════════════════════════
-function renderKPIs() {
+async function renderKPIs() {
     const total      = items.reduce((s,i)=>s+(parseFloat(i.cost_per_unit||0)*parseInt(i.quantity||0)),0);
     const attention  = items.filter(i=>itemStatus(i)!=='ok').length;
     const critical   = items.filter(i=>itemStatus(i)==='critical').length;
     document.getElementById('kpi-total').textContent     = '₴'+total.toLocaleString('uk-UA');
     document.getElementById('kpi-count').textContent     = items.length;
-    document.getElementById('kpi-attention').textContent = attention+' позицій';
-    document.getElementById('kpi-critical').textContent  = critical+' позицій';
+    document.getElementById('kpi-attention').textContent = attention+' поз.';
+    document.getElementById('kpi-critical').textContent  = critical+' поз.';
+    // Capitalization: fetch from transactions
+    const { data: txAll } = await window.db
+        .from('transactions')
+        .select('amount,date')
+        .eq('type','expense')
+        .eq('category','materials');
+    const spentTotal = (txAll||[]).reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const nowY = new Date().getFullYear(), nowM = new Date().getMonth()+1;
+    const monthPrefix = `${nowY}-${String(nowM).padStart(2,'0')}`;
+    const spentMonth = (txAll||[]).filter(t=>(t.date||'').startsWith(monthPrefix))
+        .reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    document.getElementById('kpi-spent-total').textContent = '₴'+spentTotal.toLocaleString('uk-UA');
+    document.getElementById('kpi-spent-month').textContent = '₴'+spentMonth.toLocaleString('uk-UA');
 }
 
 function itemStatus(item) {
@@ -218,22 +253,40 @@ window.onModalCatChange=function(){
 };
 
 // ══ Add / Edit ════════════════════════════════════════
+let _purchaseManual = false; // user manually edited purchase amount
+
 window.openAddItem=function(){
     editingId=null;
+    _purchaseManual=false;
     document.getElementById('item-modal-title').textContent='Новий товар';
     ['f-name','f-sku','f-supplier'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     ['f-qty','f-min-qty','f-cost'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     document.getElementById('f-category').value='Манікюр';
     document.getElementById('f-unit').value='шт.';
+    document.getElementById('f-purchase-row').classList.remove('hidden');
+    document.getElementById('f-purchase-amt').value='';
     onModalCatChange();
     document.getElementById('item-modal').classList.add('open');
 };
+
+window.onPurchaseAmtInput=function(){ _purchaseManual=true; };
+
+// Auto-recalculate purchase amount when qty or cost changes (only if not manually edited)
+function autoCalcPurchase(){
+    if(_purchaseManual||editingId) return;
+    const qty=parseFloat(document.getElementById('f-qty')?.value)||0;
+    const cost=parseFloat(document.getElementById('f-cost')?.value)||0;
+    const el=document.getElementById('f-purchase-amt');
+    if(el) el.value=(qty*cost>0)?(qty*cost).toFixed(2):'';
+}
 
 window.openEditItem=function(id){
     closeDotPortal();
     const item=items.find(i=>i.id===id); if(!item) return;
     editingId=id;
+    _purchaseManual=false;
     document.getElementById('item-modal-title').textContent='Редагувати товар';
+    document.getElementById('f-purchase-row').classList.add('hidden');
     document.getElementById('f-name').value      = item.name||'';
     document.getElementById('f-sku').value       = item.sku||'';
     document.getElementById('f-category').value  = item.category||'Манікюр';
@@ -267,12 +320,29 @@ window.saveItem=async function(){
         cost_per_unit: parseFloat(document.getElementById('f-cost').value)||0,
         supplier:      document.getElementById('f-supplier')?.value.trim()||null,
     };
+    const isNew=!editingId;
     let error;
     if(editingId){({error}=await window.db.from('inventory_items').update(payload).eq('id',editingId));}
     else         {({error}=await window.db.from('inventory_items').insert([payload]));}
     if(error){alert('Помилка: '+error.message);return;}
+    // Create finance expense for new item purchase
+    if(isNew){
+        const amt=parseFloat(document.getElementById('f-purchase-amt')?.value)||0;
+        if(amt>0){
+            const today=new Date().toISOString().slice(0,10);
+            await window.db.from('transactions').insert([{
+                date:           today,
+                type:           'expense',
+                category:       'materials',
+                subcategory:    payload.category||null,
+                amount:         amt,
+                payment_method: 'cash',
+                comment:        `Закупка: ${name} ${payload.quantity} ${payload.unit}`,
+            }]);
+        }
+    }
     closeItemModal();
-    await loadItems(); autoAddToProc(); renderKPIs(); renderTable(); renderProcList();
+    await loadItems(); autoAddToProc(); await renderKPIs(); renderTable(); renderProcList();
 };
 
 // ══ Delete ═══════════════════════════════════════════
@@ -282,7 +352,7 @@ window.deleteItem=async function(id){
     if(!confirm(`Видалити "${item.name}"?`)) return;
     const{error}=await window.db.from('inventory_items').delete().eq('id',id);
     if(error){alert(error.message);return;}
-    await loadItems(); autoAddToProc(); renderKPIs(); renderTable(); renderProcList();
+    await loadItems(); autoAddToProc(); await renderKPIs(); renderTable(); renderProcList();
 };
 
 // ══ Restock modal (Поповнити) ═════════════════════════
@@ -292,21 +362,36 @@ window.openRestockModal = function(id) {
     closeDotPortal();
     const item = items.find(i=>i.id===id); if(!item) return;
     restockItemId = id;
+    const autoAmt = parseFloat(item.cost_per_unit||0).toFixed(2);
     document.getElementById('restock-body').innerHTML = `
         <div class="p-3 rounded-xl" style="background:rgba(255,255,255,.04)">
             <p class="text-xs font-bold text-white">${item.name}</p>
-            <p class="text-[10px] text-zinc-500 mt-1">Поточний залишок: <span class="font-black text-white">${item.quantity||0} ${item.unit||'шт.'}</span></p>
+            <p class="text-[10px] text-zinc-500 mt-1">Поточний залишок: <span class="font-black text-white">${item.quantity||0} ${item.unit||'шт.'}</span> · Собівартість: <span class="font-black text-white">₴${autoAmt}/${item.unit||'шт.'}</span></p>
         </div>
         <div>
             <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Додати кількість</label>
-            <input id="restock-qty" type="number" min="1" value="1" class="inv-input">
+            <input id="restock-qty" type="number" min="1" value="1" class="inv-input" oninput="calcRestockAmt()">
+        </div>
+        <div style="background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.15)" class="p-3 rounded-xl">
+            <label class="text-[9px] text-rose-400 font-black uppercase tracking-widest block mb-1.5">Сума закупки (₴) — запишеться у витрати</label>
+            <input id="restock-amt" type="number" min="0" step="0.01" value="${autoAmt}" class="inv-input">
+            <p class="text-[9px] text-zinc-600 mt-1.5">Авто-розрахунок: собівартість × кількість, але можна редагувати</p>
         </div>`;
+    // store cost_per_unit for auto-calc
+    document.getElementById('restock-modal').dataset.cost = item.cost_per_unit||0;
     document.getElementById('restock-modal').classList.add('open');
 };
 
 window.closeRestockModal = function() {
     document.getElementById('restock-modal').classList.remove('open');
     restockItemId = null;
+};
+
+window.calcRestockAmt = function(){
+    const cost = parseFloat(document.getElementById('restock-modal').dataset.cost||0);
+    const qty  = parseInt(document.getElementById('restock-qty')?.value)||0;
+    const el   = document.getElementById('restock-amt');
+    if(el) el.value = (cost*qty>0) ? (cost*qty).toFixed(2) : '';
 };
 
 window.confirmRestock = async function() {
@@ -316,8 +401,22 @@ window.confirmRestock = async function() {
     const newQty = parseInt(item.quantity||0) + add;
     const { error } = await window.db.from('inventory_items').update({ quantity: newQty }).eq('id', item.id);
     if(error) { alert('Помилка: '+error.message); return; }
+    // Finance expense for restock
+    const amt = parseFloat(document.getElementById('restock-amt')?.value)||0;
+    if(amt > 0){
+        const today = new Date().toISOString().slice(0,10);
+        await window.db.from('transactions').insert([{
+            date:           today,
+            type:           'expense',
+            category:       'materials',
+            subcategory:    item.category||null,
+            amount:         amt,
+            payment_method: 'cash',
+            comment:        `Поповнення: ${item.name} +${add} ${item.unit||'шт.'}`,
+        }]);
+    }
     closeRestockModal();
-    await loadItems(); autoAddToProc(); renderKPIs(); renderTable(); renderProcList();
+    await loadItems(); autoAddToProc(); await renderKPIs(); renderTable(); renderProcList();
 };
 
 // ══ Order modal ═══════════════════════════════════════
@@ -424,7 +523,7 @@ window.confirmWriteoff = async function() {
     if(txErr) { alert('Помилка фінансів: '+txErr.message); return; }
 
     closeWriteoffModal();
-    await loadItems(); autoAddToProc(); renderKPIs(); renderTable(); renderProcList();
+    await loadItems(); autoAddToProc(); await renderKPIs(); renderTable(); renderProcList();
 };
 
 // ══ Procurement list ══════════════════════════════════
