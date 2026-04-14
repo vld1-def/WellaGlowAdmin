@@ -342,7 +342,7 @@ function apptBlockHTML(a){
     return `<div class="appt-block" style="top:${top}px;height:${height}px;background:${color}20;border-left-color:${color}"
         onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
         <p style="font-size:11px;font-weight:800;color:#fff;line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
-        ${durH>1?`<p style="font-size:10px;color:${color}bb" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
+        ${durMin>60?`<p style="font-size:10px;color:${color}bb" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
     </div>`;
 }
 

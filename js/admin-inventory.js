@@ -146,12 +146,6 @@ function renderTable(){
                     <button onclick="toggleDot(event,'dot-${item.id}')" class="w-7 h-7 rounded-lg text-zinc-600 hover:text-white hover:bg-white/5 transition flex items-center justify-center text-sm">
                         <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
-                    <div id="dot-${item.id}" class="dot-dropdown">
-                        <div class="dot-item" onclick="openEditItem('${item.id}')"><i class="fa-solid fa-pen text-xs text-zinc-500"></i>Редагувати</div>
-                        <div class="dot-item" onclick="openWriteoffModal('${item.id}')"><i class="fa-solid fa-arrow-down-to-bracket text-xs text-zinc-500"></i>Списати</div>
-                        <div class="dot-item" onclick="openOrderModal('${item.id}')"><i class="fa-solid fa-cart-plus text-xs text-zinc-500"></i>Замовити</div>
-                        <div class="dot-item danger" onclick="deleteItem('${item.id}')"><i class="fa-solid fa-trash text-xs"></i>Видалити</div>
-                    </div>
                 </td>
             </tr>`;
         }).join('');
@@ -166,23 +160,51 @@ window.changePage=function(dir){
     renderTable();
 };
 
-// ══ 3-dot menu (position:fixed to escape overflow) ═══
-window.toggleDot=function(e,id){
+// ══ 3-dot menu — body portal (fully escapes overflow/stacking) ═══
+let _dotOpenId = null;
+
+window.toggleDot=function(e, itemId){
     e.stopPropagation();
-    const dd=document.getElementById(id);
-    const isOpen=dd.classList.contains('open');
-    document.querySelectorAll('.dot-dropdown.open').forEach(d=>{d.classList.remove('open');d.style.cssText='';});
-    if(!isOpen){
-        const btn=e.currentTarget, rect=btn.getBoundingClientRect();
-        dd.style.position='fixed';
-        dd.style.top=(rect.bottom+4)+'px';
-        dd.style.right=(window.innerWidth-rect.right)+'px';
-        dd.style.left='auto';
-        dd.classList.add('open');
-    }
+    const portal = document.getElementById('dot-portal');
+    if(_dotOpenId === itemId){ closeDotPortal(); return; }
+    const item = items.find(i=>i.id===itemId);
+    if(!item){ closeDotPortal(); return; }
+
+    const dotItem = (icon, label, onclick, danger=false) =>
+        `<div class="dot-item${danger?' danger':''}" style="padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;color:${danger?'#a1a1aa':'#a1a1aa'};cursor:pointer;display:flex;align-items:center;gap:8px"
+            onclick="closeDotPortal();${onclick}">
+            <i class="${icon}" style="font-size:10px;color:#52525b"></i>${label}
+        </div>`;
+
+    portal.innerHTML =
+        dotItem('fa-solid fa-pen',              'Редагувати',  `openEditItem('${itemId}')`) +
+        dotItem('fa-solid fa-plus',             'Поповнити',   `openRestockModal('${itemId}')`) +
+        dotItem('fa-solid fa-arrow-down-to-bracket','Списати', `openWriteoffModal('${itemId}')`) +
+        dotItem('fa-solid fa-cart-plus',        'Замовити',    `openOrderModal('${itemId}')`) +
+        dotItem('fa-solid fa-trash',            'Видалити',    `deleteItem('${itemId}')`, true);
+
+    // Hover styles via event delegation
+    portal.querySelectorAll('.dot-item').forEach(el=>{
+        el.addEventListener('mouseenter',()=>{ el.style.background=el.classList.contains('danger')?'rgba(244,63,94,.1)':'rgba(255,255,255,.06)'; el.style.color=el.classList.contains('danger')?'#f43f5e':'#fff'; });
+        el.addEventListener('mouseleave',()=>{ el.style.background=''; el.style.color='#a1a1aa'; });
+    });
+
+    const btn = e.currentTarget, rect = btn.getBoundingClientRect();
+    portal.style.top  = (rect.bottom + 4) + 'px';
+    portal.style.right = (window.innerWidth - rect.right) + 'px';
+    portal.style.left = 'auto';
+    portal.style.display = 'block';
+    _dotOpenId = itemId;
 };
-document.addEventListener('click',()=>{
-    document.querySelectorAll('.dot-dropdown.open').forEach(d=>{d.classList.remove('open');d.style.cssText='';});
+
+window.closeDotPortal = function(){
+    const portal = document.getElementById('dot-portal');
+    if(portal){ portal.style.display='none'; portal.innerHTML=''; }
+    _dotOpenId = null;
+};
+
+document.addEventListener('click', e=>{
+    if(_dotOpenId && !e.target.closest('#dot-portal')) closeDotPortal();
 });
 
 // ══ Modal category → subcategory ═════════════════════
@@ -208,7 +230,7 @@ window.openAddItem=function(){
 };
 
 window.openEditItem=function(id){
-    document.querySelectorAll('.dot-dropdown.open').forEach(d=>{d.classList.remove('open');d.style.cssText='';});
+    closeDotPortal();
     const item=items.find(i=>i.id===id); if(!item) return;
     editingId=id;
     document.getElementById('item-modal-title').textContent='Редагувати товар';
@@ -255,7 +277,7 @@ window.saveItem=async function(){
 
 // ══ Delete ═══════════════════════════════════════════
 window.deleteItem=async function(id){
-    document.querySelectorAll('.dot-dropdown.open').forEach(d=>{d.classList.remove('open');d.style.cssText='';});
+    closeDotPortal();
     const item=items.find(i=>i.id===id); if(!item) return;
     if(!confirm(`Видалити "${item.name}"?`)) return;
     const{error}=await window.db.from('inventory_items').delete().eq('id',id);
@@ -263,9 +285,44 @@ window.deleteItem=async function(id){
     await loadItems(); autoAddToProc(); renderKPIs(); renderTable(); renderProcList();
 };
 
+// ══ Restock modal (Поповнити) ═════════════════════════
+let restockItemId = null;
+
+window.openRestockModal = function(id) {
+    closeDotPortal();
+    const item = items.find(i=>i.id===id); if(!item) return;
+    restockItemId = id;
+    document.getElementById('restock-body').innerHTML = `
+        <div class="p-3 rounded-xl" style="background:rgba(255,255,255,.04)">
+            <p class="text-xs font-bold text-white">${item.name}</p>
+            <p class="text-[10px] text-zinc-500 mt-1">Поточний залишок: <span class="font-black text-white">${item.quantity||0} ${item.unit||'шт.'}</span></p>
+        </div>
+        <div>
+            <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Додати кількість</label>
+            <input id="restock-qty" type="number" min="1" value="1" class="inv-input">
+        </div>`;
+    document.getElementById('restock-modal').classList.add('open');
+};
+
+window.closeRestockModal = function() {
+    document.getElementById('restock-modal').classList.remove('open');
+    restockItemId = null;
+};
+
+window.confirmRestock = async function() {
+    const item = items.find(i=>i.id===restockItemId); if(!item) return;
+    const add = parseInt(document.getElementById('restock-qty').value)||0;
+    if(add <= 0) { alert('Введіть кількість більше нуля'); return; }
+    const newQty = parseInt(item.quantity||0) + add;
+    const { error } = await window.db.from('inventory_items').update({ quantity: newQty }).eq('id', item.id);
+    if(error) { alert('Помилка: '+error.message); return; }
+    closeRestockModal();
+    await loadItems(); autoAddToProc(); renderKPIs(); renderTable(); renderProcList();
+};
+
 // ══ Order modal ═══════════════════════════════════════
 window.openOrderModal=function(id){
-    document.querySelectorAll('.dot-dropdown.open').forEach(d=>{d.classList.remove('open');d.style.cssText='';});
+    closeDotPortal();
     const item=items.find(i=>i.id===id); if(!item) return;
     orderItemId=id;
     document.getElementById('order-body').innerHTML=`
@@ -299,7 +356,7 @@ window.addToProc=function(){
 let writeoffItemId = null;
 
 window.openWriteoffModal = function(id) {
-    document.querySelectorAll('.dot-dropdown.open').forEach(d=>{d.classList.remove('open');d.style.cssText='';});
+    closeDotPortal();
     const item = items.find(i=>i.id===id); if(!item) return;
     writeoffItemId = id;
     const cost = parseFloat(item.cost_per_unit||0);
@@ -360,7 +417,7 @@ window.confirmWriteoff = async function() {
         subcategory: item.category || null,
         amount: parseFloat(amount.toFixed(2)),
         payment_method: 'cash',
-        comment: `Списання: ${item.name}${note?' — '+note:''}`,
+        comment: `Списання: ${item.name} — ${qty} ${item.unit||'шт.'} × ₴${parseFloat(item.cost_per_unit||0).toFixed(2)}/од.${note?' | '+note:''}`,
         staff_id: null,
     };
     const { error: txErr } = await window.db.from('transactions').insert([txPayload]);

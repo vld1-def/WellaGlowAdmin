@@ -253,7 +253,7 @@ async function loadTransactions(append = false) {
 function renderTransactions(rows, append) {
     const tbody = document.getElementById('transactions-body');
     if (!append && rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-zinc-600 text-sm font-black uppercase tracking-widest">Немає транзакцій за поточний місяць</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center text-zinc-600 text-sm font-black uppercase tracking-widest">Немає транзакцій за поточний місяць</td></tr>`;
         return;
     }
     const html = rows.map(t => txRow(t, false)).join('');
@@ -280,7 +280,7 @@ window.closeAllTxModal = function () {
 async function loadModalTransactions() {
     const { start } = getPeriodRange();
     document.getElementById('all-tx-tbody').innerHTML =
-        `<tr><td colspan="7" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Завантаження…</td></tr>`;
+        `<tr><td colspan="8" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Завантаження…</td></tr>`;
 
     const { data } = await window.db
         .from('transactions')
@@ -297,7 +297,7 @@ async function loadModalTransactions() {
 function renderModalTable(rows) {
     const tbody = document.getElementById('all-tx-tbody');
     if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Нічого не знайдено</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Нічого не знайдено</td></tr>`;
         return;
     }
     tbody.innerHTML = rows.map(t => txRow(t, true)).join('');
@@ -324,11 +324,14 @@ function txRow(t, isModal) {
 
     const py = isModal ? 'py-3' : 'py-4';
 
+    const subcatLabel = t.subcategory || '—';
+
     return `<tr class="border-b border-white/5 hover:bg-white/[0.03] transition group">
         ${dateCell}
         <td class="${py} pr-4">
             <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${cat.cls}">${cat.label}</span>
         </td>
+        <td class="${py} pr-4 text-[10px] font-bold text-zinc-500 whitespace-nowrap">${subcatLabel}</td>
         <td class="${py} pr-4 text-[11px] text-zinc-300 max-w-[220px] truncate">${t.comment || '—'}</td>
         <td class="${py} pr-4 text-[10px] font-black text-zinc-500 uppercase tracking-wider whitespace-nowrap">${method}</td>
         <td class="${py} pr-4 text-[11px] font-bold text-zinc-400 whitespace-nowrap">${creator}</td>
