@@ -33,30 +33,54 @@
             <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] mt-1 uppercase">studio</p>
         </div>
 
-        <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto no-scrollbar pb-10">
+        <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto no-scrollbar pb-4">
             <div>
                 <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Аналітика</p>
                 <div class="space-y-1">
-                    <a href="#" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition font-bold"><i class="fa-solid fa-chart-pie w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Дашборд</span></a>
-                    <a href="admin-finance.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition"><i class="fa-solid fa-wallet w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Фінанси</span></a>
+                    <a href="#" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition font-bold"><i class="fa-solid fa-chart-pie w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Дашборд</span></a>
+                    <a href="admin-finance.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-wallet w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Фінанси</span></a>
                 </div>
             </div>
             <div>
                 <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Студія</p>
                 <div class="space-y-1">
-                    <a href="admin-calendar.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition"><i class="fa-solid fa-calendar-check w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span></a>
-                    <a href="admin-staff.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition"><i class="fa-solid fa-users-gear w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span></a>
-                    <a href="admin-inventory.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition"><i class="fa-solid fa-boxes-stacked w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Склад</span></a>
+                    <a href="admin-calendar.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-calendar-check w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span></a>
+                    <a href="admin-staff.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-users-gear w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span></a>
+                    <a href="admin-inventory.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-boxes-stacked w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Склад</span></a>
                 </div>
             </div>
             <div>
                 <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Клієнти</p>
                 <div class="space-y-1">
-                    <a href="admin-clients-base.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition"><i class="fa-solid fa-address-book w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">База клієнтів</span></a>
-                    <a href="admin-bonuses.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition"><i class="fa-solid fa-gift w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Бонуси</span></a>
+                    <a href="admin-clients-base.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-address-book w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">База клієнтів</span></a>
+                    <a href="admin-bonuses.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-gift w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Бонуси</span></a>
                 </div>
             </div>
         </nav>
+        <!-- ── Month Selector ── -->
+        <div class="px-3 pb-2 hidden lg:block">
+            <div class="flex items-center gap-1 p-2 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)">
+                <button onclick="monthStep(-1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="sidebar-month-label" class="text-[10px] font-black uppercase tracking-widest text-zinc-300 flex-1 text-center">—</span>
+                <button onclick="monthStep(1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+        <!-- ── Profile + Logout ── -->
+        <div class="border-t border-white/5 p-3">
+            <div class="flex items-center gap-3">
+                <div id="sidebar-avatar" class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white font-black text-xs" style="background:linear-gradient(135deg,#f43f5e,#fb7185)">A</div>
+                <div class="hidden lg:block flex-1 min-w-0">
+                    <p id="sidebar-uname" class="text-xs font-bold text-white truncate">—</p>
+                    <p id="sidebar-urole" class="text-[9px] text-zinc-500 uppercase tracking-widest">—</p>
+                </div>
+                <button onclick="doLogout()" title="Вийти" class="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition flex-shrink-0">
+                    <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+                </button>
+            </div>
+            <button onclick="doLogout()" class="lg:hidden mt-2 w-full flex items-center justify-center p-2 rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition">
+                <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            </button>
+        </div>
     </aside>
 
     <!-- MAIN -->

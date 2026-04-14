@@ -292,19 +292,26 @@ function renderTimeline(days, today){
                 </div>`).join('')}
         </div>`;
 
-    // Grid rows
-    const rows=HOURS.map(h=>{
+    // Grid rows — one row per 30-min slot
+    const slots=[];
+    HOURS.forEach(h=>{slots.push({h,m:0});slots.push({h,m:30});});
+
+    const rows=slots.map(({h,m})=>{
         const cells=days.map(({str})=>{
-            const blockAppts=allAppts().filter(a=>a.master_id===masterId&&a._date===str&&startHour(a)===h);
+            const blockAppts=allAppts().filter(a=>
+                a.master_id===masterId&&a._date===str&&startHour(a)===h&&startMin(a)===m
+            );
             const shiftOverlay=shiftCellOverlay(str,masterId,h);
             const blocked=isCellBlocked(str,masterId,h);
-            const handlers=blocked?`onclick="openShiftCell('${str}',${h},'${masterId}')"`:`onmousedown="dragBegin(event,'${str}',${h})" onmouseenter="dragMove(event,'${str}',${h})" onmouseup="dragEnd_(event,'${str}',${h})"`;
-            return `<div class="tl-cell${blocked?' blocked':''}" data-day="${str}" data-hour="${h}" ${handlers} onmousemove="halfHover(event)" onmouseleave="clearHalfHover(event)">${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
+            const handlers=blocked
+                ?`onclick="openShiftCell('${str}',${h},'${masterId}')"`
+                :`onmousedown="dragBegin(event,'${str}',${h},${m})" onmouseenter="dragMove(event,'${str}',${h},${m})" onmouseup="dragEnd_(event,'${str}',${h},${m})"`;
+            return `<div class="tl-cell${blocked?' blocked':''}" data-day="${str}" data-hour="${h}" data-min="${m}" ${handlers}>${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
         }).join('');
-        return `<div class="tl-wrap">
-            <div class="tl-hour-label" data-hour="${h}" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну в цей час">${hhmm(h)}</div>
-            ${cells}
-        </div>`;
+        const label=m===0
+            ?`<div class="tl-hour-label" data-hour="${h}" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну">${hhmm(h)}</div>`
+            :`<div class="tl-hour-half-pad"></div>`;
+        return `<div class="tl-wrap">${label}${cells}</div>`;
     }).join('');
 
     document.getElementById('week-content').innerHTML=`<div onmouseleave="dragCancel()">${rows}</div>`;
@@ -367,15 +374,13 @@ function apptBlockHTML(a){
     const color=mColor(a.master_id);
     const sh=startHour(a),sm=startMin(a),eh=endHour(a),em=endMin(a);
     const durMin=(eh!==null&&sh!==null)?((eh*60+em)-(sh*60+sm)):60;
-    const pxH=60;
-    const top=2+(sm/60*pxH);
-    const height=Math.max(durMin/60*pxH-6,24);
-    const si=sBadge(a.status);
+    // Each 30-min slot = 30px cell; block is top-anchored in its start cell
+    const height=Math.max(durMin-4,22);
     const t=a._start?a._start.slice(0,5):'';
-    return `<div class="appt-block" style="top:${top}px;height:${height}px;background:${color}20;border-left-color:${color}"
+    return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}20;border-left-color:${color};z-index:3"
         onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
         <p style="font-size:11px;font-weight:800;color:#fff;line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
-        ${durMin>60?`<p style="font-size:10px;color:${color}bb" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
+        ${durMin>30?`<p style="font-size:10px;color:${color}bb" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
     </div>`;
 }
 
@@ -420,51 +425,33 @@ function renderLanes(days, today){
     document.getElementById('week-content').innerHTML=`<div>${rows}</div>`;
 }
 
-// ══ Half-hour hover ══════════════════════════════════
-window.halfHover=function(e){
-    const cell=e.currentTarget;
-    const rect=cell.getBoundingClientRect();
-    const isTop=(e.clientY-rect.top)<rect.height/2;
-    cell.classList.toggle('hov-top',isTop);
-    cell.classList.toggle('hov-bot',!isTop);
-};
-window.clearHalfHover=function(e){
-    const cell=e.currentTarget;
-    cell.classList.remove('hov-top','hov-bot');
-};
-
-// ══ Drag-to-select (timeline cells) ══════════════════
-function getSlotMinute(e, cell){
-    const rect=cell.getBoundingClientRect();
-    return (e.clientY-rect.top)<rect.height/2 ? 0 : 30;
-}
-window.dragBegin=function(e,dayStr,h){
+// ══ Drag-to-select (30-min cells) ════════════════════
+// m is passed directly from data-min of each half-hour cell — no Y-detection needed
+window.dragBegin=function(e,dayStr,h,m){
     e.preventDefault();
-    const m=getSlotMinute(e,e.currentTarget);
     isDragging=true;
     dragStart={dayStr,h,m}; dragEnd={dayStr,h,m};
     highlightDrag();
     document.getElementById('drag-hint').classList.add('show');
 };
-window.dragMove=function(e,dayStr,h){
+window.dragMove=function(e,dayStr,h,m){
     if(!isDragging||dragStart?.dayStr!==dayStr) return;
-    const m=getSlotMinute(e,e.currentTarget);
     dragEnd={dayStr,h,m};
     highlightDrag();
 };
-window.dragEnd_=function(e,dayStr,h){
+window.dragEnd_=function(e,dayStr,h,m){
     if(!isDragging) return;
     isDragging=false;
     document.getElementById('drag-hint').classList.remove('show');
     if(dragStart?.dayStr===dayStr){
-        const endM=getSlotMinute(e,e.currentTarget);
         let startTotal=toMinutes(dragStart.h,dragStart.m);
-        let endTotal=toMinutes(h,endM)+30;
-        if(startTotal>toMinutes(h,endM)){
-            [startTotal,endTotal]=[toMinutes(h,endM),toMinutes(dragStart.h,dragStart.m)+30];
+        let endTotal=toMinutes(h,m)+30; // include the end slot (+30 min)
+        if(startTotal>toMinutes(h,m)){
+            // Dragged upward — swap
+            [startTotal,endTotal]=[toMinutes(h,m),toMinutes(dragStart.h,dragStart.m)+30];
         }
         const startH=Math.floor(startTotal/60), startMM=startTotal%60;
-        const endH=Math.floor(endTotal/60),   endMM=endTotal%60;
+        const endH=Math.floor(endTotal/60),     endMM=endTotal%60;
         openApptDrawer(dayStr,'','',startH,endH,startMM,endMM);
     }
     dragStart=null; dragEnd=null;
@@ -483,25 +470,21 @@ function highlightDrag(){
     const startTotal=toMinutes(dragStart.h,dragStart.m||0);
     const endTotal=toMinutes(dragEnd.h,dragEnd.m||0);
     const lo=Math.min(startTotal,endTotal), hi=Math.max(startTotal,endTotal);
-    const shH=Math.floor(lo/60), shM=lo%60;
-    const ehH=Math.floor(hi/60), ehM=hi%60;
     document.querySelectorAll('.tl-cell').forEach(cell=>{
         const ch=parseInt(cell.dataset.hour);
-        if(cell.dataset.day!==dragStart.dayStr||ch<shH||ch>ehH) return;
-        cell.classList.add('selecting');
-        // Partial highlight for first/last cells
-        if(ch===shH && shM===30) cell.classList.add('sel-bot');
-        if(ch===ehH && ehM===0 && ch!==shH) cell.classList.add('sel-top');
+        const cm=parseInt(cell.dataset.min||0);
+        const ct=toMinutes(ch,cm);
+        if(cell.dataset.day===dragStart.dayStr && ct>=lo && ct<=hi)
+            cell.classList.add('selecting');
     });
+    const shH=Math.floor(lo/60), ehH=Math.floor(hi/60);
     document.querySelectorAll('.tl-hour-label[data-hour]').forEach(lbl=>{
         const lh=parseInt(lbl.dataset.hour);
         lbl.classList.toggle('drag-hl', lh>=shH && lh<=ehH);
     });
 }
 function clearDragHighlight(){
-    document.querySelectorAll('.tl-cell.selecting').forEach(c=>{
-        c.classList.remove('selecting','sel-top','sel-bot');
-    });
+    document.querySelectorAll('.tl-cell.selecting').forEach(c=>c.classList.remove('selecting'));
     document.querySelectorAll('.tl-hour-label.drag-hl').forEach(l=>l.classList.remove('drag-hl'));
 }
 
