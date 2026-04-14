@@ -6,7 +6,53 @@ if (!staffId || (staffRole !== 'owner' && staffRole !== 'admin')) {
     window.location.href = 'staff-login.html';
 }
 
+// ── Month Selector (sidebar) ──────────────────────────
+const _MONTHS_UA=['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+function initSidebarMonth(){
+    let ym=localStorage.getItem('wella_current_month');
+    if(!ym){const n=new Date();ym=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+    localStorage.setItem('wella_current_month',ym);
+    const[y,m]=ym.split('-').map(Number);
+    const el=document.getElementById('sidebar-month-label');
+    if(el)el.textContent=`${_MONTHS_UA[m-1]} ${y}`;
+}
+window.monthStep=function(dir){
+    let ym=localStorage.getItem('wella_current_month')||`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+    let[y,m]=ym.split('-').map(Number);
+    m+=dir;if(m>12){m=1;y++;}if(m<1){m=12;y--;}
+    const next=`${y}-${String(m).padStart(2,'0')}`;
+    localStorage.setItem('wella_current_month',next);
+    const[ny,nm]=next.split('-').map(Number);
+    const el=document.getElementById('sidebar-month-label');
+    if(el)el.textContent=`${_MONTHS_UA[nm-1]} ${ny}`;
+    window.dispatchEvent(new Event('monthchange'));
+};
+
+// ── Profile ───────────────────────────────────────────
+function initSidebarProfile(){
+    const name=localStorage.getItem('wella_staff_name')||'';
+    const role=localStorage.getItem('wella_staff_role')||'';
+    const av=document.getElementById('sidebar-avatar');
+    const un=document.getElementById('sidebar-uname');
+    const ur=document.getElementById('sidebar-urole');
+    if(av)av.textContent=name.charAt(0).toUpperCase()||'A';
+    if(un)un.textContent=name||'—';
+    if(ur)ur.textContent=role;
+}
+
+window.doLogout=function(){
+    ['wella_staff_id','wella_staff_role','wella_staff_name','wella_proc_list'].forEach(k=>localStorage.removeItem(k));
+    window.location.href='staff-login.html';
+};
+
+// ── Reload on month change ────────────────────────────
+window.addEventListener('monthchange', async ()=>{
+    await loadDashboardStats();
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
+    initSidebarMonth();
+    initSidebarProfile();
     await loadDashboardStats();
     await loadTodayTimeline();
     await loadStaffEfficiency();

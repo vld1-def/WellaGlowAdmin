@@ -361,6 +361,7 @@ window.deleteItem=async function(id){
 let restockItemId = null;
 
 let _restockManual = false; // user manually edited restock amount
+window.onRestockAmtInput = function(){ _restockManual = true; };
 
 window.openRestockModal = function(id) {
     closeDotPortal();
@@ -379,7 +380,7 @@ window.openRestockModal = function(id) {
         </div>
         <div style="background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.15)" class="p-3 rounded-xl">
             <label class="text-[9px] text-rose-400 font-black uppercase tracking-widest block mb-1.5">Сума закупки (₴) — запишеться у витрати</label>
-            <input id="restock-amt" type="number" min="0" step="0.01" value="${autoAmt}" class="inv-input" oninput="_restockManual=true">
+            <input id="restock-amt" type="number" min="0" step="0.01" value="${autoAmt}" class="inv-input" oninput="onRestockAmtInput()">
             <p class="text-[9px] text-zinc-600 mt-1.5">Авто-розрахунок: собівартість × кількість, але можна редагувати</p>
         </div>`;
     // store cost_per_unit for auto-calc
