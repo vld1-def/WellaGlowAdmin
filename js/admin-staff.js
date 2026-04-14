@@ -134,14 +134,15 @@ async function loadKPIs() {
     const monthStart = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     const monthEnd   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
-    const [apptRes, txRes] = await Promise.all([
+    const [apptRes, paidRes] = await Promise.all([
         window.db.from('appointment_history')
-            .select('price')
+            .select('master_id, price')
             .gte('visit_date', monthStart)
             .lte('visit_date', monthEnd),
         window.db.from('transactions')
-            .select('amount')
-            .eq('type', 'income')
+            .select('amount, staff_id')
+            .eq('type', 'expense')
+            .eq('category', 'salary')
             .gte('date', monthStart)
             .lte('date', monthEnd),
     ]);
@@ -156,7 +157,11 @@ async function loadKPIs() {
         const pct = s?.commission_rate || 40;
         fund += parseFloat(a.price || 0) * pct / 100;
     });
-    document.getElementById('kpi-payroll').textContent = '₴' + Math.round(fund).toLocaleString('uk-UA');
+
+    // Subtract already-paid salary this month
+    const paid = (paidRes.data || []).reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const remaining = Math.max(0, Math.round(fund) - Math.round(paid));
+    document.getElementById('kpi-payroll').textContent = '₴' + remaining.toLocaleString('uk-UA');
 }
 
 // ══════════════════════════════════════════════════════
@@ -236,12 +241,13 @@ function getClientName(r) {
 //  RENDER: STAFF TABLE
 // ══════════════════════════════════════════════════════
 
-function staffRow(s, appointments = 0, revenue = 0) {
+function staffRow(s, appointments = 0, revenue = 0, weekRevenue = 0) {
     const revs = allReviews.filter(r => r.staff_id === s.id);
     const avgRating = revs.length
         ? revs.reduce((sum, r) => sum + parseFloat(r.rating), 0) / revs.length
         : null;
-    const earned = Math.round(revenue * (s.commission_rate || 40) / 100);
+    const earned     = Math.round(revenue     * (s.commission_rate || 40) / 100);
+    const weekEarned = Math.round(weekRevenue * (s.commission_rate || 40) / 100);
     const isPinned = pinnedIds.has(s.id);
 
     return `
@@ -259,6 +265,7 @@ function staffRow(s, appointments = 0, revenue = 0) {
         <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-zinc-400 font-semibold">${appointments}</td>
         <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-white font-bold">₴${revenue.toLocaleString('uk-UA')}</td>
         <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-emerald-400 font-bold">₴${earned.toLocaleString('uk-UA')}</td>
+        <td class="py-3 pr-4 hidden lg:table-cell text-[11px] font-bold" style="color:#22d3ee">₴${weekEarned.toLocaleString('uk-UA')}</td>
         <td class="py-3 pr-4">
             <span class="text-[11px] font-bold text-rose-400">${s.commission_rate || 40}%</span>
         </td>
@@ -290,19 +297,29 @@ async function renderStaffTable(list) {
     const now = new Date();
     const monthStart = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     const monthEnd   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    // Week: Mon–Sun of current week
+    const dow = now.getDay() || 7;
+    const weekStart = localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (dow - 1)));
+    const weekEnd   = localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + (7 - dow)));
 
-    const { data: appts } = await window.db
-        .from('appointment_history')
-        .select('master_id, price')
-        .gte('visit_date', monthStart)
-        .lte('visit_date', monthEnd);
+    const [{ data: appts }, { data: weekAppts }] = await Promise.all([
+        window.db.from('appointment_history').select('master_id, price')
+            .gte('visit_date', monthStart).lte('visit_date', monthEnd),
+        window.db.from('appointment_history').select('master_id, price')
+            .gte('visit_date', weekStart).lte('visit_date', weekEnd),
+    ]);
 
     const apptMap = {};
     (appts || []).forEach(a => {
         if (!a.master_id) return;
-        if (!apptMap[a.master_id]) apptMap[a.master_id] = { count: 0, revenue: 0 };
+        if (!apptMap[a.master_id]) apptMap[a.master_id] = { count: 0, revenue: 0, weekRevenue: 0 };
         apptMap[a.master_id].count++;
         apptMap[a.master_id].revenue += parseFloat(a.price || 0);
+    });
+    (weekAppts || []).forEach(a => {
+        if (!a.master_id) return;
+        if (!apptMap[a.master_id]) apptMap[a.master_id] = { count: 0, revenue: 0, weekRevenue: 0 };
+        apptMap[a.master_id].weekRevenue = (apptMap[a.master_id].weekRevenue || 0) + parseFloat(a.price || 0);
     });
     staffApptMap = apptMap; // cache for sort
 
@@ -335,8 +352,8 @@ async function renderStaffTable(list) {
 
     const visible = sorted.slice(0, staffVisibleCount);
     tbody.innerHTML = visible.map(s => {
-        const stat = apptMap[s.id] || { count: 0, revenue: 0 };
-        return staffRow(s, stat.count, stat.revenue);
+        const stat = apptMap[s.id] || { count: 0, revenue: 0, weekRevenue: 0 };
+        return staffRow(s, stat.count, stat.revenue, stat.weekRevenue || 0);
     }).join('');
 
     // "Load more" row
@@ -1253,3 +1270,192 @@ async function renderTeamSchedule() {
         </details>`;
     }).join('');
 }
+
+// ══════════════════════════════════════════════════════
+//  PAYROLL MODAL
+// ══════════════════════════════════════════════════════
+
+// payrollData: [{ staff, earned, amount }]  (amount is editable)
+let payrollData = [];
+
+window.openPayrollModal = async function() {
+    const now = new Date();
+    const monthStart = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    const monthEnd   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+
+    // Fetch appointments this month + already-paid salary
+    const [apptRes, paidRes] = await Promise.all([
+        window.db.from('appointment_history').select('master_id, price')
+            .gte('visit_date', monthStart).lte('visit_date', monthEnd),
+        window.db.from('transactions').select('amount, staff_id')
+            .eq('type', 'expense').eq('category', 'salary')
+            .gte('date', monthStart).lte('date', monthEnd),
+    ]);
+
+    const earningsMap = {};
+    (apptRes.data || []).forEach(a => {
+        if (!a.master_id) return;
+        earningsMap[a.master_id] = (earningsMap[a.master_id] || 0) + parseFloat(a.price || 0);
+    });
+    const paidMap = {};
+    (paidRes.data || []).forEach(t => {
+        if (!t.staff_id) return;
+        paidMap[t.staff_id] = (paidMap[t.staff_id] || 0) + parseFloat(t.amount || 0);
+    });
+
+    payrollData = allStaff
+        .filter(s => s.role === 'master' || s.role === 'admin')
+        .map(s => {
+            const rev     = earningsMap[s.id] || 0;
+            const earned  = Math.round(rev * (s.commission_rate || 40) / 100);
+            const alrPaid = Math.round(paidMap[s.id] || 0);
+            const toPay   = Math.max(0, earned - alrPaid);
+            return { staff: s, earned, alrPaid, amount: toPay };
+        });
+
+    const monthLabel = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+    document.getElementById('payroll-month-label').textContent = monthLabel;
+
+    renderPayrollRows();
+    document.getElementById('payroll-modal').classList.remove('hidden');
+};
+
+window.closePayrollModal = function() {
+    document.getElementById('payroll-modal').classList.add('hidden');
+};
+
+function renderPayrollRows() {
+    const tbody = document.getElementById('payroll-rows');
+    tbody.innerHTML = payrollData.map((row, i) => `
+        <tr class="border-b border-white/5">
+            <td class="py-3 pr-3">
+                <div class="flex items-center gap-2">
+                    ${avatarEl(row.staff, 'w-7 h-7', 'text-[9px]')}
+                    <div>
+                        <p class="text-[11px] font-bold text-white leading-tight">${row.staff.name.split(' ')[0]}</p>
+                        <p class="text-[9px] text-zinc-600">${row.alrPaid > 0 ? '−₴'+row.alrPaid.toLocaleString('uk-UA')+' вже виплачено' : ''}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="py-3 pr-3 text-[11px] font-bold text-emerald-400">₴${row.earned.toLocaleString('uk-UA')}</td>
+            <td class="py-3 pr-3">
+                <input type="number" min="0" value="${row.amount}"
+                    oninput="updatePayrollAmount(${i}, this.value)"
+                    class="w-24 text-[11px] font-bold text-white bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 outline-none focus:border-rose-500/50">
+            </td>
+            <td class="py-3">
+                <input type="checkbox" id="pr-chk-${i}" ${row.amount > 0 ? 'checked' : ''}
+                    onchange="updatePayrollCheck(${i}, this.checked)"
+                    class="w-4 h-4 accent-rose-500 cursor-pointer">
+            </td>
+        </tr>`).join('');
+    updatePayrollTotal();
+}
+
+window.updatePayrollAmount = function(i, val) {
+    payrollData[i].amount = Math.max(0, parseInt(val) || 0);
+    updatePayrollTotal();
+};
+
+window.updatePayrollCheck = function(i, checked) {
+    if (!checked) { payrollData[i]._skip = true; }
+    else { delete payrollData[i]._skip; }
+    updatePayrollTotal();
+};
+
+function updatePayrollTotal() {
+    const total = payrollData
+        .filter((r, i) => {
+            const chk = document.getElementById('pr-chk-'+i);
+            return chk ? chk.checked : !r._skip;
+        })
+        .reduce((s, r) => s + r.amount, 0);
+    document.getElementById('payroll-total').textContent = '₴' + total.toLocaleString('uk-UA');
+}
+
+window.confirmPayroll = async function() {
+    const today = localDate(new Date());
+    const toPayRows = payrollData.filter((r, i) => {
+        const chk = document.getElementById('pr-chk-'+i);
+        return (chk ? chk.checked : !r._skip) && r.amount > 0;
+    });
+    if (!toPayRows.length) { alert('Не вибрано жодного майстра або сума 0'); return; }
+
+    const transactions = toPayRows.map(r => ({
+        date: today,
+        type: 'expense',
+        category: 'salary',
+        subcategory: null,
+        amount: r.amount,
+        payment_method: 'cash',
+        comment: `Виплата ЗП: ${r.staff.name}`,
+        staff_id: r.staff.id,
+    }));
+
+    const { error } = await window.db.from('transactions').insert(transactions);
+    if (error) { alert('Помилка: ' + error.message); return; }
+
+    closePayrollModal();
+    loadKPIs(); // refresh payroll fund
+    alert(`Виплачено ${toPayRows.length} майстрам на суму ₴${toPayRows.reduce((s,r)=>s+r.amount,0).toLocaleString('uk-UA')}`);
+};
+
+// ── CSV export ────────────────────────────────────────
+window.generatePayrollCSV = function() {
+    const now = new Date();
+    const month = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+    let csv = `Звіт виплат ЗП — ${month}\n`;
+    csv += 'Майстер,Зароблено (₴),До виплати (₴)\n';
+    payrollData.forEach(r => {
+        csv += `"${r.staff.name}",${r.earned},${r.amount}\n`;
+    });
+    const total = payrollData.reduce((s,r)=>s+r.amount,0);
+    csv += `"РАЗОМ",,${total}\n`;
+
+    const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `payroll_${now.getFullYear()}_${String(now.getMonth()+1).padStart(2,'0')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+// ── PDF export ────────────────────────────────────────
+window.generatePayrollPDF = function() {
+    const now = new Date();
+    const month = now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+    const total = payrollData.reduce((s,r)=>s+r.amount,0);
+
+    const rows = payrollData.map((r, i) => `
+        <tr>
+            <td>${i+1}</td>
+            <td>${r.staff.name}</td>
+            <td style="text-align:right">₴${r.earned.toLocaleString('uk-UA')}</td>
+            <td style="text-align:right">₴${r.amount.toLocaleString('uk-UA')}</td>
+        </tr>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+        <style>
+            body{font-family:Arial,sans-serif;padding:32px;color:#111}
+            h2{margin-bottom:4px}
+            p{color:#666;margin-bottom:20px;font-size:13px}
+            table{width:100%;border-collapse:collapse}
+            th,td{padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;text-align:left}
+            th{background:#f9fafb;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+            tfoot td{font-weight:800;border-top:2px solid #111;background:#f9fafb}
+        </style></head><body>
+        <h2>Звіт виплат ЗП</h2>
+        <p>${month} · Дата формування: ${now.toLocaleDateString('uk-UA')}</p>
+        <table>
+            <thead><tr><th>#</th><th>Майстер</th><th style="text-align:right">Зароблено</th><th style="text-align:right">До виплати</th></tr></thead>
+            <tbody>${rows}</tbody>
+            <tfoot><tr><td colspan="3">РАЗОМ</td><td style="text-align:right">₴${total.toLocaleString('uk-UA')}</td></tr></tfoot>
+        </table>
+        <script>window.onload=()=>{window.print();}<\/script>
+        </body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+};
