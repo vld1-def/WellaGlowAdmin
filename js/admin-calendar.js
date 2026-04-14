@@ -58,8 +58,31 @@ function slotKey(h,m){return h*2+(m===30?1:0);}
 // Work hours 9-20
 const HOURS = Array.from({length:12},(_,i)=>i+9); // [9,10,...,20]
 
+// ── Month Selector (sidebar) ─────────────────────────
+const _MONTHS_UA=['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+function initSidebarMonth(){
+    let ym=localStorage.getItem('wella_current_month');
+    if(!ym){const n=new Date();ym=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+    localStorage.setItem('wella_current_month',ym);
+    const[y,m]=ym.split('-').map(Number);
+    const el=document.getElementById('sidebar-month-label');
+    if(el)el.textContent=`${_MONTHS_UA[m-1]} ${y}`;
+}
+window.monthStep=function(dir){
+    let ym=localStorage.getItem('wella_current_month')||`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+    let[y,m]=ym.split('-').map(Number);
+    m+=dir;if(m>12){m=1;y++;}if(m<1){m=12;y--;}
+    const next=`${y}-${String(m).padStart(2,'0')}`;
+    localStorage.setItem('wella_current_month',next);
+    const[ny,nm]=next.split('-').map(Number);
+    const el=document.getElementById('sidebar-month-label');
+    if(el)el.textContent=`${_MONTHS_UA[nm-1]} ${ny}`;
+    window.dispatchEvent(new Event('monthchange'));
+};
+
 // ══ Boot ═════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async ()=>{
+    initSidebarMonth();
     await Promise.all([loadMasters(),loadClients(),loadServices(),loadStaffSvc()]);
     buildMasterPills();
     await Promise.all([refreshAppts(), loadShifts()]);
@@ -388,16 +411,22 @@ function renderLanes(days, today){
 }
 
 // ══ Drag-to-select (timeline cells) ══════════════════
+function getSlotMinute(e, cell){
+    const rect=cell.getBoundingClientRect();
+    return (e.clientY-rect.top)<rect.height/2 ? 0 : 30;
+}
 window.dragBegin=function(e,dayStr,h){
     e.preventDefault();
+    const m=getSlotMinute(e,e.currentTarget);
     isDragging=true;
-    dragStart={dayStr,h}; dragEnd={dayStr,h};
+    dragStart={dayStr,h,m}; dragEnd={dayStr,h,m};
     highlightDrag();
     document.getElementById('drag-hint').classList.add('show');
 };
 window.dragMove=function(e,dayStr,h){
     if(!isDragging||dragStart?.dayStr!==dayStr) return;
-    dragEnd={dayStr,h};
+    const m=getSlotMinute(e,e.currentTarget);
+    dragEnd={dayStr,h,m};
     highlightDrag();
 };
 window.dragEnd_=function(e,dayStr,h){
@@ -405,9 +434,15 @@ window.dragEnd_=function(e,dayStr,h){
     isDragging=false;
     document.getElementById('drag-hint').classList.remove('show');
     if(dragStart?.dayStr===dayStr){
-        const sh=Math.min(dragStart.h,h);
-        const eh=Math.max(dragStart.h,h)+1;
-        openApptDrawer(dayStr,'','',sh,eh);
+        const endM=getSlotMinute(e,e.currentTarget);
+        let startTotal=toMinutes(dragStart.h,dragStart.m);
+        let endTotal=toMinutes(h,endM)+30;
+        if(startTotal>toMinutes(h,endM)){
+            [startTotal,endTotal]=[toMinutes(h,endM),toMinutes(dragStart.h,dragStart.m)+30];
+        }
+        const startH=Math.floor(startTotal/60), startMM=startTotal%60;
+        const endH=Math.floor(endTotal/60),   endMM=endTotal%60;
+        openApptDrawer(dayStr,'','',startH,endH,startMM,endMM);
     }
     dragStart=null; dragEnd=null;
     clearDragHighlight();
@@ -422,16 +457,18 @@ window.dragCancel=function(){
 function highlightDrag(){
     clearDragHighlight();
     if(!dragStart||!dragEnd) return;
-    const sh=Math.min(dragStart.h,dragEnd.h), eh=Math.max(dragStart.h,dragEnd.h);
+    const startTotal=toMinutes(dragStart.h,dragStart.m||0);
+    const endTotal=toMinutes(dragEnd.h,dragEnd.m||0);
+    const lo=Math.min(startTotal,endTotal), hi=Math.max(startTotal,endTotal);
+    const shH=Math.floor(lo/60), ehH=Math.floor(hi/60);
     document.querySelectorAll('.tl-cell').forEach(cell=>{
         const ch=parseInt(cell.dataset.hour);
-        if(cell.dataset.day===dragStart.dayStr && ch>=sh && ch<=eh)
+        if(cell.dataset.day===dragStart.dayStr && ch>=shH && ch<=ehH)
             cell.classList.add('selecting');
     });
-    // Highlight hour labels on left
     document.querySelectorAll('.tl-hour-label[data-hour]').forEach(lbl=>{
         const lh=parseInt(lbl.dataset.hour);
-        lbl.classList.toggle('drag-hl', lh>=sh && lh<=eh);
+        lbl.classList.toggle('drag-hl', lh>=shH && lh<=ehH);
     });
 }
 function clearDragHighlight(){

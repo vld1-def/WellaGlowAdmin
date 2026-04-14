@@ -93,6 +93,14 @@
             </div>
         </div>
     </nav>
+    <!-- ── Month Selector ── -->
+    <div class="px-3 pb-2 hidden lg:block">
+        <div class="flex items-center gap-1 p-2 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)">
+            <button onclick="monthStep(-1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="sidebar-month-label" class="text-[10px] font-black uppercase tracking-widest text-zinc-300 flex-1 text-center">—</span>
+            <button onclick="monthStep(1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+    </div>
     <!-- ── Profile + Logout ── -->
     <div class="border-t border-white/5 p-3">
         <div class="flex items-center gap-3">
@@ -126,22 +134,29 @@
     </header>
 
     <!-- KPI ROW -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div class="glass-panel rounded-2xl p-4">
-            <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Капіталізація складу</p>
+            <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Вартість залишків</p>
             <p id="kpi-total" class="text-xl font-black text-white mt-1">—</p>
         </div>
         <div class="glass-panel rounded-2xl p-4">
             <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Всього позицій</p>
             <p id="kpi-count" class="text-xl font-black text-white mt-1">—</p>
         </div>
+        <div class="glass-panel rounded-2xl p-4 col-span-2 lg:col-span-1">
+            <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Потребує уваги / Критично</p>
+            <p class="text-xl font-black mt-1"><span id="kpi-attention" class="text-amber-400">—</span> <span class="text-zinc-700 text-base">/ </span><span id="kpi-critical" class="text-rose-500">—</span></p>
+        </div>
+    </div>
+    <!-- Capitalization KPI ROW -->
+    <div class="grid grid-cols-2 gap-4 -mt-2">
         <div class="glass-panel rounded-2xl p-4">
-            <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Потребує уваги</p>
-            <p id="kpi-attention" class="text-xl font-black text-rose-400 mt-1">—</p>
+            <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Витрачено на склад (всього)</p>
+            <p id="kpi-spent-total" class="text-xl font-black text-emerald-400 mt-1">—</p>
         </div>
         <div class="glass-panel rounded-2xl p-4">
-            <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Критично мало</p>
-            <p id="kpi-critical" class="text-xl font-black text-rose-500 mt-1">—</p>
+            <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Витрачено цього місяця</p>
+            <p id="kpi-spent-month" class="text-xl font-black text-sky-400 mt-1">—</p>
         </div>
     </div>
 
@@ -250,7 +265,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Залишок</label>
-                    <input id="f-qty" type="number" class="inv-input" placeholder="0" min="0">
+                    <input id="f-qty" type="number" class="inv-input" placeholder="0" min="0" oninput="autoCalcPurchase()">
                 </div>
                 <div>
                     <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Мін. залишок</label>
@@ -260,7 +275,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Собівартість (₴)</label>
-                    <input id="f-cost" type="number" class="inv-input" placeholder="0" min="0" step="0.01">
+                    <input id="f-cost" type="number" class="inv-input" placeholder="0" min="0" step="0.01" oninput="autoCalcPurchase()">
                 </div>
                 <div>
                     <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Од. виміру</label>
@@ -276,6 +291,12 @@
             <div>
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-1.5">Постачальник</label>
                 <input id="f-supplier" type="text" class="inv-input" placeholder="Необов'язково…">
+            </div>
+            <!-- Purchase amount row — shown only when adding new item -->
+            <div id="f-purchase-row" class="hidden p-3 rounded-xl" style="background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.15)">
+                <label class="text-[9px] text-rose-400 font-black uppercase tracking-widest block mb-1.5">Сума закупки (₴) — запишеться у витрати</label>
+                <input id="f-purchase-amt" type="number" min="0" step="0.01" class="inv-input" placeholder="Авто-розрахунок: собівартість × кількість" oninput="onPurchaseAmtInput()">
+                <p class="text-[9px] text-zinc-600 mt-1.5">Розраховується автоматично, але можна редагувати</p>
             </div>
         </div>
         <div class="flex gap-2 mt-5">
