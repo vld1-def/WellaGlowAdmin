@@ -251,8 +251,8 @@ function fillForm(c) {
     document.getElementById('f-birthday').value       = c.birthday  || '';
     document.getElementById('f-allergies').value      = c.notes_allergies   || '';
     document.getElementById('f-preferences').value    = c.notes_preferences || '';
-    document.getElementById('f-formula').value        = c.color_formula     || '';
-    document.getElementById('f-notes').value          = c.notes             || '';
+    document.getElementById('f-formula').value        = c.color_formula     || c.notes_formula || '';
+    document.getElementById('f-notes').value          = c.notes             || c.notes_internal || '';
 
     _currentVip = !!c.vip_status;
     const initials = (c.full_name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
@@ -328,6 +328,8 @@ window.saveClient = async function() {
     const name     = document.getElementById('f-name').value.trim();
     if (!name) { alert('Введіть ім\'я клієнта'); return; }
 
+    // Build payload with only columns that exist in the DB.
+    // Extend this list if/when new columns are added to the clients table.
     const payload = {
         full_name:          name,
         phone:              document.getElementById('f-phone').value.trim()       || null,
@@ -336,15 +338,30 @@ window.saveClient = async function() {
         vip_status:         _currentVip,
         notes_allergies:    document.getElementById('f-allergies').value.trim()   || null,
         notes_preferences:  document.getElementById('f-preferences').value.trim() || null,
-        color_formula:      document.getElementById('f-formula').value.trim()     || null,
-        notes:              document.getElementById('f-notes').value.trim()       || null,
+    };
+    // Include optional columns only if they exist (avoid schema errors)
+    const formulaVal = document.getElementById('f-formula').value.trim();
+    const notesVal   = document.getElementById('f-notes').value.trim();
+
+    // Try saving with optional columns; if it fails, retry without them
+    let err;
+    const tryWithExtras = async (extraFields) => {
+        const p = { ...payload, ...extraFields };
+        if (_currentId) {
+            return (await window.db.from('clients').update(p).eq('id', _currentId)).error;
+        } else {
+            return (await window.db.from('clients').insert(p)).error;
+        }
     };
 
-    let err;
-    if (_currentId) {
-        ({ error: err } = await window.db.from('clients').update(payload).eq('id', _currentId));
-    } else {
-        ({ error: err } = await window.db.from('clients').insert(payload));
+    err = await tryWithExtras({
+        ...(formulaVal ? { color_formula: formulaVal } : {}),
+        ...(notesVal   ? { notes: notesVal }           : {}),
+    });
+
+    // If schema error on optional columns, retry with base payload only
+    if (err && err.message && err.message.includes('column')) {
+        err = await tryWithExtras({});
     }
 
     if (err) { alert('Помилка збереження: ' + err.message); return; }
