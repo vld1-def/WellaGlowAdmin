@@ -121,8 +121,8 @@
             pointer-events:none;z-index:9999;opacity:0;transition:opacity .25s}
         #drag-hint.show{opacity:1}
 
-        /* Blocked cells */
-        .tl-cell.blocked{cursor:pointer}
+        /* Blocked cells — no hour/half-hour lines */
+        .tl-cell.blocked{cursor:pointer;border-top:none !important}
         .tl-cell.blocked:hover{background:transparent}
 
         /* Shift modal */
