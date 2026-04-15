@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wella Glow | База клієнтів</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;600;700;800&display=swap');
+        :root { --bg: #050505; --accent: #f43f5e; }
+        body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
+        * { font-style: normal !important; }
+        .glass-panel { background: rgba(17,17,19,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
+        .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
+        .sidebar-link.active { background: rgba(244,63,94,0.1); color: #f43f5e; border-left: 3px solid #f43f5e; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1e1e21; border-radius: 10px; }
+
+        /* Client table rows */
+        .client-row { border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; transition: background 0.15s; }
+        .client-row:last-child { border-bottom: none; }
+        .client-row:hover { background: rgba(255,255,255,0.025); }
+        .client-row td { padding-top: 14px !important; padding-bottom: 14px !important; }
+
+        /* VIP badge */
+        .vip-badge { background: linear-gradient(135deg, #f59e0b, #fcd34d); color: #000; font-size: 7px; font-weight: 900;
+            padding: 2px 6px; border-radius: 6px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+        /* Skeleton */
+        .skeleton { background: linear-gradient(90deg,#111113 25%,#1a1a1d 50%,#111113 75%);
+            background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius: 6px; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        /* Client modal */
+        #client-modal { opacity:0; pointer-events:none; transition:opacity 0.25s ease; }
+        #client-modal.open { opacity:1; pointer-events:all; }
+        #modal-overlay { opacity:0; pointer-events:none; transition:opacity 0.25s ease; }
+        #modal-overlay.open { opacity:1; pointer-events:all; }
+
+        /* Modal inputs */
+        .cl-input {
+            width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+            border-radius:10px; padding:10px 12px; color:#e2e8f0; font-size:12px;
+            font-family:'Manrope',sans-serif; font-weight:600; outline:none; transition:border-color 0.2s;
+        }
+        .cl-input:focus { border-color:rgba(244,63,94,0.5); }
+        .cl-input::placeholder { color: #52525b; }
+        textarea.cl-input { resize:vertical; min-height:70px; }
+
+        /* History item */
+        .hist-item { border-bottom:1px solid rgba(255,255,255,0.04); }
+        .hist-item:last-child { border-bottom:none; }
+
+        /* Tab */
+        .modal-tab { padding:6px 14px; border-radius:8px; font-size:10px; font-weight:800;
+            text-transform:uppercase; letter-spacing:0.06em; cursor:pointer; transition:all 0.2s; color:#52525b; }
+        .modal-tab.active { background:rgba(244,63,94,0.12); color:#f43f5e; }
+
+        /* Sort btn */
+        .sort-btn { padding:5px 10px; border-radius:8px; font-size:9px; font-weight:800;
+            text-transform:uppercase; letter-spacing:.06em; cursor:pointer; transition:all .2s;
+            border:1px solid rgba(255,255,255,.06); color:#52525b; background:transparent; }
+        .sort-btn.active { background:rgba(244,63,94,.1); border-color:rgba(244,63,94,.3); color:#f43f5e; }
+        .sort-btn:hover:not(.active) { border-color:rgba(255,255,255,.12); color:#a1a1aa; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+<aside class="w-16 lg:w-64 bg-black/50 border-r border-white/5 flex flex-col fixed h-full z-50">
+    <div class="p-6">
+        <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none hidden lg:block">Wella Glow</h1>
+        <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none lg:hidden">W</h1>
+        <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] mt-1 uppercase hidden lg:block">studio</p>
+    </div>
+    <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto pb-4">
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Аналітика</p>
+            <div class="space-y-1">
+                <a href="owner-dashboard.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-chart-pie w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Дашборд</span></a>
+                <a href="admin-finance.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-wallet w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Фінанси</span></a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Студія</p>
+            <div class="space-y-1">
+                <a href="admin-calendar.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-calendar-check w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span></a>
+                <a href="admin-staff.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-users-gear w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span></a>
+                <a href="admin-inventory.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-boxes-stacked w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Склад</span></a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Клієнти</p>
+            <div class="space-y-1">
+                <a href="admin-clients-base.html" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition font-bold"><i class="fa-solid fa-address-book w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">База клієнтів</span></a>
+                <a href="admin-bonuses.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-gift w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Бонуси</span></a>
+            </div>
+        </div>
+    </nav>
+    <!-- ── Month Selector ── -->
+    <div class="px-3 pb-2 hidden lg:block">
+        <div class="flex items-center gap-1 p-2 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)">
+            <button onclick="monthStep(-1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="sidebar-month-label" class="text-[10px] font-black uppercase tracking-widest text-zinc-300 flex-1 text-center">—</span>
+            <button onclick="monthStep(1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+    </div>
+    <!-- ── Profile + Logout ── -->
+    <div class="border-t border-white/5 p-3">
+        <div class="flex items-center gap-3">
+            <div id="sidebar-avatar" class="w-8 h-8 rounded-full neo-gradient flex-shrink-0 flex items-center justify-center text-white font-black text-xs">A</div>
+            <div class="hidden lg:block flex-1 min-w-0">
+                <p id="sidebar-uname" class="text-xs font-bold text-white truncate">—</p>
+                <p id="sidebar-urole" class="text-[9px] text-zinc-500 uppercase tracking-widest">—</p>
+            </div>
+            <button onclick="doLogout()" title="Вийти" class="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition flex-shrink-0">
+                <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            </button>
+        </div>
+        <button onclick="doLogout()" class="lg:hidden mt-2 w-full flex items-center justify-center p-2 rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition">
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+    </div>
+</aside>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main class="flex-1 ml-16 lg:ml-64 p-5 lg:p-8">
+
+    <!-- HEADER -->
+    <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
+        <div>
+            <h2 class="text-2xl font-extrabold text-white tracking-tight">База клієнтів</h2>
+            <p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">
+                Всього: <span id="total-count" class="text-rose-500">—</span>
+                &nbsp;·&nbsp; VIP: <span id="vip-count" class="text-amber-400">—</span>
+                &nbsp;·&nbsp; Нових (міс.): <span id="new-count" class="text-emerald-400">—</span>
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- Search -->
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-xs"></i>
+                <input id="search-input" type="text" placeholder="Пошук клієнта..." oninput="filterClients()"
+                    class="bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-2.5 text-xs font-bold text-white placeholder-zinc-600 outline-none focus:border-rose-500/40 w-56 transition">
+            </div>
+            <!-- Add client -->
+            <button onclick="openClientModal(null)"
+                class="neo-gradient px-5 py-2.5 rounded-xl text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2 hover:opacity-90 transition">
+                <i class="fa-solid fa-plus"></i>
+                <span class="hidden sm:inline">Новий клієнт</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- SORT BAR -->
+    <div class="flex items-center gap-2 mb-4 flex-wrap">
+        <span class="text-[9px] text-zinc-600 font-black uppercase tracking-widest mr-1">Сортування:</span>
+        <button class="sort-btn active" onclick="setSort('name',this)">Ім'я</button>
+        <button class="sort-btn" onclick="setSort('ltv',this)">LTV ↓</button>
+        <button class="sort-btn" onclick="setSort('visits',this)">Візити ↓</button>
+        <button class="sort-btn" onclick="setSort('last',this)">Останній візит</button>
+        <button class="sort-btn" onclick="setSort('new',this)">Нові</button>
+        <div class="ml-auto flex items-center gap-2">
+            <button class="sort-btn" id="filter-vip" onclick="toggleVipFilter(this)"><i class="fa-solid fa-star text-amber-400 mr-1"></i>Тільки VIP</button>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="glass-panel rounded-3xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="border-b border-white/5">
+                        <th class="px-6 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Клієнт</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">LTV</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Візити</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Бонуси</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Останній візит</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Телефон</th>
+                        <th class="px-2 py-4"></th>
+                    </tr>
+                </thead>
+                <tbody id="clients-tbody">
+                    <!-- JS fills -->
+                    <tr><td colspan="7" class="px-6 py-16 text-center text-zinc-700 text-xs font-bold uppercase tracking-widest">Завантаження...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- ══════════════ OVERLAY ══════════════ -->
+<div id="modal-overlay" class="fixed inset-0 bg-black/70 z-40 backdrop-blur-sm" onclick="closeClientModal()"></div>
+
+<!-- ══════════════ CLIENT MODAL (3-panel) ══════════════ -->
+<div id="client-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-5xl glass-panel rounded-3xl overflow-hidden flex flex-col lg:flex-row" style="max-height:90vh;">
+
+        <!-- LEFT: Avatar + Contacts -->
+        <div class="w-full lg:w-72 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 p-6 flex flex-col gap-5 overflow-y-auto">
+            <!-- Avatar & Name -->
+            <div class="flex flex-col items-center text-center gap-3 pt-2">
+                <div id="modal-avatar" class="w-20 h-20 rounded-full neo-gradient flex items-center justify-center text-white font-black text-3xl">?</div>
+                <div>
+                    <div class="flex items-center justify-center gap-2">
+                        <p id="modal-name-display" class="text-lg font-black text-white tracking-tight">—</p>
+                        <span id="modal-vip-badge" class="vip-badge hidden">VIP</span>
+                    </div>
+                    <p id="modal-since" class="text-[9px] text-zinc-600 uppercase tracking-widest mt-1">Клієнт з —</p>
+                </div>
+            </div>
+
+            <!-- Contact buttons -->
+            <div class="flex gap-2 justify-center">
+                <a id="modal-phone-link" href="#" class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/20 transition" title="Зателефонувати">
+                    <i class="fa-solid fa-phone text-xs"></i>
+                </a>
+                <a id="modal-insta-link" href="#" target="_blank" class="w-10 h-10 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 hover:bg-pink-500/20 transition" title="Instagram">
+                    <i class="fa-brands fa-instagram text-xs"></i>
+                </a>
+                <button id="modal-vip-btn" onclick="toggleVip()" class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 hover:bg-amber-500/20 transition" title="VIP статус">
+                    <i class="fa-solid fa-star text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Fields -->
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Ім'я</label>
+                    <input id="f-name" class="cl-input" placeholder="Повне ім'я">
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Телефон</label>
+                    <input id="f-phone" class="cl-input" placeholder="+380...">
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Instagram</label>
+                    <input id="f-instagram" class="cl-input" placeholder="@нік">
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">День народження</label>
+                    <input id="f-birthday" type="date" class="cl-input">
+                </div>
+            </div>
+
+            <!-- Save + Delete -->
+            <div class="space-y-2 mt-auto pt-2">
+                <button onclick="saveClient()" class="neo-gradient w-full py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i>Зберегти
+                </button>
+                <button id="modal-delete-btn" onclick="deleteClient()" class="hidden w-full py-2.5 rounded-xl text-[10px] font-black text-rose-400 uppercase tracking-widest border border-rose-500/20 hover:bg-rose-500/10 transition">
+                    <i class="fa-solid fa-trash mr-2"></i>Видалити
+                </button>
+            </div>
+        </div>
+
+        <!-- MIDDLE: Visit history -->
+        <div class="flex-1 border-b lg:border-b-0 lg:border-r border-white/5 p-6 overflow-y-auto flex flex-col gap-4" style="min-width:0">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xs font-black text-white uppercase tracking-widest">Історія візитів</h3>
+                <span id="modal-visits-count" class="text-[9px] text-zinc-600 font-black">0 візитів</span>
+            </div>
+            <!-- Tab (history / reviews) -->
+            <div class="flex gap-1">
+                <button class="modal-tab active" id="tab-history" onclick="switchTab('history')">Візити</button>
+                <button class="modal-tab" id="tab-reviews" onclick="switchTab('reviews')">Відгуки</button>
+            </div>
+
+            <!-- History list -->
+            <div id="history-list" class="space-y-0 flex-1 overflow-y-auto">
+                <p class="text-zinc-700 text-xs font-bold text-center py-10 uppercase tracking-widest">Немає записів</p>
+            </div>
+
+            <!-- Reviews list (hidden by default) -->
+            <div id="reviews-list" class="hidden flex-1 overflow-y-auto">
+                <p class="text-zinc-700 text-xs font-bold text-center py-10 uppercase tracking-widest">Немає відгуків</p>
+            </div>
+        </div>
+
+        <!-- RIGHT: Financial + Notes + Formula -->
+        <div class="w-full lg:w-72 flex-shrink-0 p-6 overflow-y-auto flex flex-col gap-5">
+            <!-- Close button -->
+            <div class="flex justify-end">
+                <button onclick="closeClientModal()" class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/8 transition">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Financial KPIs -->
+            <div class="space-y-3">
+                <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest">Цінність клієнта</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-white/3 rounded-xl p-3 border border-white/5">
+                        <p class="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1">LTV</p>
+                        <p id="modal-ltv" class="text-base font-black text-white">₴0</p>
+                    </div>
+                    <div class="bg-white/3 rounded-xl p-3 border border-white/5">
+                        <p class="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1">Бонуси</p>
+                        <p id="modal-bonuses" class="text-base font-black text-amber-400">0</p>
+                    </div>
+                    <div class="bg-white/3 rounded-xl p-3 border border-white/5">
+                        <p class="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1">Сер. чек</p>
+                        <p id="modal-avg" class="text-base font-black text-white">₴0</p>
+                    </div>
+                    <div class="bg-white/3 rounded-xl p-3 border border-white/5">
+                        <p class="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1">Останній</p>
+                        <p id="modal-last-date" class="text-[11px] font-black text-zinc-300">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Allergies / Preferences -->
+            <div>
+                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Алергії / Особливості</label>
+                <textarea id="f-allergies" class="cl-input" placeholder="Алергія на..."></textarea>
+            </div>
+            <div>
+                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Побажання</label>
+                <textarea id="f-preferences" class="cl-input" placeholder="Побажання клієнта..."></textarea>
+            </div>
+
+            <!-- Color formula -->
+            <div>
+                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">
+                    <i class="fa-solid fa-flask text-rose-400 mr-1"></i>Колірна формула
+                </label>
+                <textarea id="f-formula" class="cl-input" placeholder="Wellacolor 9/1 + Oxoderm 6%..."></textarea>
+            </div>
+
+            <!-- Internal note -->
+            <div>
+                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Нотатка</label>
+                <textarea id="f-notes" class="cl-input" placeholder="Внутрішні нотатки..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/admin-clients-base.js"></script>
+</body>
+</html>

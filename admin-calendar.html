@@ -65,9 +65,13 @@
         .tl-hour-half-pad{height:30px;width:48px}
         /* Each cell = one 30-min slot */
         .tl-cell{height:30px;border-left:1px solid rgba(255,255,255,.04);
-            border-bottom:1px solid rgba(255,255,255,.03);padding:1px 3px;
+            border-bottom:none;padding:1px 3px;
             position:relative;cursor:pointer;transition:background .1s;
             box-sizing:border-box;overflow:visible}
+        /* Hour boundary (top of :00 cell) — bold solid line */
+        .tl-cell[data-min="0"]{border-top:1px solid rgba(255,255,255,.12)}
+        /* Half-hour divider (top of :30 cell) — thin dashed line */
+        .tl-cell[data-min="30"]{border-top:1px dashed rgba(255,255,255,.04)}
         .tl-cell:hover{background:rgba(255,255,255,.03)}
         .tl-cell.selecting{background:rgba(244,63,94,.08);border-color:rgba(244,63,94,.2)}
         .tl-cell.selected-range{background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.25)}
