@@ -319,40 +319,19 @@ window.saveClient = async function() {
     const name     = document.getElementById('f-name').value.trim();
     if (!name) { alert('Введіть ім\'я клієнта'); return; }
 
-    // Base payload — only 100% guaranteed columns
-    const basePayload = {
+    // Only send columns that are guaranteed to exist in the schema
+    const payload = {
         full_name: name,
         phone:     document.getElementById('f-phone').value.trim()     || null,
         instagram: document.getElementById('f-instagram').value.trim() || null,
         birthday:  document.getElementById('f-birthday').value         || null,
     };
-    // Optional columns — try to include, fall back if schema lacks them
-    const optionals = {
-        notes_allergies:   document.getElementById('f-allergies').value.trim()   || null,
-        notes_preferences: document.getElementById('f-preferences').value.trim() || null,
-        color_formula:     document.getElementById('f-formula').value.trim()     || null,
-        notes:             document.getElementById('f-notes').value.trim()       || null,
-    };
 
-    const doSave = async (payload) => {
-        if (_currentId) return (await window.db.from('clients').update(payload).eq('id', _currentId)).error;
-        return (await window.db.from('clients').insert(payload)).error;
-    };
-
-    // Try with all optional fields first
-    let err = await doSave({ ...basePayload, ...optionals });
-
-    // If schema error, strip optional fields one by one and retry
-    if (err && err.message && err.message.includes('column')) {
-        // Try with known safe optional set
-        err = await doSave({ ...basePayload,
-            notes_allergies: optionals.notes_allergies,
-            notes_preferences: optionals.notes_preferences,
-        });
-    }
-    if (err && err.message && err.message.includes('column')) {
-        // Last resort: base only
-        err = await doSave(basePayload);
+    let err;
+    if (_currentId) {
+        ({ error: err } = await window.db.from('clients').update(payload).eq('id', _currentId));
+    } else {
+        ({ error: err } = await window.db.from('clients').insert(payload));
     }
 
     if (err) { alert('Помилка збереження: ' + err.message); return; }

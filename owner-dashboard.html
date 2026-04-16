@@ -22,12 +22,23 @@
 
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #1e1e21; border-radius: 10px; }
+/* Mobile bottom nav */
+.mob-nav-lnk { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    padding:8px 6px; flex:1; font-size:7px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+    color:#52525b; transition:color .2s; min-height:52px; text-decoration:none; }
+.mob-nav-lnk.active { color:#f43f5e; }
+.mob-nav-lnk i { font-size:18px; }
+.mob-more-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px 12px; border-top:1px solid rgba(255,255,255,.05); }
+.mob-more-itm { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 4px; border-radius:10px;
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05);
+    font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#71717a; text-decoration:none; }
+.mob-more-itm.active { color:#f43f5e; background:rgba(244,63,94,.06); border-color:rgba(244,63,94,.15); }
     </style>
 </head>
 <body class="flex min-h-screen">
 
     <!-- SIDEBAR -->
-    <aside class="w-16 lg:w-64 bg-black/50 border-r border-white/5 flex flex-col fixed h-full z-50">
+    <aside class="hidden lg:flex lg:flex-col lg:w-64 bg-black/50 border-r border-white/5 fixed h-full z-50">
         <div class="p-6">
             <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none">Wella Glow</h1>
             <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] mt-1 uppercase">studio</p>
@@ -84,7 +95,7 @@
     </aside>
 
     <!-- MAIN -->
-    <main class="flex-1 ml-16 lg:ml-64 p-5 lg:p-8">
+    <main class="flex-1 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
         <header class="flex justify-between items-center mb-8">
             <h2 class="text-2xl font-extrabold text-white tracking-tight">Панель власника</h2>
             <button class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-zinc-400"><i class="fa-solid fa-gear"></i></button>
@@ -152,5 +163,20 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-init.js"></script>
     <script src="js/owner-dashboard.js"></script>
+<!-- ══ MOBILE BOTTOM NAV ══ -->
+<nav id="mob-nav" class="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style="background:rgba(7,7,9,.97);border-top:1px solid rgba(255,255,255,.06);backdrop-filter:blur(16px)">
+    <div class="flex items-stretch">
+        <a href="owner-dashboard.html" class="mob-nav-lnk active"><i class="fa-solid fa-chart-pie"></i><span>Дашборд</span></a>
+        <a href="admin-calendar.html" class="mob-nav-lnk "><i class="fa-solid fa-calendar-check"></i><span>Записи</span></a>
+        <a href="admin-staff.html" class="mob-nav-lnk "><i class="fa-solid fa-users-gear"></i><span>Персонал</span></a>
+        <a href="admin-clients-base.html" class="mob-nav-lnk "><i class="fa-solid fa-address-book"></i><span>Клієнти</span></a>
+        <button onclick="document.getElementById('mob-more-panel').classList.toggle('hidden')" class="mob-nav-lnk"><i class="fa-solid fa-ellipsis"></i><span>Ще</span></button>
+    </div>
+    <div id="mob-more-panel" class="hidden mob-more-grid">
+        <a href="admin-finance.html" class="mob-more-itm "><i class="fa-solid fa-wallet text-lg"></i><span>Фінанси</span></a>
+        <a href="admin-inventory.html" class="mob-more-itm "><i class="fa-solid fa-boxes-stacked text-lg"></i><span>Склад</span></a>
+        <a href="admin-bonuses.html" class="mob-more-itm "><i class="fa-solid fa-gift text-lg"></i><span>Бонуси</span></a>
+    </div>
+</nav>
 </body>
 </html>

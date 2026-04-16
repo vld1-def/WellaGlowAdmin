@@ -52,12 +52,23 @@
         /* Edit row button */
         .edit-tx-btn { opacity: 0; transition: opacity 0.15s; }
         tr:hover .edit-tx-btn { opacity: 1; }
+/* Mobile bottom nav */
+.mob-nav-lnk { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    padding:8px 6px; flex:1; font-size:7px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+    color:#52525b; transition:color .2s; min-height:52px; text-decoration:none; }
+.mob-nav-lnk.active { color:#f43f5e; }
+.mob-nav-lnk i { font-size:18px; }
+.mob-more-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px 12px; border-top:1px solid rgba(255,255,255,.05); }
+.mob-more-itm { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 4px; border-radius:10px;
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05);
+    font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#71717a; text-decoration:none; }
+.mob-more-itm.active { color:#f43f5e; background:rgba(244,63,94,.06); border-color:rgba(244,63,94,.15); }
     </style>
 </head>
 <body class="flex min-h-screen">
 
     <!-- SIDEBAR -->
-    <aside class="w-16 lg:w-64 bg-black/50 border-r border-white/5 flex flex-col fixed h-full z-50">
+    <aside class="hidden lg:flex lg:flex-col lg:w-64 bg-black/50 border-r border-white/5 fixed h-full z-50">
         <div class="p-6">
             <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none hidden lg:block">Wella Glow</h1>
             <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none lg:hidden">W</h1>
@@ -114,7 +125,7 @@
     </aside>
 
     <!-- MAIN -->
-    <main class="flex-1 ml-16 lg:ml-64 p-5 lg:p-8">
+    <main class="flex-1 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
 
         <!-- HEADER -->
         <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
@@ -501,5 +512,20 @@
     function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
     (function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='owner'?'Власник':r==='admin'?'Адміністратор':'Майстер';})();
     </script>
+<!-- ══ MOBILE BOTTOM NAV ══ -->
+<nav id="mob-nav" class="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style="background:rgba(7,7,9,.97);border-top:1px solid rgba(255,255,255,.06);backdrop-filter:blur(16px)">
+    <div class="flex items-stretch">
+        <a href="owner-dashboard.html" class="mob-nav-lnk "><i class="fa-solid fa-chart-pie"></i><span>Дашборд</span></a>
+        <a href="admin-calendar.html" class="mob-nav-lnk "><i class="fa-solid fa-calendar-check"></i><span>Записи</span></a>
+        <a href="admin-staff.html" class="mob-nav-lnk "><i class="fa-solid fa-users-gear"></i><span>Персонал</span></a>
+        <a href="admin-clients-base.html" class="mob-nav-lnk "><i class="fa-solid fa-address-book"></i><span>Клієнти</span></a>
+        <button onclick="document.getElementById('mob-more-panel').classList.toggle('hidden')" class="mob-nav-lnk"><i class="fa-solid fa-ellipsis"></i><span>Ще</span></button>
+    </div>
+    <div id="mob-more-panel" class="hidden mob-more-grid">
+        <a href="admin-finance.html" class="mob-more-itm active"><i class="fa-solid fa-wallet text-lg"></i><span>Фінанси</span></a>
+        <a href="admin-inventory.html" class="mob-more-itm "><i class="fa-solid fa-boxes-stacked text-lg"></i><span>Склад</span></a>
+        <a href="admin-bonuses.html" class="mob-more-itm "><i class="fa-solid fa-gift text-lg"></i><span>Бонуси</span></a>
+    </div>
+</nav>
 </body>
 </html>

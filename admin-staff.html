@@ -89,6 +89,17 @@
         /* Avatar color ring */
         .avatar-ring { border:2px solid; border-radius:50%; }
 
+        /* Column visibility toggle */
+        #staff-table.hide-tenure  .sc-tenure,
+        #staff-table.hide-appt    .sc-appt,
+        #staff-table.hide-revenue .sc-revenue,
+        #staff-table.hide-earned  .sc-earned,
+        #staff-table.hide-wrev    .sc-wrev,
+        #staff-table.hide-wearn   .sc-wearn,
+        #staff-table.hide-rate    .sc-rate,
+        #staff-table.hide-rating  .sc-rating,
+        #staff-table.hide-status  .sc-status { display:none !important; }
+
         /* Sort buttons */
         .sort-btn { padding:5px 10px; border-radius:8px; font-size:9px; font-weight:800;
             text-transform:uppercase; letter-spacing:.06em; cursor:pointer; transition:all .2s;
@@ -102,12 +113,23 @@
         .role-tab { padding:7px 16px; border-radius:9px; font-size:10px; font-weight:800;
             text-transform:uppercase; letter-spacing:.06em; cursor:pointer; transition:all .2s; color:#52525b; }
         .role-tab.active { background:rgba(244,63,94,.12); color:#f43f5e; }
+/* Mobile bottom nav */
+.mob-nav-lnk { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    padding:8px 6px; flex:1; font-size:7px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+    color:#52525b; transition:color .2s; min-height:52px; text-decoration:none; }
+.mob-nav-lnk.active { color:#f43f5e; }
+.mob-nav-lnk i { font-size:18px; }
+.mob-more-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px 12px; border-top:1px solid rgba(255,255,255,.05); }
+.mob-more-itm { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 4px; border-radius:10px;
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05);
+    font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#71717a; text-decoration:none; }
+.mob-more-itm.active { color:#f43f5e; background:rgba(244,63,94,.06); border-color:rgba(244,63,94,.15); }
     </style>
 </head>
 <body class="flex min-h-screen">
 
 <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
-<aside class="w-16 lg:w-64 bg-black/50 border-r border-white/5 flex flex-col fixed h-full z-50">
+<aside class="hidden lg:flex lg:flex-col lg:w-64 bg-black/50 border-r border-white/5 fixed h-full z-50">
     <div class="p-6">
         <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none hidden lg:block">Wella Glow</h1>
         <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none lg:hidden">W</h1>
@@ -165,7 +187,7 @@
 </aside>
 
 <!-- ═══════════════════ MAIN ═══════════════════ -->
-<main class="flex-1 ml-16 lg:ml-64 p-5 lg:p-8">
+<main class="flex-1 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
 
     <!-- HEADER -->
     <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
@@ -252,42 +274,56 @@
                     <button onclick="setStaffSort('earnings')" id="sort-earnings" class="sort-btn">Заробіток</button>
                 </div>
             </div>
-            <div class="relative" id="report-dropdown-wrap">
-                <button onclick="toggleReportDropdown()" class="glass-panel px-4 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition whitespace-nowrap">
-                    <i class="fa-solid fa-file-arrow-down text-xs"></i>
-                    <span class="hidden sm:inline">Звіт за місяць</span>
-                    <i class="fa-solid fa-chevron-down text-[8px]"></i>
-                </button>
-                <div id="report-dropdown" class="hidden absolute right-0 top-full mt-1 bg-[#111113] border border-white/10 rounded-xl p-1 z-50 min-w-[140px] shadow-xl">
-                    <button onclick="downloadLastMonthCSV();toggleReportDropdown()" class="w-full text-left px-3 py-2 rounded-lg text-[11px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white transition flex items-center gap-2">
-                        <i class="fa-solid fa-file-csv text-xs text-zinc-600"></i>CSV
+            <div class="flex items-center gap-2">
+                <!-- Column toggle -->
+                <div class="relative" id="col-toggle-wrap">
+                    <button onclick="toggleColDropdown()" class="glass-panel px-3 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5 hover:text-white transition">
+                        <i class="fa-solid fa-table-columns text-xs"></i>
+                        <span class="hidden sm:inline">Стовпці</span>
                     </button>
-                    <button onclick="downloadLastMonthPDF();toggleReportDropdown()" class="w-full text-left px-3 py-2 rounded-lg text-[11px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white transition flex items-center gap-2">
-                        <i class="fa-solid fa-file-pdf text-xs text-zinc-600"></i>PDF
+                    <div id="col-dropdown" class="hidden absolute right-0 top-full mt-1 bg-[#111113] border border-white/10 rounded-xl p-2 z-50 min-w-[180px] shadow-xl space-y-1">
+                        <!-- JS fills -->
+                    </div>
+                </div>
+                <!-- Report -->
+                <div class="relative" id="report-dropdown-wrap">
+                    <button onclick="toggleReportDropdown()" class="glass-panel px-3 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5 hover:text-white transition whitespace-nowrap">
+                        <i class="fa-solid fa-file-arrow-down text-xs"></i>
+                        <span class="hidden sm:inline">Звіт</span>
+                        <i class="fa-solid fa-chevron-down text-[8px]"></i>
                     </button>
+                    <div id="report-dropdown" class="hidden absolute right-0 top-full mt-1 bg-[#111113] border border-white/10 rounded-xl p-1 z-50 min-w-[140px] shadow-xl">
+                        <button onclick="downloadLastMonthCSV();toggleReportDropdown()" class="w-full text-left px-3 py-2 rounded-lg text-[11px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv text-xs text-zinc-600"></i>CSV
+                        </button>
+                        <button onclick="downloadLastMonthPDF();toggleReportDropdown()" class="w-full text-left px-3 py-2 rounded-lg text-[11px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-pdf text-xs text-zinc-600"></i>PDF
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Table -->
         <div class="overflow-x-auto">
-            <table class="w-full">
+            <table id="staff-table" class="w-full">
                 <thead>
                     <tr class="border-b border-white/5">
                         <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">Працівник</th>
-                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden md:table-cell">Стаж</th>
-                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Записи (міс.)</th>
-                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Принесено (міс.)</th>
-                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Зароблено (міс.)</th>
-                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Зароблено (тиж.)</th>
-                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">% ЗП</th>
-                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">Рейтинг</th>
-                        <th class="text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3">Статус</th>
+                        <th class="sc-tenure  text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden md:table-cell">Стаж</th>
+                        <th class="sc-appt    text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Записи (міс.)</th>
+                        <th class="sc-revenue text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Принесено (міс.)</th>
+                        <th class="sc-earned  text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Зароблено (міс.)</th>
+                        <th class="sc-wrev    text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Принесено (тиж.)</th>
+                        <th class="sc-wearn   text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4 hidden lg:table-cell">Зароблено (тиж.)</th>
+                        <th class="sc-rate    text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">% ЗП</th>
+                        <th class="sc-rating  text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3 pr-4">Рейтинг</th>
+                        <th class="sc-status  text-left text-[9px] text-zinc-600 font-black uppercase tracking-widest pb-3">Статус</th>
                         <th class="pb-3"></th>
                     </tr>
                 </thead>
                 <tbody id="staff-table-body">
-                    <tr><td colspan="8" class="py-8 text-center">
+                    <tr><td colspan="11" class="py-8 text-center">
                         <div class="skeleton h-4 rounded w-2/3 mx-auto mb-2"></div>
                         <div class="skeleton h-4 rounded w-1/2 mx-auto"></div>
                     </td></tr>
@@ -687,5 +723,20 @@
 function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
 (function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='owner'?'Власник':r==='admin'?'Адміністратор':'Майстер';})();
 </script>
+<!-- ══ MOBILE BOTTOM NAV ══ -->
+<nav id="mob-nav" class="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style="background:rgba(7,7,9,.97);border-top:1px solid rgba(255,255,255,.06);backdrop-filter:blur(16px)">
+    <div class="flex items-stretch">
+        <a href="owner-dashboard.html" class="mob-nav-lnk "><i class="fa-solid fa-chart-pie"></i><span>Дашборд</span></a>
+        <a href="admin-calendar.html" class="mob-nav-lnk "><i class="fa-solid fa-calendar-check"></i><span>Записи</span></a>
+        <a href="admin-staff.html" class="mob-nav-lnk active"><i class="fa-solid fa-users-gear"></i><span>Персонал</span></a>
+        <a href="admin-clients-base.html" class="mob-nav-lnk "><i class="fa-solid fa-address-book"></i><span>Клієнти</span></a>
+        <button onclick="document.getElementById('mob-more-panel').classList.toggle('hidden')" class="mob-nav-lnk"><i class="fa-solid fa-ellipsis"></i><span>Ще</span></button>
+    </div>
+    <div id="mob-more-panel" class="hidden mob-more-grid">
+        <a href="admin-finance.html" class="mob-more-itm "><i class="fa-solid fa-wallet text-lg"></i><span>Фінанси</span></a>
+        <a href="admin-inventory.html" class="mob-more-itm "><i class="fa-solid fa-boxes-stacked text-lg"></i><span>Склад</span></a>
+        <a href="admin-bonuses.html" class="mob-more-itm "><i class="fa-solid fa-gift text-lg"></i><span>Бонуси</span></a>
+    </div>
+</nav>
 </body>
 </html>

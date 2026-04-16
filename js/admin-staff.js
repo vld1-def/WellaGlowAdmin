@@ -87,6 +87,7 @@ window.monthStep=function(dir){
 // ── Init ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initSidebarMonth();
+    initColState();
     loadAll();
 });
 
@@ -287,16 +288,17 @@ function staffRow(s, appointments = 0, revenue = 0, weekRevenue = 0) {
                 </div>
             </div>
         </td>
-        <td class="py-3 pr-4 hidden md:table-cell text-[11px] text-zinc-400 font-semibold">${tenureDays(s.hire_date)}</td>
-        <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-zinc-400 font-semibold">${appointments}</td>
-        <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-white font-bold">₴${revenue.toLocaleString('uk-UA')}</td>
-        <td class="py-3 pr-4 hidden lg:table-cell text-[11px] text-emerald-400 font-bold">₴${earned.toLocaleString('uk-UA')}</td>
-        <td class="py-3 pr-4 hidden lg:table-cell text-[11px] font-bold" style="color:#22d3ee">₴${weekEarned.toLocaleString('uk-UA')}</td>
-        <td class="py-3 pr-4">
+        <td class="sc-tenure  py-3 pr-4 hidden md:table-cell text-[11px] text-zinc-400 font-semibold">${tenureDays(s.hire_date)}</td>
+        <td class="sc-appt    py-3 pr-4 hidden lg:table-cell text-[11px] text-zinc-400 font-semibold">${appointments}</td>
+        <td class="sc-revenue py-3 pr-4 hidden lg:table-cell text-[11px] text-white font-bold">₴${revenue.toLocaleString('uk-UA')}</td>
+        <td class="sc-earned  py-3 pr-4 hidden lg:table-cell text-[11px] text-emerald-400 font-bold">₴${earned.toLocaleString('uk-UA')}</td>
+        <td class="sc-wrev    py-3 pr-4 hidden lg:table-cell text-[11px] font-bold" style="color:#f59e0b">₴${weekRevenue.toLocaleString('uk-UA')}</td>
+        <td class="sc-wearn   py-3 pr-4 hidden lg:table-cell text-[11px] font-bold" style="color:#22d3ee">₴${weekEarned.toLocaleString('uk-UA')}</td>
+        <td class="sc-rate    py-3 pr-4">
             <span class="text-[11px] font-bold text-rose-400">${s.commission_rate || 40}%</span>
         </td>
-        <td class="py-3 pr-4">${starRating(avgRating)}</td>
-        <td class="py-3 pr-4">${statusBadge(s.status)}</td>
+        <td class="sc-rating  py-3 pr-4">${starRating(avgRating)}</td>
+        <td class="sc-status  py-3 pr-4">${statusBadge(s.status)}</td>
         <td class="py-3" onclick="event.stopPropagation()">
             <div class="flex items-center gap-1">
                 <button onclick="togglePin('${s.id}')" title="${isPinned?'Відкріпити':'Закріпити'}"
@@ -407,9 +409,55 @@ window.toggleReportDropdown = function() {
     const dd = document.getElementById('report-dropdown');
     dd.classList.toggle('hidden');
 };
+
+// ── Column toggle ─────────────────────────────────────
+const STAFF_COLS = [
+    { id: 'tenure',  label: 'Стаж',             def: true },
+    { id: 'appt',    label: 'Записи (міс.)',     def: true },
+    { id: 'revenue', label: 'Принесено (міс.)',  def: true },
+    { id: 'earned',  label: 'Зароблено (міс.)',  def: true },
+    { id: 'wrev',    label: 'Принесено (тиж.)',  def: true },
+    { id: 'wearn',   label: 'Зароблено (тиж.)',  def: false },
+    { id: 'rate',    label: '% ЗП',              def: true },
+    { id: 'rating',  label: 'Рейтинг',           def: true },
+    { id: 'status',  label: 'Статус',            def: true },
+];
+let colState = {};
+function initColState() {
+    const saved = JSON.parse(localStorage.getItem('wella_staff_cols') || '{}');
+    STAFF_COLS.forEach(c => { colState[c.id] = c.id in saved ? saved[c.id] : c.def; });
+    applyColState();
+}
+function applyColState() {
+    const tbl = document.getElementById('staff-table');
+    if (!tbl) return;
+    STAFF_COLS.forEach(c => tbl.classList.toggle(`hide-${c.id}`, !colState[c.id]));
+    // Render checkbox list
+    const dd = document.getElementById('col-dropdown');
+    if (dd) {
+        dd.innerHTML = STAFF_COLS.map(c => `
+            <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer">
+                <input type="checkbox" ${colState[c.id]?'checked':''} onchange="toggleCol('${c.id}',this.checked)"
+                    class="accent-rose-500 w-3 h-3">
+                <span class="text-[10px] font-bold text-zinc-400">${c.label}</span>
+            </label>`).join('');
+    }
+    localStorage.setItem('wella_staff_cols', JSON.stringify(colState));
+}
+window.toggleCol = function(id, val) {
+    colState[id] = val;
+    applyColState();
+};
+window.toggleColDropdown = function() {
+    document.getElementById('col-dropdown').classList.toggle('hidden');
+};
+
 document.addEventListener('click', e => {
     if (!e.target.closest('#report-dropdown-wrap')) {
         document.getElementById('report-dropdown')?.classList.add('hidden');
+    }
+    if (!e.target.closest('#col-toggle-wrap')) {
+        document.getElementById('col-dropdown')?.classList.add('hidden');
     }
 });
 

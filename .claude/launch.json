@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Static Server (PowerShell)",
+      "runtimeExecutable": "D:\\Git\\usr\\bin\\bash.exe",
+      "runtimeArgs": [
+        "-c",
+        "exec powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'D:\\GitHub\\WellaGlowAdmin\\.claude\\worktrees\\charming-brown\\.claude\\serve.ps1'"
+      ],
+      "port": 4200,
+      "autoPort": false
+    }
+  ]
+}
