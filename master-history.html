@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wella Glow | Історія</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;600;700;800&display=swap');
+        :root { --bg: #050505; --accent: #f43f5e; }
+        body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
+        * { font-style: normal !important; }
+        .glass-panel { background: rgba(17,17,19,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
+        .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1e1e21; border-radius: 10px; }
+        .appt-row { border-bottom:1px solid rgba(255,255,255,.04); }
+        .appt-row:last-child { border-bottom:none; }
+        .mob-nav-lnk { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+            padding:8px 6px; flex:1; font-size:7px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+            color:#52525b; transition:color .2s; min-height:52px; text-decoration:none; }
+        .mob-nav-lnk.active { color:#f43f5e; }
+        .mob-nav-lnk i { font-size:18px; }
+        .tab-btn { flex:1; padding:8px; text-align:center; font-size:9px; font-weight:800; text-transform:uppercase;
+            letter-spacing:.05em; color:#52525b; border-bottom:2px solid transparent; transition:all .2s; cursor:pointer; }
+        .tab-btn.active { color:#f43f5e; border-bottom-color:#f43f5e; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+<!-- ═══════ HEADER ═══════ -->
+<header class="px-5 pt-6 pb-4" style="background:rgba(7,7,9,.8);backdrop-filter:blur(12px);position:sticky;top:0;z-index:40">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div id="master-avatar" class="w-11 h-11 rounded-2xl neo-gradient flex items-center justify-center font-black text-white text-lg">M</div>
+            <div>
+                <p id="master-name" class="text-sm font-black text-white leading-tight">—</p>
+                <p class="text-[9px] text-rose-500 font-bold uppercase tracking-widest">Майстер · Wella Glow</p>
+            </div>
+        </div>
+        <button onclick="doLogout()" class="w-9 h-9 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-zinc-500 hover:text-rose-400 transition">
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+    </div>
+    <!-- Tabs -->
+    <div class="flex mt-4 border-b border-white/5">
+        <button class="tab-btn active" id="tab-appts" onclick="switchTab('appts')">
+            <i class="fa-solid fa-scissors mr-1"></i>Записи
+        </button>
+        <button class="tab-btn" id="tab-salary" onclick="switchTab('salary')">
+            <i class="fa-solid fa-money-bill-wave mr-1"></i>Виплати
+        </button>
+    </div>
+</header>
+
+<!-- ═══════ MAIN ═══════ -->
+<main class="px-5 pb-24 space-y-5 mt-4">
+
+    <!-- MONTH SELECTOR -->
+    <div class="flex items-center justify-between">
+        <button onclick="prevMonth()" class="w-9 h-9 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-zinc-400 hover:text-white transition">
+            <i class="fa-solid fa-chevron-left text-xs"></i>
+        </button>
+        <p id="month-label" class="text-sm font-black text-white uppercase tracking-widest">—</p>
+        <button onclick="nextMonth()" class="w-9 h-9 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-zinc-400 hover:text-white transition">
+            <i class="fa-solid fa-chevron-right text-xs"></i>
+        </button>
+    </div>
+
+    <!-- KPI ROW -->
+    <div id="kpi-row" class="grid grid-cols-3 gap-2">
+        <div class="glass-panel rounded-2xl p-3 text-center">
+            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1">Записів</p>
+            <p id="kpi-count" class="text-xl font-black text-white">—</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-3 text-center">
+            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1">Зароблено</p>
+            <p id="kpi-earned" class="text-sm font-black text-emerald-400 leading-tight mt-1">—</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-3 text-center">
+            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1">% ЗП</p>
+            <p id="kpi-rate" class="text-xl font-black text-rose-400">—</p>
+        </div>
+    </div>
+
+    <!-- APPOINTMENTS TAB -->
+    <div id="panel-appts">
+        <div class="glass-panel rounded-2xl overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-white/5">
+                <h3 class="text-xs font-black text-white uppercase tracking-widest">Записи за місяць</h3>
+            </div>
+            <div id="appts-list" class="divide-y divide-white/4 px-5">
+                <p class="py-8 text-center text-zinc-700 text-xs font-bold uppercase tracking-widest">Завантаження...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SALARY TAB -->
+    <div id="panel-salary" class="hidden">
+        <div class="glass-panel rounded-2xl overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-white/5">
+                <h3 class="text-xs font-black text-white uppercase tracking-widest">Виплати зарплати</h3>
+            </div>
+            <div id="salary-list" class="divide-y divide-white/4 px-5">
+                <p class="py-8 text-center text-zinc-700 text-xs font-bold uppercase tracking-widest">Завантаження...</p>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- ═══════ MOBILE BOTTOM NAV ═══════ -->
+<nav class="fixed bottom-0 left-0 right-0 z-50" style="background:rgba(7,7,9,.97);border-top:1px solid rgba(255,255,255,.06);backdrop-filter:blur(16px)">
+    <div class="flex items-stretch">
+        <a href="master-dashboard.html" class="mob-nav-lnk"><i class="fa-solid fa-house"></i><span>Головна</span></a>
+        <a href="master-portfolio.html" class="mob-nav-lnk"><i class="fa-solid fa-images"></i><span>Портфоліо</span></a>
+        <a href="master-reviews.html" class="mob-nav-lnk"><i class="fa-solid fa-star"></i><span>Відгуки</span></a>
+        <a href="master-history.html" class="mob-nav-lnk active"><i class="fa-solid fa-clock-rotate-left"></i><span>Історія</span></a>
+    </div>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/master-history.js"></script>
+</body>
+</html>

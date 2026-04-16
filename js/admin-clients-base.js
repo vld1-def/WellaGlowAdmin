@@ -305,6 +305,45 @@ async function renderHistoryPanel(client) {
         </div>`).join('');
 }
 
+// ── Reviews panel ─────────────────────────────────────
+async function renderReviewsPanel(clientId) {
+    const revList = document.getElementById('reviews-list');
+    revList.innerHTML = `<p class="text-zinc-600 text-xs font-bold text-center py-6">Завантаження...</p>`;
+
+    const { data: reviews } = await window.db
+        .from('reviews')
+        .select('*, staff(name)')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+
+    if (!reviews || reviews.length === 0) {
+        revList.innerHTML = `<p class="text-zinc-700 text-xs font-bold text-center py-10 uppercase tracking-widest">Немає відгуків</p>`;
+        return;
+    }
+
+    const starsHtml = (rating) => {
+        let html = '';
+        for (let i = 1; i <= 5; i++) {
+            html += `<i class="fa-solid fa-star" style="font-size:9px;color:${i <= rating ? '#fbbf24' : '#27272a'}"></i>`;
+        }
+        return html;
+    };
+
+    revList.innerHTML = reviews.map(r => {
+        const rating = parseFloat(r.rating || 0);
+        const d = r.created_at ? new Date(r.created_at) : null;
+        const dateStr = d ? `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}` : '—';
+        return `
+        <div class="hist-item py-3">
+            <div class="flex items-center justify-between gap-3 mb-1">
+                <div class="flex gap-0.5">${starsHtml(Math.round(rating))}</div>
+                <p class="text-[9px] text-zinc-600">${r.staff?.name || '—'} · ${dateStr}</p>
+            </div>
+            ${r.comment ? `<p class="text-[10px] text-zinc-400 leading-relaxed mt-1">${r.comment}</p>` : ''}
+        </div>`;
+    }).join('');
+}
+
 // ── Tab switch ────────────────────────────────────────
 window.switchTab = function(tab) {
     _activeTab = tab;
@@ -312,6 +351,9 @@ window.switchTab = function(tab) {
     document.getElementById('tab-reviews').classList.toggle('active', tab === 'reviews');
     document.getElementById('history-list').classList.toggle('hidden', tab !== 'history');
     document.getElementById('reviews-list').classList.toggle('hidden', tab !== 'reviews');
+    if (tab === 'reviews' && _currentId) {
+        renderReviewsPanel(_currentId);
+    }
 };
 
 // ── Save client ───────────────────────────────────────

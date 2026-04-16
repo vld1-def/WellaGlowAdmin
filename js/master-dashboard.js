@@ -17,11 +17,25 @@ function fmtDate(str) {
     return `${d}.${m}.${y}`;
 }
 const DAY_UA = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
+const DAY_FULL_UA = ['Неділя','Понеділок','Вівторок','Середа','Четвер','Пятниця','Субота'];
 const MONTH_UA = ['Січня','Лютого','Березня','Квітня','Травня','Червня','Липня','Серпня','Вересня','Жовтня','Листопада','Грудня'];
 
 window.doLogout = function() {
     ['wella_staff_id','wella_staff_role','wella_staff_name','wella_proc_list'].forEach(k => localStorage.removeItem(k));
     window.location.href = 'staff-login.html';
+};
+
+// ── Upcoming view state ───────────────────────────────
+let _upcomingView = 'list';
+let _upcomingData = [];
+
+window.setUpcomingView = function(view) {
+    _upcomingView = view;
+    document.getElementById('btn-view-list').classList.toggle('active', view === 'list');
+    document.getElementById('btn-view-cal').classList.toggle('active', view === 'cal');
+    document.getElementById('upcoming-list').classList.toggle('hidden', view !== 'list');
+    document.getElementById('upcoming-cal').classList.toggle('hidden', view !== 'cal');
+    if (view === 'cal') renderUpcomingCal(_upcomingData);
 };
 
 // ── Init ──────────────────────────────────────────────
@@ -36,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const todayEl = document.getElementById('today-label');
     if (todayEl) todayEl.textContent = `${DAY_UA[now.getDay()]}, ${now.getDate()} ${MONTH_UA[now.getMonth()]}`;
 
-    await Promise.all([loadTodaySchedule(), loadUpcoming(), loadMonthStats(), loadMyClients()]);
+    await Promise.all([loadTodaySchedule(), loadUpcoming(), loadMonthStats()]);
 });
 
 // ── Today's schedule ──────────────────────────────────
@@ -44,7 +58,7 @@ async function loadTodaySchedule() {
     const today = localDate(new Date());
     const { data: appts } = await window.db
         .from('appointments')
-        .select('*, clients(full_name, phone)')
+        .select('*, clients(id, full_name)')
         .eq('master_id', masterId)
         .eq('appointment_date', today)
         .order('appointment_time', { ascending: true });
@@ -82,7 +96,7 @@ async function loadTodaySchedule() {
                     <p class="text-[9px] text-zinc-600 mt-0.5">₴${(a.price || 0).toLocaleString()}</p>
                 </div>
                 ${!isDone && !isCancelled ? `
-                <button onclick="openActionSheet('${a.id}','${(a.clients?.full_name||'').replace(/'/g,"\\'")}','${a.service_name||''}','${a.appointment_time||''}')"
+                <button onclick="openActionSheet('${a.id}','${(a.clients?.full_name||'').replace(/'/g,"\\'")}','${a.service_name||''}','${a.appointment_time||''}','${a.client_id||''}')"
                     class="w-8 h-8 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-zinc-500 hover:text-white transition">
                     <i class="fa-solid fa-ellipsis-vertical text-xs"></i>
                 </button>` : `<div class="w-8"></div>`}
@@ -107,13 +121,15 @@ async function loadUpcoming() {
         .order('appointment_date', { ascending: true })
         .order('appointment_time', { ascending: true });
 
+    _upcomingData = appts || [];
+
     const list = document.getElementById('upcoming-list');
-    if (!appts || appts.length === 0) {
+    if (!_upcomingData.length) {
         list.innerHTML = `<p class="py-8 text-center text-zinc-700 text-xs font-bold uppercase tracking-widest">Немає найближчих записів</p>`;
         return;
     }
 
-    list.innerHTML = appts.map(a => {
+    list.innerHTML = _upcomingData.map(a => {
         const d = new Date(a.appointment_date);
         return `
         <div class="appt-row py-3 flex items-center justify-between gap-3">
@@ -135,7 +151,43 @@ async function loadUpcoming() {
     }).join('');
 }
 
-// ── Month stats (KPIs + week bars) ───────────────────
+function renderUpcomingCal(appts) {
+    const cal = document.getElementById('upcoming-cal');
+    if (!cal) return;
+
+    const now = new Date();
+    // Build 7 days starting tomorrow
+    const days = [];
+    for (let i = 1; i <= 7; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+        days.push(d);
+    }
+
+    const header = days.map(d =>
+        `<div class="cal-col-header">
+            <div style="color:${localDate(d) === localDate(now) ? '#f43f5e' : ''}">${DAY_UA[d.getDay()]}</div>
+            <div style="font-size:11px;font-weight:900;color:${localDate(d) === localDate(now) ? '#f43f5e' : '#a1a1aa'}">${d.getDate()}</div>
+        </div>`
+    ).join('');
+
+    const cells = days.map(d => {
+        const ds = localDate(d);
+        const dayAppts = appts.filter(a => a.appointment_date === ds);
+        const isDone = false;
+        const chips = dayAppts.map(a =>
+            `<div class="cal-appt-chip" title="${a.clients?.full_name || 'Гість'} · ${a.service_name || ''}">
+                ${fmtTime(a.appointment_time)} ${a.clients?.full_name?.split(' ')[0] || ''}
+            </div>`
+        ).join('');
+        return `<div class="cal-day-cell">${chips || ''}</div>`;
+    }).join('');
+
+    cal.innerHTML = `
+        <div class="cal-grid mb-1">${header}</div>
+        <div class="cal-grid">${cells}</div>`;
+}
+
+// ── Month stats (KPIs) ────────────────────────────────
 async function loadMonthStats() {
     const now   = new Date();
     const mStart = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -164,101 +216,53 @@ async function loadMonthStats() {
     } else {
         document.getElementById('kpi-rating').textContent = '—';
     }
-
-    // Week bars
-    renderWeekBars(allAppts, now);
-}
-
-function renderWeekBars(appts, now) {
-    const container = document.getElementById('week-bars');
-    if (!container) return;
-    const year = now.getFullYear(), month = now.getMonth();
-    const weeks = [];
-    let d = new Date(year, month, 1);
-    while (d.getMonth() === month) {
-        const wStart = localDate(d);
-        const wEnd   = localDate(new Date(Math.min(new Date(year, month + 1, 0), new Date(d.getFullYear(), d.getMonth(), d.getDate() + 6))));
-        weeks.push({ label: `${d.getDate()}–${Math.min(new Date(year, month + 1, 0).getDate(), d.getDate() + 6)} ${MONTH_UA[month].toLowerCase()}`, start: wStart, end: wEnd });
-        d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7);
-    }
-
-    const weekCounts = weeks.map(w => appts.filter(a => a.date >= w.start && a.date <= w.end).length);
-    const maxCount   = Math.max(...weekCounts, 1);
-
-    container.innerHTML = weeks.map((w, i) => {
-        const pct = Math.round((weekCounts[i] / maxCount) * 100);
-        const isCurrentWeek = w.start <= localDate(now) && w.end >= localDate(now);
-        return `
-        <div class="space-y-1">
-            <div class="flex justify-between text-[9px] font-black uppercase tracking-widest">
-                <span class="${isCurrentWeek ? 'text-rose-400' : 'text-zinc-500'}">${w.label}</span>
-                <span class="text-white">${weekCounts[i]} зап.</span>
-            </div>
-            <div class="h-1.5 w-full rounded-full" style="background:rgba(255,255,255,.05)">
-                <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${isCurrentWeek?'#f43f5e':'rgba(255,255,255,.2)'}"></div>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-// ── My clients (unique clients this month) ────────────
-async function loadMyClients() {
-    const { data: appts } = await window.db
-        .from('appointments')
-        .select('client_id, clients(full_name, phone, instagram), service_name, appointment_date, appointment_time, price')
-        .eq('master_id', masterId)
-        .order('appointment_date', { ascending: false })
-        .limit(50);
-
-    const seen  = new Set();
-    const unique = [];
-    (appts || []).forEach(a => {
-        if (!a.client_id || seen.has(a.client_id)) return;
-        seen.add(a.client_id);
-        unique.push(a);
-    });
-
-    document.getElementById('my-clients-count').textContent = `${seen.size} клієнтів`;
-
-    const list = document.getElementById('my-clients-list');
-    if (!unique.length) {
-        list.innerHTML = `<p class="py-8 text-center text-zinc-700 text-xs font-bold uppercase tracking-widest">Немає клієнтів</p>`;
-        return;
-    }
-
-    list.innerHTML = unique.slice(0, 15).map(a => {
-        const initials = (a.clients?.full_name || '?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
-        return `
-        <div class="appt-row py-3 flex items-center gap-3">
-            <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center font-black text-xs text-white neo-gradient">${initials}</div>
-            <div class="flex-1 min-w-0">
-                <p class="text-[11px] font-bold text-white truncate">${a.clients?.full_name || '—'}</p>
-                <p class="text-[9px] text-zinc-500 mt-0.5 truncate">${a.service_name || '—'} · ${fmtDate(a.appointment_date)}</p>
-            </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-                ${a.clients?.phone ? `<a href="tel:${a.clients.phone}" onclick="event.stopPropagation()"
-                    class="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/20 transition">
-                    <i class="fa-solid fa-phone text-[9px]"></i></a>` : ''}
-            </div>
-        </div>`;
-    }).join('');
 }
 
 // ── Action sheet ──────────────────────────────────────
 let _actionApptId = null;
+let _actionClientId = null;
 
-window.openActionSheet = function(id, client, service, time) {
-    _actionApptId = id;
+window.openActionSheet = async function(id, client, service, time, clientId) {
+    _actionApptId  = id;
+    _actionClientId = clientId || null;
     document.getElementById('sheet-title').textContent = client || 'Клієнт';
     document.getElementById('sheet-sub').textContent   = `${service} · ${fmtTime(time)}`;
+
+    // Clear note fields
+    ['note-allergies','note-preferences','note-formula','note-general'].forEach(f => {
+        const el = document.getElementById(f);
+        if (el) el.value = '';
+    });
+
+    // Show sheet
     document.getElementById('appt-overlay').classList.remove('hidden');
     document.getElementById('appt-action-sheet').classList.add('open');
+
+    // Load client notes if client exists
+    if (clientId) {
+        const { data: cl } = await window.db
+            .from('clients')
+            .select('notes_allergies, preferences, color_formula, notes')
+            .eq('id', clientId)
+            .single();
+        if (cl) {
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+            set('note-allergies',   cl.notes_allergies);
+            set('note-preferences', cl.preferences);
+            set('note-formula',     cl.color_formula);
+            set('note-general',     cl.notes);
+        }
+    }
+
+    const noteSec = document.getElementById('sheet-notes-section');
+    if (noteSec) noteSec.style.display = clientId ? '' : 'none';
 };
 
 window.closeActionSheet = function() {
     document.getElementById('appt-overlay').classList.add('hidden');
     document.getElementById('appt-action-sheet').classList.remove('open');
-    _actionApptId = null;
+    _actionApptId   = null;
+    _actionClientId = null;
 };
 
 window.markStatus = async function(status) {
@@ -266,4 +270,33 @@ window.markStatus = async function(status) {
     await window.db.from('appointments').update({ status }).eq('id', _actionApptId);
     closeActionSheet();
     await loadTodaySchedule();
+};
+
+window.saveClientNotes = async function() {
+    if (!_actionClientId) return;
+    const btn = document.getElementById('save-notes-btn');
+    if (btn) { btn.textContent = 'Збереження...'; btn.disabled = true; }
+
+    const payload = {
+        notes_allergies: document.getElementById('note-allergies').value.trim() || null,
+        preferences:     document.getElementById('note-preferences').value.trim() || null,
+        color_formula:   document.getElementById('note-formula').value.trim() || null,
+        notes:           document.getElementById('note-general').value.trim() || null,
+    };
+
+    const { error } = await window.db.from('clients').update(payload).eq('id', _actionClientId);
+
+    if (btn) {
+        if (error) {
+            btn.textContent = 'Помилка збереження';
+            btn.style.background = '#ef4444';
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Збережено';
+        }
+        btn.disabled = false;
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Зберегти нотатки';
+            btn.style.background = '';
+        }, 2000);
+    }
 };

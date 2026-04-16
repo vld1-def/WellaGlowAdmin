@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wella Glow | Портфоліо</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;600;700;800&display=swap');
+        :root { --bg: #050505; }
+        body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
+        * { font-style: normal !important; }
+        .glass-panel { background: rgba(17,17,19,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
+        .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
+        .mob-nav-lnk { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+            padding:8px 6px; flex:1; font-size:7px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+            color:#52525b; transition:color .2s; min-height:52px; text-decoration:none; }
+        .mob-nav-lnk.active { color:#f43f5e; }
+        .mob-nav-lnk i { font-size:18px; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+<!-- ═══════ HEADER ═══════ -->
+<header class="px-5 pt-6 pb-4" style="background:rgba(7,7,9,.8);backdrop-filter:blur(12px);position:sticky;top:0;z-index:40">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div id="master-avatar" class="w-11 h-11 rounded-2xl neo-gradient flex items-center justify-center font-black text-white text-lg">M</div>
+            <div>
+                <p id="master-name" class="text-sm font-black text-white leading-tight">—</p>
+                <p class="text-[9px] text-rose-500 font-bold uppercase tracking-widest">Майстер · Wella Glow</p>
+            </div>
+        </div>
+        <button onclick="doLogout()" class="w-9 h-9 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-zinc-500 hover:text-rose-400 transition">
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+    </div>
+</header>
+
+<!-- ═══════ MAIN ═══════ -->
+<main class="px-5 pb-24 mt-8 flex flex-col items-center justify-center text-center">
+    <div class="w-20 h-20 rounded-3xl neo-gradient flex items-center justify-center mb-5">
+        <i class="fa-solid fa-images text-3xl text-white"></i>
+    </div>
+    <h2 class="text-lg font-black text-white mb-2">Портфоліо</h2>
+    <p class="text-xs text-zinc-500 font-bold max-w-xs leading-relaxed">
+        Розділ портфоліо буде доступний найближчим часом. Тут ви зможете додавати фото своїх робіт.
+    </p>
+    <div class="mt-8 glass-panel rounded-2xl p-5 w-full max-w-xs">
+        <p class="text-[9px] text-zinc-600 font-black uppercase tracking-widest mb-3">Незабаром</p>
+        <ul class="space-y-2 text-left">
+            <li class="flex items-center gap-2 text-[11px] text-zinc-400"><i class="fa-solid fa-circle-check text-rose-500/40 text-xs"></i>Завантаження фото</li>
+            <li class="flex items-center gap-2 text-[11px] text-zinc-400"><i class="fa-solid fa-circle-check text-rose-500/40 text-xs"></i>Категорії робіт</li>
+            <li class="flex items-center gap-2 text-[11px] text-zinc-400"><i class="fa-solid fa-circle-check text-rose-500/40 text-xs"></i>Публічний профіль</li>
+        </ul>
+    </div>
+</main>
+
+<!-- ═══════ MOBILE BOTTOM NAV ═══════ -->
+<nav class="fixed bottom-0 left-0 right-0 z-50" style="background:rgba(7,7,9,.97);border-top:1px solid rgba(255,255,255,.06);backdrop-filter:blur(16px)">
+    <div class="flex items-stretch">
+        <a href="master-dashboard.html" class="mob-nav-lnk"><i class="fa-solid fa-house"></i><span>Головна</span></a>
+        <a href="master-portfolio.html" class="mob-nav-lnk active"><i class="fa-solid fa-images"></i><span>Портфоліо</span></a>
+        <a href="master-reviews.html" class="mob-nav-lnk"><i class="fa-solid fa-star"></i><span>Відгуки</span></a>
+        <a href="master-history.html" class="mob-nav-lnk"><i class="fa-solid fa-clock-rotate-left"></i><span>Історія</span></a>
+    </div>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-init.js"></script>
+<script>
+    const masterName = localStorage.getItem('wella_staff_name') || 'Майстер';
+    if (!localStorage.getItem('wella_staff_id')) window.location.href = 'staff-login.html';
+    window.doLogout = function() {
+        ['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k => localStorage.removeItem(k));
+        window.location.href = 'staff-login.html';
+    };
+    document.getElementById('master-avatar').textContent = masterName.charAt(0).toUpperCase();
+    document.getElementById('master-name').textContent = masterName;
+</script>
+</body>
+</html>
