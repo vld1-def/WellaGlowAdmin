@@ -48,7 +48,7 @@
         .staff-row { border-bottom: 1px solid rgba(255,255,255,0.04); }
         .staff-row:last-child { border-bottom: none; }
         /* Card height: compact row padding */
-        .staff-row td { padding-top: 0px !important; padding-bottom: 0px !important; }
+        .staff-row td { padding-top: 7px !important; padding-bottom: 8px !important; }
 
         /* Appointment detail mini-modal */
         #appt-modal { opacity:0; pointer-events:none; transition:opacity 0.2s ease; }
@@ -194,40 +194,40 @@
     <!-- KPI CARDS -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <!-- Фонд оплати праці -->
-        <div class="glass-panel rounded-2xl p-5">
-            <div class="flex items-center justify-between mb-3">
+        <div class="glass-panel rounded-2xl py-2 px-5">
+            <div class="flex items-center justify-between mb-1.5">
                 <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Фонд оплати праці</p>
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(244,63,94,0.12)">
-                    <i class="fa-solid fa-money-bill-wave text-rose-500 text-xs"></i>
+                <div class="w-7 h-7 rounded-xl flex items-center justify-center" style="background:rgba(244,63,94,0.12)">
+                    <i class="fa-solid fa-money-bill-wave text-rose-500 text-[10px]"></i>
                 </div>
             </div>
             <p id="kpi-payroll" class="text-2xl font-extrabold text-white tracking-tight">₴—</p>
-            <p class="text-[9px] text-zinc-600 mt-1 font-semibold">Залишок до виплати цього місяця</p>
-            <button onclick="openPayrollModal()" class="mt-3 w-full py-2 rounded-xl neo-gradient text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">
+            <p class="text-[9px] text-zinc-600 mt-0.5 font-semibold">Залишок до виплати цього місяця</p>
+            <button onclick="openPayrollModal()" class="mt-2 w-full py-1.5 rounded-xl neo-gradient text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">
                 <i class="fa-solid fa-money-bill-transfer mr-1"></i>Виплата ЗП
             </button>
         </div>
         <!-- Ефективність -->
-        <div class="glass-panel rounded-2xl p-5">
-            <div class="flex items-center justify-between mb-3">
+        <div class="glass-panel rounded-2xl py-2 px-5">
+            <div class="flex items-center justify-between mb-1.5">
                 <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Ефективність команди</p>
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(16,185,129,0.12)">
-                    <i class="fa-solid fa-bolt text-emerald-400 text-xs"></i>
+                <div class="w-7 h-7 rounded-xl flex items-center justify-center" style="background:rgba(16,185,129,0.12)">
+                    <i class="fa-solid fa-bolt text-emerald-400 text-[10px]"></i>
                 </div>
             </div>
             <p id="kpi-efficiency" class="text-2xl font-extrabold text-white tracking-tight">—<span class="text-sm text-zinc-500 font-semibold">/10</span></p>
-            <p class="text-[9px] text-zinc-600 mt-1 font-semibold">Середня по майстрах</p>
+            <p class="text-[9px] text-zinc-600 mt-0.5 font-semibold">Середня по майстрах</p>
         </div>
         <!-- Рейтинг -->
-        <div class="glass-panel rounded-2xl p-5">
-            <div class="flex items-center justify-between mb-3">
+        <div class="glass-panel rounded-2xl py-2 px-5">
+            <div class="flex items-center justify-between mb-1.5">
                 <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Середній рейтинг</p>
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(251,191,36,0.12)">
-                    <i class="fa-solid fa-star text-amber-400 text-xs"></i>
+                <div class="w-7 h-7 rounded-xl flex items-center justify-center" style="background:rgba(251,191,36,0.12)">
+                    <i class="fa-solid fa-star text-amber-400 text-[10px]"></i>
                 </div>
             </div>
             <p id="kpi-rating" class="text-2xl font-extrabold text-white tracking-tight">—<span class="text-sm text-zinc-500 font-semibold"> / 5.0</span></p>
-            <p class="text-[9px] text-zinc-600 mt-1 font-semibold">Оцінка за всі відгуки</p>
+            <p class="text-[9px] text-zinc-600 mt-0.5 font-semibold">Оцінка за всі відгуки</p>
         </div>
     </div>
 

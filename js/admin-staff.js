@@ -328,12 +328,15 @@ async function renderStaffTable(list) {
     const weekStart = localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (dow - 1)));
     const weekEnd   = localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + (7 - dow)));
 
-    const [{ data: appts }, { data: weekAppts }] = await Promise.all([
-        window.db.from('appointment_history').select('master_id, price')
-            .gte('visit_date', monthStart).lte('visit_date', monthEnd),
-        window.db.from('appointment_history').select('master_id, price')
-            .gte('visit_date', weekStart).lte('visit_date', weekEnd),
+    // Query both appointment_history (completed) and appointments (active/upcoming)
+    const [{ data: histMonth }, { data: histWeek }, { data: activeMonth }, { data: activeWeek }] = await Promise.all([
+        window.db.from('appointment_history').select('master_id, price').gte('visit_date', monthStart).lte('visit_date', monthEnd),
+        window.db.from('appointment_history').select('master_id, price').gte('visit_date', weekStart).lte('visit_date', weekEnd),
+        window.db.from('appointments').select('master_id, price').gte('appointment_date', monthStart).lte('appointment_date', monthEnd).neq('status','cancelled'),
+        window.db.from('appointments').select('master_id, price').gte('appointment_date', weekStart).lte('appointment_date', weekEnd).neq('status','cancelled'),
     ]);
+    const appts    = [...(histMonth||[]), ...(activeMonth||[])];
+    const weekAppts = [...(histWeek||[]),  ...(activeWeek||[])];
 
     const apptMap = {};
     (appts || []).forEach(a => {

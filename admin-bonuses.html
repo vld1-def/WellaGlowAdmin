@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wella Glow | Бонуси</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;600;700;800&display=swap');
+        :root { --bg: #050505; --accent: #f43f5e; }
+        body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
+        * { font-style: normal !important; }
+        .glass-panel { background: rgba(17,17,19,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
+        .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
+        .amber-gradient { background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%); }
+        .sidebar-link.active { background: rgba(244,63,94,0.1); color: #f43f5e; border-left: 3px solid #f43f5e; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1e1e21; border-radius: 10px; }
+
+        /* Client rows */
+        .bonus-row { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; cursor: pointer; }
+        .bonus-row:last-child { border-bottom: none; }
+        .bonus-row:hover { background: rgba(255,255,255,0.025); }
+        .bonus-row td { padding-top: 12px !important; padding-bottom: 12px !important; }
+
+        /* VIP badge */
+        .vip-badge { background: linear-gradient(135deg, #f59e0b, #fcd34d); color: #000; font-size: 7px;
+            font-weight: 900; padding: 2px 6px; border-radius: 6px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+        /* Modals */
+        #edit-modal, #bulk-modal, #rules-modal { opacity:0; pointer-events:none; transition:opacity 0.25s ease; }
+        #edit-modal.open, #bulk-modal.open, #rules-modal.open { opacity:1; pointer-events:all; }
+        #modal-overlay { opacity:0; pointer-events:none; transition:opacity 0.25s ease; }
+        #modal-overlay.open { opacity:1; pointer-events:all; }
+
+        /* Input */
+        .bn-input { width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+            border-radius:10px; padding:10px 12px; color:#e2e8f0; font-size:12px;
+            font-family:'Manrope',sans-serif; font-weight:600; outline:none; transition:border-color 0.2s; }
+        .bn-input:focus { border-color:rgba(244,63,94,0.5); }
+        .bn-input option { background:#111113; }
+
+        /* Sort btn */
+        .sort-btn { padding:5px 10px; border-radius:8px; font-size:9px; font-weight:800;
+            text-transform:uppercase; letter-spacing:.06em; cursor:pointer; transition:all .2s;
+            border:1px solid rgba(255,255,255,.06); color:#52525b; background:transparent; }
+        .sort-btn.active { background:rgba(244,63,94,.1); border-color:rgba(244,63,94,.3); color:#f43f5e; }
+        .sort-btn:hover:not(.active) { border-color:rgba(255,255,255,.12); color:#a1a1aa; }
+
+        /* Operation type button */
+        .op-btn { flex:1; padding:8px; border-radius:9px; font-size:10px; font-weight:800; text-transform:uppercase;
+            letter-spacing:.05em; cursor:pointer; transition:all .2s;
+            border:1px solid rgba(255,255,255,.07); color:#52525b; background:transparent; }
+        .op-btn.add.active { background:rgba(16,185,129,.12); border-color:rgba(16,185,129,.3); color:#10b981; }
+        .op-btn.sub.active { background:rgba(244,63,94,.1); border-color:rgba(244,63,94,.3); color:#f43f5e; }
+
+        /* Group selector */
+        .group-btn { padding:7px 14px; border-radius:9px; font-size:10px; font-weight:800; text-transform:uppercase;
+            letter-spacing:.05em; cursor:pointer; transition:all .2s; border:1px solid rgba(255,255,255,.07); color:#52525b; }
+        .group-btn.active { background:rgba(244,63,94,.1); border-color:rgba(244,63,94,.3); color:#f43f5e; }
+
+        /* Bonus bar */
+        .bonus-bar-wrap { height:4px; background:rgba(255,255,255,.05); border-radius:4px; overflow:hidden; margin-top:4px; }
+        .bonus-bar { height:100%; border-radius:4px; background:linear-gradient(90deg,#f59e0b,#fcd34d); }
+
+        /* Skeleton */
+        .skeleton { background: linear-gradient(90deg,#111113 25%,#1a1a1d 50%,#111113 75%);
+            background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:6px; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        /* Settings toggle */
+        .perm-toggle { position:relative; display:inline-block; width:40px; height:22px; }
+        .perm-toggle input { opacity:0; width:0; height:0; }
+        .perm-slider { position:absolute; cursor:pointer; inset:0; background:rgba(255,255,255,0.08); border-radius:22px; transition:0.3s; }
+        .perm-slider:before { position:absolute; content:''; height:16px; width:16px; left:3px; bottom:3px; background:#71717a; border-radius:50%; transition:0.3s; }
+        .perm-toggle input:checked + .perm-slider { background:rgba(244,63,94,0.3); }
+        .perm-toggle input:checked + .perm-slider:before { transform:translateX(18px); background:#f43f5e; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+<aside class="w-16 lg:w-64 bg-black/50 border-r border-white/5 flex flex-col fixed h-full z-50">
+    <div class="p-6">
+        <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none hidden lg:block">Wella Glow</h1>
+        <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none lg:hidden">W</h1>
+        <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] mt-1 uppercase hidden lg:block">studio</p>
+    </div>
+    <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto pb-4">
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Аналітика</p>
+            <div class="space-y-1">
+                <a href="owner-dashboard.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-chart-pie w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Дашборд</span></a>
+                <a href="admin-finance.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-wallet w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Фінанси</span></a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Студія</p>
+            <div class="space-y-1">
+                <a href="admin-calendar.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-calendar-check w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span></a>
+                <a href="admin-staff.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-users-gear w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span></a>
+                <a href="admin-inventory.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-boxes-stacked w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Склад</span></a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Клієнти</p>
+            <div class="space-y-1">
+                <a href="admin-clients-base.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-address-book w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">База клієнтів</span></a>
+                <a href="admin-bonuses.html" class="sidebar-link active flex items-center gap-3 p-3 rounded-r-xl transition font-bold"><i class="fa-solid fa-gift w-4"></i><span class="hidden lg:block text-xs uppercase tracking-widest">Бонуси</span></a>
+            </div>
+        </div>
+    </nav>
+    <!-- Month Selector -->
+    <div class="px-3 pb-2 hidden lg:block">
+        <div class="flex items-center gap-1 p-2 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)">
+            <button onclick="monthStep(-1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="sidebar-month-label" class="text-[10px] font-black uppercase tracking-widest text-zinc-300 flex-1 text-center">—</span>
+            <button onclick="monthStep(1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+    </div>
+    <!-- Profile + Logout -->
+    <div class="border-t border-white/5 p-3">
+        <div class="flex items-center gap-3">
+            <div id="sidebar-avatar" class="w-8 h-8 rounded-full neo-gradient flex-shrink-0 flex items-center justify-center text-white font-black text-xs">A</div>
+            <div class="hidden lg:block flex-1 min-w-0">
+                <p id="sidebar-uname" class="text-xs font-bold text-white truncate">—</p>
+                <p id="sidebar-urole" class="text-[9px] text-zinc-500 uppercase tracking-widest">—</p>
+            </div>
+            <button onclick="doLogout()" title="Вийти" class="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition flex-shrink-0">
+                <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            </button>
+        </div>
+        <button onclick="doLogout()" class="lg:hidden mt-2 w-full flex items-center justify-center p-2 rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition">
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+    </div>
+</aside>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main class="flex-1 ml-16 lg:ml-64 p-5 lg:p-8">
+
+    <!-- HEADER -->
+    <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
+        <div>
+            <h2 class="text-2xl font-extrabold text-white tracking-tight">Бонусна програма</h2>
+            <p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">
+                В обігу: <span id="total-bonuses" class="text-amber-400">—</span> балів
+                &nbsp;·&nbsp; Клієнтів з бонусами: <span id="clients-with-bonuses" class="text-white">—</span>
+            </p>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+            <button onclick="openBulkModal()" class="glass-panel px-4 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition">
+                <i class="fa-solid fa-bolt text-amber-400"></i>
+                <span class="hidden sm:inline">Акційні бонуси</span>
+            </button>
+            <button onclick="openRulesModal()" class="glass-panel px-4 py-2.5 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition">
+                <i class="fa-solid fa-sliders text-zinc-500"></i>
+                <span class="hidden sm:inline">Правила</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- KPI ROW -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="glass-panel rounded-2xl p-4">
+            <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-2">Всього балів</p>
+            <p id="kpi-total" class="text-2xl font-black text-amber-400 tracking-tight">—</p>
+            <p class="text-[9px] text-zinc-600 mt-1">В обігу у клієнтів</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-4">
+            <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-2">Середньо на клієнта</p>
+            <p id="kpi-avg" class="text-2xl font-black text-white tracking-tight">—</p>
+            <p class="text-[9px] text-zinc-600 mt-1">Серед активних</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-4">
+            <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-2">Нараховано (міс.)</p>
+            <p id="kpi-earned" class="text-2xl font-black text-emerald-400 tracking-tight">—</p>
+            <p class="text-[9px] text-zinc-600 mt-1">За поточний місяць</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-4">
+            <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-2">VIP клієнтів</p>
+            <p id="kpi-vip" class="text-2xl font-black text-white tracking-tight">—</p>
+            <div class="bonus-bar-wrap"><div id="kpi-vip-bar" class="bonus-bar" style="width:0%"></div></div>
+        </div>
+    </div>
+
+    <!-- SORT & SEARCH -->
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+        <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-xs"></i>
+            <input id="search-input" type="text" placeholder="Пошук клієнта..." oninput="filterBonus()"
+                class="bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-2 text-xs font-bold text-white placeholder-zinc-600 outline-none focus:border-amber-500/40 w-52 transition">
+        </div>
+        <span class="text-[9px] text-zinc-600 font-black uppercase tracking-widest">Сортування:</span>
+        <button class="sort-btn active" onclick="setSort('bonuses',this)">Бонуси ↓</button>
+        <button class="sort-btn" onclick="setSort('name',this)">Ім'я</button>
+        <button class="sort-btn" onclick="setSort('vip',this)">VIP</button>
+        <button class="sort-btn" onclick="setSort('visits',this)">Візити ↓</button>
+        <div class="ml-auto">
+            <button id="filter-zero" onclick="toggleZeroFilter(this)" class="sort-btn">
+                <i class="fa-solid fa-eye-slash mr-1 text-[8px]"></i>Без бонусів
+            </button>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="glass-panel rounded-3xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="border-b border-white/5">
+                        <th class="px-6 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Клієнт</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Бонусів</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden md:table-cell">Візити</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden lg:table-cell">LTV</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden lg:table-cell">Останній візит</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest text-right pr-6">Дія</th>
+                    </tr>
+                </thead>
+                <tbody id="bonus-tbody">
+                    <tr><td colspan="6" class="px-6 py-16 text-center text-zinc-700 text-xs font-bold uppercase tracking-widest">Завантаження...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- ══════════════ OVERLAY ══════════════ -->
+<div id="modal-overlay" class="fixed inset-0 bg-black/70 z-40 backdrop-blur-sm" onclick="closeAllModals()"></div>
+
+<!-- ══════════════ EDIT MODAL ══════════════ -->
+<div id="edit-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl p-6 w-full max-w-sm">
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h3 class="text-sm font-black text-white">Редагувати бонуси</h3>
+                <p id="edit-client-name" class="text-[10px] text-zinc-500 mt-0.5">—</p>
+            </div>
+            <button onclick="closeAllModals()" class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+        </div>
+
+        <!-- Current balance -->
+        <div class="bg-amber-500/8 border border-amber-500/15 rounded-2xl p-4 mb-5 text-center">
+            <p class="text-[9px] text-amber-400 uppercase font-black tracking-widest mb-1">Поточний баланс</p>
+            <p id="edit-current-balance" class="text-3xl font-black text-amber-400">0</p>
+            <p class="text-[9px] text-zinc-600 mt-1">балів</p>
+        </div>
+
+        <!-- Operation type -->
+        <div class="flex gap-2 mb-4">
+            <button id="op-add" class="op-btn add active" onclick="setOp('add')">
+                <i class="fa-solid fa-plus mr-1"></i>Нарахувати
+            </button>
+            <button id="op-sub" class="op-btn sub" onclick="setOp('sub')">
+                <i class="fa-solid fa-minus mr-1"></i>Списати
+            </button>
+        </div>
+
+        <!-- Amount -->
+        <div class="mb-4">
+            <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Кількість балів</label>
+            <input id="edit-amount" type="number" min="1" class="bn-input" placeholder="100">
+        </div>
+
+        <!-- Reason -->
+        <div class="mb-5">
+            <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Причина</label>
+            <input id="edit-reason" class="bn-input" placeholder="Наприклад: День народження">
+        </div>
+
+        <!-- Preview -->
+        <div id="edit-preview" class="text-center text-[10px] text-zinc-500 mb-4"></div>
+
+        <button onclick="saveBonus()" class="neo-gradient w-full py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">
+            <i class="fa-solid fa-floppy-disk mr-2"></i>Зберегти
+        </button>
+    </div>
+</div>
+
+<!-- ══════════════ BULK MODAL ══════════════ -->
+<div id="bulk-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl p-6 w-full max-w-md">
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h3 class="text-sm font-black text-white">Акційні бонуси</h3>
+                <p class="text-[10px] text-zinc-500 mt-0.5">Нарахувати групі клієнтів</p>
+            </div>
+            <button onclick="closeAllModals()" class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+        </div>
+
+        <!-- Group selector -->
+        <div class="mb-5">
+            <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-2">Група клієнтів</label>
+            <div class="flex flex-wrap gap-2">
+                <button class="group-btn active" id="grp-all"  onclick="setGroup('all',this)">Всі клієнти</button>
+                <button class="group-btn" id="grp-vip"         onclick="setGroup('vip',this)"><i class="fa-solid fa-star text-amber-400 mr-1 text-[9px]"></i>Тільки VIP</button>
+                <button class="group-btn" id="grp-zero"        onclick="setGroup('zero',this)">Без бонусів</button>
+                <button class="group-btn" id="grp-birthday"    onclick="setGroup('birthday',this)"><i class="fa-solid fa-cake-candles mr-1 text-[9px] text-rose-400"></i>Іменинники</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Бонусів</label>
+                <input id="bulk-amount" type="number" min="1" class="bn-input" placeholder="50">
+            </div>
+            <div>
+                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Місяць (ДН)</label>
+                <select id="bulk-birthday-month" class="bn-input hidden">
+                    <option value="1">Січень</option><option value="2">Лютий</option><option value="3">Березень</option>
+                    <option value="4">Квітень</option><option value="5">Травень</option><option value="6">Червень</option>
+                    <option value="7">Липень</option><option value="8">Серпень</option><option value="9">Вересень</option>
+                    <option value="10">Жовтень</option><option value="11">Листопад</option><option value="12">Грудень</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-5">
+            <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Повідомлення / Причина</label>
+            <input id="bulk-reason" class="bn-input" placeholder="Привітання з Днем народження!">
+        </div>
+
+        <!-- Preview count -->
+        <div id="bulk-preview" class="bg-white/3 rounded-xl p-3 mb-5 text-center border border-white/5">
+            <p class="text-[10px] text-zinc-500">Буде нараховано <span id="bulk-count" class="text-white font-black">0</span> клієнтам</p>
+        </div>
+
+        <button onclick="applyBulkBonus()" class="amber-gradient w-full py-3 rounded-xl text-[10px] font-black text-black uppercase tracking-widest hover:opacity-90 transition">
+            <i class="fa-solid fa-bolt mr-2"></i>Нарахувати бонуси
+        </button>
+    </div>
+</div>
+
+<!-- ══════════════ RULES MODAL ══════════════ -->
+<div id="rules-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl p-6 w-full max-w-sm">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-sm font-black text-white">Правила бонусів</h3>
+            <button onclick="closeAllModals()" class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div class="bg-white/3 rounded-xl p-4 border border-white/5">
+                <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-3">Нарахування</p>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-zinc-300">% від суми візиту</p>
+                    <input id="rule-earn-rate" type="number" min="0" max="100" value="1" class="bn-input w-20 text-center">
+                </div>
+            </div>
+            <div class="bg-white/3 rounded-xl p-4 border border-white/5">
+                <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-3">Використання</p>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-xs text-zinc-300">Мін. для списання</p>
+                    <input id="rule-min-redeem" type="number" min="0" value="100" class="bn-input w-20 text-center">
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-zinc-300">Макс. % знижки</p>
+                    <input id="rule-max-discount" type="number" min="0" max="100" value="30" class="bn-input w-20 text-center">
+                </div>
+            </div>
+            <div class="bg-white/3 rounded-xl p-4 border border-white/5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-zinc-300">VIP від (балів)</p>
+                        <p class="text-[9px] text-zinc-600 mt-0.5">Автоматичний VIP статус</p>
+                    </div>
+                    <input id="rule-vip-threshold" type="number" min="0" value="500" class="bn-input w-20 text-center">
+                </div>
+            </div>
+        </div>
+        <p class="text-[9px] text-zinc-600 text-center mt-4">Правила — довідкова інформація для персоналу</p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/admin-bonuses.js"></script>
+</body>
+</html>
