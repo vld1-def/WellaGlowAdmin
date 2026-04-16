@@ -295,6 +295,8 @@ function renderTimeline(days, today){
     // Grid rows — one row per 30-min slot
     const slots=[];
     HOURS.forEach(h=>{slots.push({h,m:0});slots.push({h,m:30});});
+    const nowObj=new Date();
+    const nowTotalMin=nowObj.getHours()*60+nowObj.getMinutes();
 
     const rows=slots.map(({h,m})=>{
         const cells=days.map(({str})=>{
@@ -303,10 +305,12 @@ function renderTimeline(days, today){
             );
             const shiftOverlay=shiftCellOverlay(str,masterId,h);
             const blocked=isCellBlocked(str,masterId,h);
-            const handlers=blocked
-                ?`onclick="openShiftCell('${str}',${h},'${masterId}')"`
+            const isPast=str<today||(str===today&&toMinutes(h,m)+30<=nowTotalMin);
+            const handlers=blocked||isPast
+                ?(blocked?`onclick="openShiftCell('${str}',${h},'${masterId}')"`:'' )
                 :`onmousedown="dragBegin(event,'${str}',${h},${m})" onmouseenter="dragMove(event,'${str}',${h},${m})" onmouseup="dragEnd_(event,'${str}',${h},${m})"`;
-            return `<div class="tl-cell${blocked?' blocked':''}" data-day="${str}" data-hour="${h}" data-min="${m}" ${handlers}>${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
+            const cls='tl-cell'+(blocked?' blocked':'')+(isPast&&!blocked?' past-cell':'');
+            return `<div class="${cls}" data-day="${str}" data-hour="${h}" data-min="${m}" ${handlers}>${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
         }).join('');
         const label=m===0
             ?`<div class="tl-hour-label" data-hour="${h}" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну">${hhmm(h)}</div>`
@@ -371,16 +375,17 @@ function shiftCellOverlay(dateStr,masterId,h){
 function apptBlockHTML(a){
     const client=clients.find(c=>c.id===a.client_id);
     const svc=services.find(s=>s.id===a.service_id);
-    const color=mColor(a.master_id);
+    const isDone=a.status==='done'||a.status==='completed'||a.status==='finished';
+    const color=isDone?'#52525b':mColor(a.master_id);
+    const textColor=isDone?'#a1a1aa':'#fff';
     const sh=startHour(a),sm=startMin(a),eh=endHour(a),em=endMin(a);
     const durMin=(eh!==null&&sh!==null)?((eh*60+em)-(sh*60+sm)):60;
-    // Each 30-min slot = 30px cell; block is top-anchored in its start cell
     const height=Math.max(durMin-4,22);
     const t=a._start?a._start.slice(0,5):'';
-    return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}20;border-left-color:${color};z-index:3"
+    return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}28;border-left-color:${color};z-index:3"
         onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
-        <p style="font-size:11px;font-weight:800;color:#fff;line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
-        ${durMin>30?`<p style="font-size:10px;color:${color}bb" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
+        <p style="font-size:11px;font-weight:800;color:${textColor};line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
+        ${durMin>30?`<p style="font-size:10px;color:${color}cc" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
     </div>`;
 }
 
@@ -679,16 +684,14 @@ function renderSlotGrid(bookedSet, startH, startM, endH, endM, dateStr=''){
         const sk=slotKey(h,m);
         const isPast=dateStr===todayStr&&(h<nowH||(h===nowH&&m<=nowMin));
         const isBooked=bookedSet.has&&bookedSet.has(sk);
+        if(isBooked) return ''; // hide blocked/booked slots entirely
         const inRange=startSlot!==null&&endSlot!==null&&sk>=startSlot&&sk<endSlot;
         let cls='time-slot';
-        if(isBooked) cls+=' booked-slot';
-        else if(isPast) cls+=' past-slot';
+        if(isPast) cls+=' past-slot';
         else if(inRange) cls+=' sel-slot';
-        const dis=isBooked||isPast;
-        return `<button class="${cls}" ${dis?'disabled':''} onclick="slotClick(${h},${m})"
+        return `<button class="${cls}" ${isPast?'disabled':''} onclick="slotClick(${h},${m})"
             style="${inRange?'background:rgba(244,63,94,.25);border-color:rgba(244,63,94,.5);color:#fff':''}
-                   ${isBooked?'opacity:.3;text-decoration:line-through;cursor:not-allowed':''}
-                   ${isPast?'opacity:.2;cursor:not-allowed':''}
+                   ${isPast?'opacity:.25;cursor:not-allowed':''}
                    padding:6px 4px;border-radius:8px;font-size:10px;font-weight:800;text-align:center;
                    border:1px solid rgba(255,255,255,.08);background:${inRange?'rgba(244,63,94,.25)':'rgba(255,255,255,.04)'};
                    color:${inRange?'#fff':'#a1a1aa'};transition:all .18s;line-height:1;width:100%">

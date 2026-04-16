@@ -48,9 +48,8 @@ let _allClients   = [];   // raw from DB with ltv/visits computed
 let _currentSort  = 'name';
 let _vipOnly      = false;
 let _searchQ      = '';
-let _currentId    = null; // open modal client id
-let _currentVip   = false;
-let _activeTab    = 'history';
+let _currentId  = null; // open modal client id
+let _activeTab  = 'history';
 
 // ── Init ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -189,9 +188,8 @@ window.filterClients = function() {
 
 // ── Open client modal ─────────────────────────────────
 window.openClientModal = async function(id) {
-    _currentId  = id;
-    _activeTab  = 'history';
-    _currentVip = false;
+    _currentId = id;
+    _activeTab = 'history';
 
     // Show modal
     document.getElementById('client-modal').classList.add('open');
@@ -254,14 +252,13 @@ function fillForm(c) {
     document.getElementById('f-formula').value        = c.color_formula     || c.notes_formula || '';
     document.getElementById('f-notes').value          = c.notes             || c.notes_internal || '';
 
-    _currentVip = !!c.vip_status;
     const initials = (c.full_name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
     document.getElementById('modal-avatar').textContent = initials;
     document.getElementById('modal-name-display').textContent = c.full_name || '—';
     document.getElementById('modal-since').textContent = c.created_at ? `Клієнт з ${formatDate(c.created_at.split('T')[0])}` : '';
 
-    if (_currentVip) document.getElementById('modal-vip-badge').classList.remove('hidden');
-    else             document.getElementById('modal-vip-badge').classList.add('hidden');
+    if (c.vip_status) document.getElementById('modal-vip-badge').classList.remove('hidden');
+    else              document.getElementById('modal-vip-badge').classList.add('hidden');
 
     // Phone link
     document.getElementById('modal-phone-link').href = c.phone ? `tel:${c.phone}` : '#';
@@ -317,51 +314,45 @@ window.switchTab = function(tab) {
     document.getElementById('reviews-list').classList.toggle('hidden', tab !== 'reviews');
 };
 
-// ── VIP toggle ────────────────────────────────────────
-window.toggleVip = function() {
-    _currentVip = !_currentVip;
-    document.getElementById('modal-vip-badge').classList.toggle('hidden', !_currentVip);
-};
-
 // ── Save client ───────────────────────────────────────
 window.saveClient = async function() {
     const name     = document.getElementById('f-name').value.trim();
     if (!name) { alert('Введіть ім\'я клієнта'); return; }
 
-    // Build payload with only columns that exist in the DB.
-    // Extend this list if/when new columns are added to the clients table.
-    const payload = {
-        full_name:          name,
-        phone:              document.getElementById('f-phone').value.trim()       || null,
-        instagram:          document.getElementById('f-instagram').value.trim()   || null,
-        birthday:           document.getElementById('f-birthday').value           || null,
-        vip_status:         _currentVip,
-        notes_allergies:    document.getElementById('f-allergies').value.trim()   || null,
-        notes_preferences:  document.getElementById('f-preferences').value.trim() || null,
+    // Base payload — only 100% guaranteed columns
+    const basePayload = {
+        full_name: name,
+        phone:     document.getElementById('f-phone').value.trim()     || null,
+        instagram: document.getElementById('f-instagram').value.trim() || null,
+        birthday:  document.getElementById('f-birthday').value         || null,
     };
-    // Include optional columns only if they exist (avoid schema errors)
-    const formulaVal = document.getElementById('f-formula').value.trim();
-    const notesVal   = document.getElementById('f-notes').value.trim();
-
-    // Try saving with optional columns; if it fails, retry without them
-    let err;
-    const tryWithExtras = async (extraFields) => {
-        const p = { ...payload, ...extraFields };
-        if (_currentId) {
-            return (await window.db.from('clients').update(p).eq('id', _currentId)).error;
-        } else {
-            return (await window.db.from('clients').insert(p)).error;
-        }
+    // Optional columns — try to include, fall back if schema lacks them
+    const optionals = {
+        notes_allergies:   document.getElementById('f-allergies').value.trim()   || null,
+        notes_preferences: document.getElementById('f-preferences').value.trim() || null,
+        color_formula:     document.getElementById('f-formula').value.trim()     || null,
+        notes:             document.getElementById('f-notes').value.trim()       || null,
     };
 
-    err = await tryWithExtras({
-        ...(formulaVal ? { color_formula: formulaVal } : {}),
-        ...(notesVal   ? { notes: notesVal }           : {}),
-    });
+    const doSave = async (payload) => {
+        if (_currentId) return (await window.db.from('clients').update(payload).eq('id', _currentId)).error;
+        return (await window.db.from('clients').insert(payload)).error;
+    };
 
-    // If schema error on optional columns, retry with base payload only
+    // Try with all optional fields first
+    let err = await doSave({ ...basePayload, ...optionals });
+
+    // If schema error, strip optional fields one by one and retry
     if (err && err.message && err.message.includes('column')) {
-        err = await tryWithExtras({});
+        // Try with known safe optional set
+        err = await doSave({ ...basePayload,
+            notes_allergies: optionals.notes_allergies,
+            notes_preferences: optionals.notes_preferences,
+        });
+    }
+    if (err && err.message && err.message.includes('column')) {
+        // Last resort: base only
+        err = await doSave(basePayload);
     }
 
     if (err) { alert('Помилка збереження: ' + err.message); return; }

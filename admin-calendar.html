@@ -124,6 +124,9 @@
         /* Blocked cells — no hour/half-hour lines */
         .tl-cell.blocked{cursor:pointer;border-top:none !important}
         .tl-cell.blocked:hover{background:transparent}
+        /* Past cells (before now) — subtle grey wash */
+        .tl-cell.past-cell{background:rgba(0,0,0,0.18);cursor:default;border-top:none !important}
+        .tl-cell.past-cell:hover{background:rgba(0,0,0,0.18) !important}
 
         /* Shift modal */
         #shift-modal{transition:opacity .25s}
