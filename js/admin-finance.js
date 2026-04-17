@@ -366,10 +366,10 @@ function txRow(t, isModal) {
         <td class="${py} pr-4">
             <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${cat.cls}">${cat.label}</span>
         </td>
-        <td class="${py} pr-4 text-[10px] font-bold text-zinc-500 whitespace-nowrap">${subcatLabel}</td>
-        <td class="${py} pr-4 text-[11px] text-zinc-300 max-w-[220px] truncate">${t.comment || '—'}</td>
-        <td class="${py} pr-4 text-[10px] font-black text-zinc-500 uppercase tracking-wider whitespace-nowrap">${method}</td>
-        <td class="${py} pr-4 text-[11px] font-bold text-zinc-400 whitespace-nowrap">${creator}</td>
+        <td class="${py} pr-4 text-[10px] font-bold text-zinc-500 whitespace-nowrap hidden md:table-cell">${subcatLabel}</td>
+        <td class="${py} pr-4 text-[11px] text-zinc-300 max-w-[220px] truncate hidden lg:table-cell">${t.comment || '—'}</td>
+        <td class="${py} pr-4 text-[10px] font-black text-zinc-500 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">${method}</td>
+        <td class="${py} pr-4 text-[11px] font-bold text-zinc-400 whitespace-nowrap hidden sm:table-cell">${creator}</td>
         <td class="${py} text-right text-sm font-black ${color} whitespace-nowrap">${sign}₴${fmt(Math.abs(t.amount || 0))}</td>
         <td class="${py} pl-2 text-right whitespace-nowrap">
             <button onclick="editTransaction('${t.id}')" class="edit-tx-btn w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-600 hover:text-white flex items-center justify-center transition ml-auto" title="Редагувати">
