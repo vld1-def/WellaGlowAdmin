@@ -33,6 +33,13 @@
     background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05);
     font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#71717a; text-decoration:none; }
 .mob-more-itm.active { color:#f43f5e; background:rgba(244,63,94,.06); border-color:rgba(244,63,94,.15); }
+.dash-toggle { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.02); }
+.toggle-sw { position:relative; width:36px; height:20px; flex-shrink:0; }
+.toggle-sw input { opacity:0; width:0; height:0; }
+.toggle-sw .slider { position:absolute; inset:0; background:#27272a; border-radius:20px; cursor:pointer; transition:.2s; }
+.toggle-sw .slider:before { content:''; position:absolute; width:14px; height:14px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.2s; }
+.toggle-sw input:checked + .slider { background:#f43f5e; }
+.toggle-sw input:checked + .slider:before { transform:translateX(16px); }
     </style>
 </head>
 <body class="flex min-h-screen">
@@ -98,44 +105,55 @@
     <main class="flex-1 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
         <header class="flex justify-between items-center mb-8">
             <h2 class="text-2xl font-extrabold text-white tracking-tight">Панель власника</h2>
-            <button class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-zinc-400"><i class="fa-solid fa-gear"></i></button>
+            <button onclick="openDashSettings()" class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white transition"><i class="fa-solid fa-gear"></i></button>
         </header>
 
         <!-- KPI КАРТКИ (5 ШТУК) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-            <div class="glass-panel p-5 rounded-2xl">
-                <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Прибуток</p>
-                <h3 id="kpi-profit" class="text-2xl font-black text-white tracking-tighter">₴0</h3>
-                <div class="mt-3 h-1 w-full bg-zinc-900 rounded-full overflow-hidden"><div id="kpi-profit-bar" class="h-full bg-rose-500" style="width: 0%"></div></div>
+        <div class="grid grid-cols-2 gap-4 mb-8">
+    <div class="glass-panel p-5 rounded-2xl col-span-2">
+        <div class="flex items-end justify-between gap-4">
+            <div>
+                <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Прибуток місяця</p>
+                <h3 id="kpi-profit" class="text-3xl font-black text-white tracking-tighter">₴0</h3>
             </div>
-            <div class="glass-panel p-5 rounded-2xl">
-                <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Нові клієнти</p>
-                <div class="flex items-center justify-between"><h3 id="kpi-new-clients" class="text-2xl font-black text-white tracking-tighter">0</h3><span id="kpi-clients-trend" class="text-emerald-400 text-[10px] font-black">+0%</span></div>
-            </div>
-            <div class="glass-panel p-5 rounded-2xl">
-                <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Записи міс.</p>
-                <h3 id="kpi-total-bookings" class="text-2xl font-black text-white tracking-tighter">0</h3>
-                <div id="kpi-bookings-bars" class="mt-3 flex gap-0.5">
-                    <div class="h-1 flex-1 bg-zinc-800 rounded-full"></div><div class="h-1 flex-1 bg-zinc-800 rounded-full"></div><div class="h-1 flex-1 bg-zinc-800 rounded-full"></div><div class="h-1 flex-1 bg-zinc-800 rounded-full"></div>
+            <div class="flex-1 max-w-xs">
+                <div class="flex justify-between text-[9px] text-zinc-600 font-bold mb-1">
+                    <span>Прогрес місяця</span><span id="kpi-profit-pct">0%</span>
+                </div>
+                <div class="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+                    <div id="kpi-profit-bar" class="h-full bg-rose-500 transition-all" style="width:0%"></div>
                 </div>
             </div>
-            <div class="glass-panel p-5 rounded-2xl">
-                <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Середній чек</p>
-                <h3 id="kpi-avg-bill" class="text-2xl font-black text-white tracking-tighter">₴0</h3>
-            </div>
-            <div class="glass-panel p-5 rounded-2xl border-l-2 border-emerald-500">
-                <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Retention Rate</p>
-                <h3 id="kpi-retention" class="text-2xl font-black text-white tracking-tighter">0%</h3>
-            </div>
         </div>
+    </div>
+    <div class="glass-panel p-5 rounded-2xl">
+        <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Нові клієнти</p>
+        <div class="flex items-center justify-between"><h3 id="kpi-new-clients" class="text-2xl font-black text-white tracking-tighter">0</h3><span id="kpi-clients-trend" class="text-emerald-400 text-[10px] font-black">+0%</span></div>
+    </div>
+    <div class="glass-panel p-5 rounded-2xl">
+        <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Записи міс.</p>
+        <h3 id="kpi-total-bookings" class="text-2xl font-black text-white tracking-tighter">0</h3>
+        <div id="kpi-bookings-bars" class="mt-3 flex gap-0.5">
+            <div class="h-1 flex-1 bg-zinc-800 rounded-full"></div><div class="h-1 flex-1 bg-zinc-800 rounded-full"></div><div class="h-1 flex-1 bg-zinc-800 rounded-full"></div><div class="h-1 flex-1 bg-zinc-800 rounded-full"></div>
+        </div>
+    </div>
+    <div class="glass-panel p-5 rounded-2xl">
+        <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Середній чек</p>
+        <h3 id="kpi-avg-bill" class="text-2xl font-black text-white tracking-tighter">₴0</h3>
+    </div>
+    <div class="glass-panel p-5 rounded-2xl border-l-2 border-emerald-500">
+        <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Retention Rate</p>
+        <h3 id="kpi-retention" class="text-2xl font-black text-white tracking-tighter">0%</h3>
+    </div>
+</div>
 
         <!-- ГРАФІК 3/4 ТА ТАЙМЛАЙН 1/4 -->
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-            <div class="lg:col-span-3 glass-panel p-6 rounded-3xl">
+            <div id="analytics-block" class="lg:col-span-3 glass-panel p-6 rounded-3xl">
                 <h4 class="text-xs font-black text-white uppercase tracking-widest mb-6">Аналітика доходів</h4>
                 <div class="h-72"><canvas id="profitChart"></canvas></div>
             </div>
-            <div class="lg:col-span-1 glass-panel p-6 rounded-3xl">
+            <div id="today-block" class="lg:col-span-1 glass-panel p-6 rounded-3xl">
                 <h4 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-8 leading-none">Візити сьогодні</h4>
                 <div id="today-timeline" class="relative space-y-8">
                     <!-- Завантажиться через JS (з майстром!) -->
@@ -145,15 +163,18 @@
 
         <!-- ТАБЛИЦЯ 3/4 ТА СКЛАД 1/4 -->
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div class="lg:col-span-3 glass-panel p-6 rounded-3xl">
+            <div id="efficiency-block" class="lg:col-span-3 glass-panel p-6 rounded-3xl">
                 <h4 class="text-xs font-black text-white uppercase tracking-widest mb-4">Ефективність майстрів</h4>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
+                        <thead><tr class="text-[8px] text-zinc-600 uppercase font-black tracking-widest">
+                            <th class="pb-3">Майстер</th><th class="pb-3 text-center">Записи</th><th class="pb-3 text-center">Виручка</th><th class="pb-3 text-right">Зароблено</th>
+                        </tr></thead>
                         <tbody id="staff-efficiency-body" class="divide-y divide-white/5"></tbody>
                     </table>
                 </div>
             </div>
-            <div class="lg:col-span-1 glass-panel p-6 rounded-3xl">
+            <div id="stock-block" class="lg:col-span-1 glass-panel p-6 rounded-3xl">
                 <h4 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6 leading-none">Стан складу</h4>
                 <div id="stock-status-list" class="space-y-6"></div>
             </div>
@@ -178,5 +199,28 @@
         <a href="admin-bonuses.html" class="mob-more-itm "><i class="fa-solid fa-gift text-lg"></i><span>Бонуси</span></a>
     </div>
 </nav>
+<!-- ═══════ DASH SETTINGS DRAWER ═══════ -->
+<div id="dash-settings-overlay" class="fixed inset-0 bg-black/60 z-40 hidden" onclick="closeDashSettings()"></div>
+<div id="dash-settings-drawer" class="fixed top-0 right-0 h-full w-80 z-50 overflow-y-auto transition-transform translate-x-full"
+    style="background:rgba(13,13,15,.98);border-left:1px solid rgba(255,255,255,.08)">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-sm font-black text-white uppercase tracking-widest">Налаштування дашборду</h3>
+            <button onclick="closeDashSettings()" class="text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <p class="text-[10px] text-zinc-600 font-bold mb-5">Оберіть які блоки відображати на дашборді</p>
+        <div class="space-y-3" id="dash-block-toggles"></div>
+        <div class="mt-6 pt-4 border-t border-white/5">
+            <p class="text-[9px] text-zinc-600 font-black uppercase tracking-widest mb-3">Запропонувати нові блоки</p>
+            <div class="space-y-2 text-[10px] text-zinc-500">
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Топ-послуги місяця</div>
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Відгуки останні</div>
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Прогноз виручки</div>
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Дні народження клієнтів</div>
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Нові запити / лід форма</div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

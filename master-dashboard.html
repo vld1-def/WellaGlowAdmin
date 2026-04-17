@@ -45,13 +45,13 @@
         /* Calendar grid */
         .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
         .cal-col-header { text-align:center; font-size:8px; font-weight:800; text-transform:uppercase; color:#52525b; padding:4px 0 6px; }
-        .cal-day-cell { min-height:56px; border-radius:8px; padding:4px; font-size:8px;
+        .cal-day-cell { min-height:80px; border-radius:8px; padding:4px; font-size:8px;
             background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.04); }
         .cal-day-cell.today { border-color:rgba(244,63,94,.3); background:rgba(244,63,94,.04); }
         .cal-day-num { font-size:8px; font-weight:800; color:#52525b; margin-bottom:2px; }
         .cal-appt-chip { background:rgba(244,63,94,.15); border:1px solid rgba(244,63,94,.25);
-            border-radius:4px; padding:2px 4px; margin-bottom:2px; font-size:7px; font-weight:700; color:#fb7185;
-            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            border-radius:4px; padding:3px 4px; margin-bottom:2px; font-size:7px; font-weight:700; color:#fb7185;
+            overflow:hidden; }
         .cal-appt-chip.done { background:rgba(16,185,129,.1); border-color:rgba(16,185,129,.2); color:#34d399; }
 
         /* Toggle btn */
@@ -92,27 +92,27 @@
 <!-- ═══════ MAIN ═══════ -->
 <main class="px-5 pb-24 space-y-5 mt-4">
 
-    <!-- KPI STRIP — 4 cards in one row -->
+    <!-- KPI STRIP -->
     <div class="grid grid-cols-4 gap-2">
-        <div class="glass-panel rounded-2xl p-3">
-            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1 leading-tight">Сьогодні</p>
+        <div class="glass-panel rounded-2xl p-3 text-center">
+            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1">Сьогодні</p>
             <p id="kpi-today" class="text-2xl font-black text-white tracking-tight">—</p>
-            <p class="text-[7px] text-zinc-600 mt-0.5">Записів</p>
+            <p id="kpi-today-sub" class="text-[7px] text-zinc-600 mt-0.5 leading-tight">0 / 0</p>
         </div>
-        <div class="glass-panel rounded-2xl p-3">
-            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1 leading-tight">Місяць</p>
+        <div class="glass-panel rounded-2xl p-3 text-center">
+            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1">Місяць</p>
             <p id="kpi-month" class="text-2xl font-black text-white tracking-tight">—</p>
-            <p class="text-[7px] text-zinc-600 mt-0.5">Записів</p>
+            <p id="kpi-month-sub" class="text-[7px] text-zinc-600 mt-0.5 leading-tight">записів</p>
         </div>
-        <div class="glass-panel rounded-2xl p-3">
-            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1 leading-tight">Зароблено</p>
+        <div class="glass-panel rounded-2xl p-3 text-center">
+            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1">Зароблено</p>
             <p id="kpi-earned" class="text-sm font-black text-emerald-400 tracking-tight leading-tight mt-1">—</p>
-            <p class="text-[7px] text-zinc-600 mt-0.5">Цей місяць</p>
+            <p id="kpi-earned-sub" class="text-[7px] text-zinc-600 mt-0.5 leading-tight">прогноз</p>
         </div>
-        <div class="glass-panel rounded-2xl p-3">
-            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1 leading-tight">Рейтинг</p>
+        <div class="glass-panel rounded-2xl p-3 text-center">
+            <p class="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1">Рейтинг</p>
             <p id="kpi-rating" class="text-sm font-black text-amber-400 tracking-tight leading-tight mt-1">—</p>
-            <p class="text-[7px] text-zinc-600 mt-0.5">Середній</p>
+            <p class="text-[7px] text-zinc-600 mt-0.5">середній</p>
         </div>
     </div>
 
@@ -160,7 +160,7 @@
         <p id="sheet-sub" class="text-[10px] text-zinc-500 mb-4">—</p>
 
         <!-- Action buttons -->
-        <div class="space-y-2 mb-5">
+        <div id="sheet-action-btns" class="space-y-2 mb-5">
             <button onclick="markStatus('done')" class="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/10 transition flex items-center justify-center gap-2">
                 <i class="fa-solid fa-circle-check"></i>Позначити виконаним
             </button>

@@ -28,15 +28,20 @@ window.doLogout = function() {
 // ── Upcoming view state ───────────────────────────────
 let _upcomingView = 'list';
 let _upcomingData = [];
+let _calWeekOffset = 0;
 
 window.setUpcomingView = function(view) {
     _upcomingView = view;
+    _calWeekOffset = 0;
     document.getElementById('btn-view-list').classList.toggle('active', view === 'list');
     document.getElementById('btn-view-cal').classList.toggle('active', view === 'cal');
     document.getElementById('upcoming-list').classList.toggle('hidden', view !== 'list');
     document.getElementById('upcoming-cal').classList.toggle('hidden', view !== 'cal');
     if (view === 'cal') renderUpcomingCal(_upcomingData);
 };
+
+window.calWeekPrev = function() { _calWeekOffset--; renderUpcomingCal(_upcomingData); };
+window.calWeekNext = function() { _calWeekOffset++; renderUpcomingCal(_upcomingData); };
 
 // ── Init ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -76,6 +81,9 @@ async function loadTodaySchedule() {
     document.getElementById('kpi-today').textContent = appts.length;
     const doneCount = appts.filter(a => a.status === 'done' || a.status === 'completed').length;
     if (countEl) countEl.textContent = `${doneCount} / ${appts.length} виконано`;
+    document.getElementById('kpi-today').textContent = appts.length;
+    const kpiTodaySub = document.getElementById('kpi-today-sub');
+    if (kpiTodaySub) kpiTodaySub.textContent = `${doneCount} / ${appts.length} виконано`;
 
     list.innerHTML = appts.map(a => {
         const isDone = a.status === 'done' || a.status === 'completed';
@@ -113,7 +121,7 @@ async function loadUpcoming() {
 
     const { data: appts } = await window.db
         .from('appointments')
-        .select('appointment_date, appointment_time, service_name, price, clients(full_name)')
+        .select('appointment_date, appointment_time, service_name, price, client_id, clients(full_name)')
         .eq('master_id', masterId)
         .gt('appointment_date', today)
         .lte('appointment_date', plus7)
@@ -143,9 +151,14 @@ async function loadUpcoming() {
                     <p class="text-[9px] text-zinc-500 mt-0.5 truncate">${a.service_name || '—'}</p>
                 </div>
             </div>
-            <div class="text-right flex-shrink-0">
-                <p class="text-[11px] font-black text-white">${fmtTime(a.appointment_time)}</p>
-                <p class="text-[9px] text-zinc-600">₴${(a.price || 0).toLocaleString()}</p>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <div class="text-right">
+                    <p class="text-[11px] font-black text-white">${fmtTime(a.appointment_time)}</p>
+                    <p class="text-[9px] text-zinc-600">₴${(a.price || 0).toLocaleString()}</p>
+                </div>
+                <button onclick="openNotesSheet('${a.client_id||''}','${(a.clients?.full_name||'').replace(/'/g,"\\'")}')" class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white transition flex-shrink-0">
+                    <i class="fa-solid fa-note-sticky text-[9px]"></i>
+                </button>
             </div>
         </div>`;
     }).join('');
@@ -156,33 +169,46 @@ function renderUpcomingCal(appts) {
     if (!cal) return;
 
     const now = new Date();
-    // Build 7 days starting tomorrow
+    // Start from tomorrow + week offset
+    const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1 + _calWeekOffset * 7);
     const days = [];
-    for (let i = 1; i <= 7; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + i);
         days.push(d);
     }
 
+    const fmt = d => `${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}`;
+    const weekLabel = `${fmt(days[0])} – ${fmt(days[6])}`;
+
     const header = days.map(d =>
         `<div class="cal-col-header">
-            <div style="color:${localDate(d) === localDate(now) ? '#f43f5e' : ''}">${DAY_UA[d.getDay()]}</div>
-            <div style="font-size:11px;font-weight:900;color:${localDate(d) === localDate(now) ? '#f43f5e' : '#a1a1aa'}">${d.getDate()}</div>
+            <div class="text-[8px] font-black uppercase" style="color:${localDate(d) === localDate(now) ? '#f43f5e' : '#52525b'}">${DAY_UA[d.getDay()]}</div>
+            <div class="text-sm font-black mt-0.5" style="color:${localDate(d) === localDate(now) ? '#f43f5e' : '#a1a1aa'}">${d.getDate()}</div>
         </div>`
     ).join('');
 
     const cells = days.map(d => {
         const ds = localDate(d);
         const dayAppts = appts.filter(a => a.appointment_date === ds);
-        const isDone = false;
         const chips = dayAppts.map(a =>
-            `<div class="cal-appt-chip" title="${a.clients?.full_name || 'Гість'} · ${a.service_name || ''}">
-                ${fmtTime(a.appointment_time)} ${a.clients?.full_name?.split(' ')[0] || ''}
+            `<div class="cal-appt-chip" title="${a.clients?.full_name||'Гість'} · ${a.service_name||''}">
+                <span class="text-[7px] font-black block">${fmtTime(a.appointment_time)}</span>
+                <span class="truncate block text-[7px]">${a.clients?.full_name?.split(' ')[0]||''}</span>
             </div>`
         ).join('');
-        return `<div class="cal-day-cell">${chips || ''}</div>`;
+        return `<div class="cal-day-cell">${chips}</div>`;
     }).join('');
 
     cal.innerHTML = `
+        <div class="flex items-center justify-between mb-3 px-1">
+            <button onclick="calWeekPrev()" class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white transition">
+                <i class="fa-solid fa-chevron-left text-[9px]"></i>
+            </button>
+            <span class="text-[9px] font-black text-zinc-400 uppercase tracking-widest">${weekLabel}</span>
+            <button onclick="calWeekNext()" class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white transition">
+                <i class="fa-solid fa-chevron-right text-[9px]"></i>
+            </button>
+        </div>
         <div class="cal-grid mb-1">${header}</div>
         <div class="cal-grid">${cells}</div>`;
 }
@@ -210,6 +236,16 @@ async function loadMonthStats() {
     document.getElementById('kpi-month').textContent  = allAppts.length;
     document.getElementById('kpi-earned').textContent = `₴${earned.toLocaleString()}`;
 
+    // Projected income: extrapolate to end of month
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const dayOfMonth = now.getDate();
+    const projected = dayOfMonth > 0 ? Math.round(earned / dayOfMonth * daysInMonth) : 0;
+    const kpiEarnedSub = document.getElementById('kpi-earned-sub');
+    if (kpiEarnedSub) kpiEarnedSub.textContent = `~₴${projected.toLocaleString()} прогноз`;
+
+    const kpiMonthSub = document.getElementById('kpi-month-sub');
+    if (kpiMonthSub) kpiMonthSub.textContent = `${allAppts.length} записів`;
+
     if (reviews?.length) {
         const avg = reviews.reduce((s,r) => s + parseFloat(r.rating), 0) / reviews.length;
         document.getElementById('kpi-rating').textContent = `${avg.toFixed(1)} ★`;
@@ -225,6 +261,8 @@ let _actionClientId = null;
 window.openActionSheet = async function(id, client, service, time, clientId) {
     _actionApptId  = id;
     _actionClientId = clientId || null;
+    const actionBtns = document.getElementById('sheet-action-btns');
+    if (actionBtns) actionBtns.style.display = '';
     document.getElementById('sheet-title').textContent = client || 'Клієнт';
     document.getElementById('sheet-sub').textContent   = `${service} · ${fmtTime(time)}`;
 
@@ -256,6 +294,43 @@ window.openActionSheet = async function(id, client, service, time, clientId) {
 
     const noteSec = document.getElementById('sheet-notes-section');
     if (noteSec) noteSec.style.display = clientId ? '' : 'none';
+};
+
+window.openNotesSheet = async function(clientId, clientName) {
+    _actionApptId  = null;
+    _actionClientId = clientId || null;
+    document.getElementById('sheet-title').textContent = clientName || 'Клієнт';
+    document.getElementById('sheet-sub').textContent   = 'Нотатки клієнта';
+
+    // Hide action buttons, show only notes
+    const actionBtns = document.getElementById('sheet-action-btns');
+    if (actionBtns) actionBtns.style.display = 'none';
+
+    ['note-allergies','note-preferences','note-formula','note-general'].forEach(f => {
+        const el = document.getElementById(f);
+        if (el) el.value = '';
+    });
+
+    document.getElementById('appt-overlay').classList.remove('hidden');
+    document.getElementById('appt-action-sheet').classList.add('open');
+
+    if (clientId) {
+        const { data: cl } = await window.db
+            .from('clients')
+            .select('notes_allergies, preferences, color_formula, notes')
+            .eq('id', clientId)
+            .single();
+        if (cl) {
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+            set('note-allergies',   cl.notes_allergies);
+            set('note-preferences', cl.preferences);
+            set('note-formula',     cl.color_formula);
+            set('note-general',     cl.notes);
+        }
+    }
+
+    const noteSec = document.getElementById('sheet-notes-section');
+    if (noteSec) noteSec.style.display = '';
 };
 
 window.closeActionSheet = function() {

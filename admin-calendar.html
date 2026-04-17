@@ -180,6 +180,13 @@
     background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05);
     font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#71717a; text-decoration:none; }
 .mob-more-itm.active { color:#f43f5e; background:rgba(244,63,94,.06); border-color:rgba(244,63,94,.15); }
+        /* Mobile 3-day view: bigger cells */
+        @media (max-width: 639px) {
+            .tl-wrap { min-width: 0; }
+            .tl-cell { min-height: 36px !important; }
+            .appt-block { font-size: 10px !important; }
+            #week-content { overflow-x: auto; }
+        }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
