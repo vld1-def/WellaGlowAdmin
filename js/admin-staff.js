@@ -290,14 +290,14 @@ function staffRow(s, appointments = 0, revenue = 0, weekRevenue = 0) {
         </td>
         <td class="sc-tenure  py-3 pr-4 hidden md:table-cell text-[11px] text-zinc-400 font-semibold">${tenureDays(s.hire_date)}</td>
         <td class="sc-appt    py-3 pr-4 hidden lg:table-cell text-[11px] text-zinc-400 font-semibold">${appointments}</td>
-        <td class="sc-revenue py-3 pr-4 hidden lg:table-cell text-[11px] text-white font-bold">₴${revenue.toLocaleString('uk-UA')}</td>
-        <td class="sc-earned  py-3 pr-4 hidden lg:table-cell text-[11px] text-emerald-400 font-bold">₴${earned.toLocaleString('uk-UA')}</td>
+        <td class="sc-revenue py-3 pr-4 text-[11px] text-white font-bold">₴${revenue.toLocaleString('uk-UA')}</td>
+        <td class="sc-earned  py-3 pr-4 text-[11px] text-emerald-400 font-bold">₴${earned.toLocaleString('uk-UA')}</td>
         <td class="sc-wrev    py-3 pr-4 hidden lg:table-cell text-[11px] font-bold" style="color:#f59e0b">₴${weekRevenue.toLocaleString('uk-UA')}</td>
         <td class="sc-wearn   py-3 pr-4 hidden lg:table-cell text-[11px] font-bold" style="color:#22d3ee">₴${weekEarned.toLocaleString('uk-UA')}</td>
-        <td class="sc-rate    py-3 pr-4">
+        <td class="sc-rate    py-3 pr-4 hidden md:table-cell">
             <span class="text-[11px] font-bold text-rose-400">${s.commission_rate || 40}%</span>
         </td>
-        <td class="sc-rating  py-3 pr-4">${starRating(avgRating)}</td>
+        <td class="sc-rating  py-3 pr-4 hidden md:table-cell">${starRating(avgRating)}</td>
         <td class="sc-status  py-3 pr-4">${statusBadge(s.status)}</td>
         <td class="py-3" onclick="event.stopPropagation()">
             <div class="flex items-center gap-1">
