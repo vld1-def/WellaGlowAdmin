@@ -661,7 +661,7 @@ const METHOD_LABELS = {
 };
 
 // ─── хелпери ──────────────────────────────────────────────────────────────────
-function fmt(n) { return Number(n || 0).toLocaleString('uk-UA'); }
+function fmt(n) { return Math.round(Number(n || 0)).toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
 function topCategory(expenses) {
     const cats = {};

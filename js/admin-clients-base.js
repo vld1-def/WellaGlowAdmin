@@ -150,7 +150,7 @@ function renderTable() {
         <tr class="client-row" onclick="openClientModal('${c.id}')">
             <td class="px-6">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center font-black text-xs text-white neo-gradient">${initials}</div>
+                    <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-black text-xs text-white neo-gradient">${initials}</div>
                     <div>
                         <p class="text-xs font-bold text-white flex items-center gap-1.5">${c.full_name || '—'}${vipHtml}</p>
                         <p class="text-[9px] text-zinc-600 mt-0.5">${c.instagram || c.phone || '—'}</p>

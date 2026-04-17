@@ -11,6 +11,7 @@
         :root { --bg: #050505; --accent: #f43f5e; }
         body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
         * { font-style: normal !important; }
+        html, body { overflow-x: hidden; max-width: 100%; }
         .glass-panel { background: rgba(17,17,19,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
         .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
         .amber-gradient { background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%); }
@@ -149,7 +150,7 @@
 </aside>
 
 <!-- ═══════════════════ MAIN ═══════════════════ -->
-<main class="flex-1 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
+<main class="flex-1 min-w-0 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
 
     <!-- HEADER -->
     <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
