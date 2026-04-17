@@ -11,7 +11,7 @@
         :root { --bg: #050505; --accent: #f43f5e; }
         body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
         * { font-style: normal !important; }
-        body { overflow-x: hidden; }
+        html, body { overflow-x: hidden; max-width: 100%; }
         .glass-panel { background: rgba(17,17,19,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
         .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
         .sidebar-link.active { background: rgba(244,63,94,0.1); color: #f43f5e; border-left: 3px solid #f43f5e; }
@@ -137,7 +137,7 @@
 </aside>
 
 <!-- ═══════════════════ MAIN ═══════════════════ -->
-<main class="flex-1 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
+<main class="flex-1 min-w-0 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
 
     <!-- HEADER -->
     <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
@@ -187,9 +187,9 @@
                         <th class="px-6 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Клієнт</th>
                         <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">LTV</th>
                         <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Візити</th>
-                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Бонуси</th>
-                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Останній візит</th>
-                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest">Телефон</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden md:table-cell">Бонуси</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden sm:table-cell">Останній візит</th>
+                        <th class="px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden sm:table-cell">Телефон</th>
                         <th class="px-2 py-4"></th>
                     </tr>
                 </thead>

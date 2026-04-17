@@ -50,7 +50,10 @@
       "Bash(\"C:\\\\Program Files\\\\Git\\\\bin\\\\git.exe\" log --oneline -5)",
       "Bash(command -v git)",
       "Bash(export PATH=\"$PATH:/mingw64/bin:/usr/bin:/c/Program Files/Git/bin:/c/Program Files/Git/cmd\")",
-      "Bash(git --version)"
+      "Bash(git --version)",
+      "Bash(sed -i 's|<th class=\"px-4 py-4 text-\\\\[9px\\\\] font-black text-zinc-600 uppercase tracking-widest\">Бонуси</th>|<th class=\"px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden md:table-cell\">Бонуси</th>|' admin-clients-base.html)",
+      "Bash(sed -i 's|<th class=\"px-4 py-4 text-\\\\[9px\\\\] font-black text-zinc-600 uppercase tracking-widest\">Останній візит</th>|<th class=\"px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden sm:table-cell\">Останній візит</th>|' admin-clients-base.html)",
+      "Bash(sed -i 's|<th class=\"px-4 py-4 text-\\\\[9px\\\\] font-black text-zinc-600 uppercase tracking-widest\">Телефон</th>|<th class=\"px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden sm:table-cell\">Телефон</th>|' admin-clients-base.html)"
     ]
   }
 }

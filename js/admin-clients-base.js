@@ -159,9 +159,9 @@ function renderTable() {
             </td>
             <td class="px-4"><span class="text-xs font-black text-white">₴${c._ltv.toLocaleString()}</span></td>
             <td class="px-4"><span class="text-xs font-black text-zinc-300">${c._visits}</span></td>
-            <td class="px-4"><span class="text-xs font-black text-amber-400">${c.bonuses || 0}</span></td>
-            <td class="px-4"><span class="text-[10px] text-zinc-500 font-bold">${lastStr}</span></td>
-            <td class="px-4"><span class="text-[10px] text-zinc-500 font-bold">${c.phone || '—'}</span></td>
+            <td class="px-4 hidden md:table-cell"><span class="text-xs font-black text-amber-400">${c.bonuses || 0}</span></td>
+            <td class="px-4 hidden sm:table-cell"><span class="text-[10px] text-zinc-500 font-bold">${lastStr}</span></td>
+            <td class="px-4 hidden sm:table-cell"><span class="text-[10px] text-zinc-500 font-bold">${c.phone || '—'}</span></td>
             <td class="px-2 text-right pr-5"><i class="fa-solid fa-chevron-right text-zinc-700 text-xs"></i></td>
         </tr>`;
     }).join('');
