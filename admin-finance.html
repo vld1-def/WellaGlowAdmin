@@ -507,7 +507,9 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>window.PAGE_MODULE='finance';</script>
     <script src="js/supabase-init.js"></script>
+    <script src="js/permissions-guard.js"></script>
     <script src="js/admin-finance.js"></script>
     <script>
     function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}

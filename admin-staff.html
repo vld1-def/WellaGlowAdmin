@@ -729,7 +729,9 @@
 
 <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-init.js"></script>
+<script>window.PAGE_MODULE='staff';</script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/permissions-guard.js"></script>
 <script src="js/admin-staff.js"></script>
 <script>
 function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
