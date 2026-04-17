@@ -141,9 +141,15 @@ async function loadTodayTimeline() {
         return;
     }
 
+    const dotClass = (status) => {
+        if (status === 'confirmed') return 'bg-pink-500 shadow-[0_0_8px_2px_rgba(236,72,153,.5)]';
+        if (status === 'done' || status === 'completed') return 'bg-emerald-500 shadow-[0_0_6px_2px_rgba(16,185,129,.4)]';
+        return 'bg-zinc-700';
+    };
+
     const renderAppt = (app) => `
         <div class="relative flex justify-between items-start pl-5 mb-6">
-            <div class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full z-10 ${app.status==='confirmed'?'bg-pink-500 shadow-[0_0_8px_2px_rgba(236,72,153,.5)]':app.status==='done'||app.status==='completed'?'bg-emerald-500':'bg-zinc-700'}" style="border:2px solid #0d0d0f"></div>
+            <div class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full z-10 ${dotClass(app.status)}" style="border:2px solid #0d0d0f"></div>
             <div class="flex-1 min-w-0">
                 <p class="text-[12px] font-extrabold text-white leading-none truncate">${app.clients?.full_name||'Гість'}</p>
                 <p class="text-[9px] text-zinc-500 mt-1 truncate">${app.service_name||''}</p>
@@ -152,17 +158,22 @@ async function loadTodayTimeline() {
             <span class="text-[9px] font-bold text-zinc-600 flex-shrink-0 ml-2">${(app.appointment_time||'').substring(0,5)}</span>
         </div>`;
 
-    let html = apps.map(renderAppt).join('');
+    let innerHtml = apps.map(renderAppt).join('');
 
     if (tomorrowApps.length) {
-        html += `
+        innerHtml += `
         <div class="flex items-center gap-2 mb-4 pl-5">
             <span class="text-[8px] font-black text-amber-500 uppercase tracking-widest">— Завтра</span>
         </div>`;
-        html += tomorrowApps.map(renderAppt).join('');
+        innerHtml += tomorrowApps.map(renderAppt).join('');
     }
 
-    container.innerHTML = html;
+    // Vertical timeline line + appointments in one relative wrapper
+    container.innerHTML = `
+        <div class="relative">
+            <div class="absolute left-[4px] top-0 bottom-0 w-px" style="background:rgba(255,255,255,.06)"></div>
+            ${innerHtml}
+        </div>`;
 }
 
 // ── Staff Efficiency (real computed data) ─────────────
@@ -213,10 +224,16 @@ async function loadStaffEfficiency() {
 
 // ── Stock Status ──────────────────────────────────────
 async function loadStockStatus() {
-    const { data: items } = await window.db.from('inventory').select('*').order('current_stock', { ascending: true }).limit(5);
+    const { data: rawItems, error } = await window.db.from('inventory').select('*');
     const container = document.getElementById('stock-status-list');
-    if (!items || !container) return;
-    if (!items.length) { container.innerHTML = '<p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Склад порожній</p>'; return; }
+    if (!container) return;
+    if (error || !rawItems?.length) { container.innerHTML = '<p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Склад порожній</p>'; return; }
+    // Sort by stock level ascending (lowest first) in JS to avoid column-name mismatch
+    const items = [...rawItems].sort((a,b) => {
+        const aS = parseFloat(a.current_stock ?? a.quantity ?? a.stock ?? 0);
+        const bS = parseFloat(b.current_stock ?? b.quantity ?? b.stock ?? 0);
+        return aS - bS;
+    }).slice(0, 5);
     container.innerHTML = items.map(item => {
         const itemName = item.name || item.item_name || item.title || 'Без назви';
         const current = parseFloat(item.current_stock ?? item.quantity ?? item.stock ?? 0);
@@ -234,11 +251,12 @@ async function loadStockStatus() {
 
 // ── Dashboard Settings ────────────────────────────────
 const DASH_BLOCKS = [
-    { id:'analytics-block',    label:'Аналітика доходів',    icon:'fa-chart-line' },
-    { id:'today-block',        label:'Візити сьогодні',      icon:'fa-calendar-day' },
-    { id:'efficiency-block',   label:'Ефективність майстрів',icon:'fa-users' },
-    { id:'stock-block',        label:'Стан складу',          icon:'fa-boxes-stacked' },
-    { id:'top-services-block', label:'Топ-послуги + Відгуки',icon:'fa-star' },
+    { id:'analytics-block',      label:'Аналітика доходів',    icon:'fa-chart-line' },
+    { id:'today-block',          label:'Візити сьогодні',      icon:'fa-calendar-day' },
+    { id:'efficiency-block',     label:'Ефективність майстрів',icon:'fa-users' },
+    { id:'stock-block',          label:'Стан складу',          icon:'fa-boxes-stacked' },
+    { id:'top-services-block',   label:'Топ-послуги місяця',   icon:'fa-fire' },
+    { id:'recent-reviews-block', label:'Останні відгуки',      icon:'fa-star' },
 ];
 
 function initDashSettings() {
