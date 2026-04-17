@@ -101,6 +101,18 @@
         #staff-table.hide-rating  .sc-rating,
         #staff-table.hide-status  .sc-status { display:none !important; }
 
+        /* Mobile overrides: force-show revenue/earned, force-hide rate/rating regardless of column toggle */
+        @media (max-width: 767px) {
+            #staff-table .sc-revenue { display:table-cell !important; }
+            #staff-table .sc-earned  { display:table-cell !important; }
+            #staff-table .sc-rate    { display:none !important; }
+            #staff-table .sc-rating  { display:none !important; }
+            #staff-table .sc-tenure  { display:none !important; }
+            #staff-table .sc-appt    { display:none !important; }
+            #staff-table .sc-wrev    { display:none !important; }
+            #staff-table .sc-wearn   { display:none !important; }
+        }
+
         /* Sort buttons */
         .sort-btn { padding:5px 10px; border-radius:8px; font-size:9px; font-weight:800;
             text-transform:uppercase; letter-spacing:.06em; cursor:pointer; transition:all .2s;
