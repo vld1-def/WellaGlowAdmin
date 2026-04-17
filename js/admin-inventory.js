@@ -167,7 +167,7 @@ function renderTable(){
                         </div>
                     </div>
                 </td>
-                <td>
+                <td class="hidden sm:table-cell">
                     <p class="text-[10px] font-black uppercase tracking-widest" style="color:${color}">${item.category||'—'}</p>
                     ${item.subcategory?`<p class="text-[9px] text-zinc-600 font-semibold">${item.subcategory}</p>`:''}
                 </td>
@@ -175,8 +175,8 @@ function renderTable(){
                     <p class="font-black text-sm" style="color:${barColor}">${parseInt(item.quantity||0)} ${item.unit||'шт.'}</p>
                     <div class="stock-bar w-20"><div class="stock-fill" style="width:${pct}%;background:${barColor}"></div></div>
                 </td>
-                <td>${statusBadge(item)}</td>
-                <td><span class="text-zinc-400 font-semibold text-xs">${item.unit||'шт.'}</span></td>
+                <td class="hidden sm:table-cell">${statusBadge(item)}</td>
+                <td class="hidden sm:table-cell"><span class="text-zinc-400 font-semibold text-xs">${item.unit||'шт.'}</span></td>
                 <td><span class="text-zinc-300 font-bold text-xs">${costStr}</span></td>
                 <td><span class="font-black text-white text-xs">₴${totalSum.toLocaleString('uk-UA')}</span></td>
                 <td style="position:relative">

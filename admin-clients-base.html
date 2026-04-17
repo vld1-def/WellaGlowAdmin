@@ -148,12 +148,12 @@
                 &nbsp;·&nbsp; Нових (міс.): <span id="new-count" class="text-emerald-400">—</span>
             </p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
             <!-- Search -->
-            <div class="relative">
+            <div class="relative min-w-0">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-xs"></i>
                 <input id="search-input" type="text" placeholder="Пошук клієнта..." oninput="filterClients()"
-                    class="bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-2.5 text-xs font-bold text-white placeholder-zinc-600 outline-none focus:border-rose-500/40 w-56 transition">
+                    class="bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-2.5 text-xs font-bold text-white placeholder-zinc-600 outline-none focus:border-rose-500/40 w-56 min-w-0 transition">
             </div>
             <!-- Add client -->
             <button onclick="openClientModal(null)"
@@ -362,6 +362,10 @@
         <a href="admin-finance.html" class="mob-more-itm "><i class="fa-solid fa-wallet text-lg"></i><span>Фінанси</span></a>
         <a href="admin-inventory.html" class="mob-more-itm "><i class="fa-solid fa-boxes-stacked text-lg"></i><span>Склад</span></a>
         <a href="admin-bonuses.html" class="mob-more-itm "><i class="fa-solid fa-gift text-lg"></i><span>Бонуси</span></a>
+        <button onclick="doLogout()" class="mob-more-itm" style="color:#f43f5e">
+            <i class="fa-solid fa-arrow-right-from-bracket" style="font-size:18px"></i>
+            <span>Вийти</span>
+        </button>
     </div>
 </nav>
 </body>

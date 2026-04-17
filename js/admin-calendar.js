@@ -296,7 +296,7 @@ function renderTimeline(days, today){
     const masterId=filterMId;
     // Headers
     document.getElementById('week-day-headers').innerHTML=`
-        <div class="tl-wrap" style="margin-bottom:2px">
+        <div class="tl-wrap" style="grid-template-columns:48px repeat(${days.length},1fr);margin-bottom:2px">
             <div class="tl-hour-label" style="cursor:default"></div>
             ${days.map(({d,str},i)=>`
                 <div class="tl-col-header ${str===today?'today-hdr':''}" onclick="openShiftModal('${str}',null,'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну">
@@ -329,7 +329,7 @@ function renderTimeline(days, today){
         const label=m===0
             ?`<div class="tl-hour-label" data-hour="${h}" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну">${hhmm(h)}</div>`
             :`<div class="tl-hour-half-pad"></div>`;
-        return `<div class="tl-wrap">${label}${cells}</div>`;
+        return `<div class="tl-wrap" style="grid-template-columns:48px repeat(${days.length},1fr)">${label}${cells}</div>`;
     }).join('');
 
     document.getElementById('week-content').innerHTML=`<div onmouseleave="dragCancel()">${rows}</div>`;

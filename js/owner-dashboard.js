@@ -51,10 +51,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSidebarMonth();
     initSidebarProfile();
     initDashSettings();
-    await loadDashboardStats();
-    await loadTodayTimeline();
-    await loadStaffEfficiency();
-    await loadStockStatus();
+    await Promise.all([
+        loadDashboardStats(),
+        loadTodayTimeline(),
+        loadStaffEfficiency(),
+        loadStockStatus(),
+        loadTopServices(),
+        loadRecentReviews(),
+    ]);
 });
 
 // ── Dashboard Stats ───────────────────────────────────
@@ -138,33 +142,27 @@ async function loadTodayTimeline() {
     }
 
     const renderAppt = (app) => `
-        <div class="relative flex justify-between items-start">
-            <div class="flex gap-4">
-                <div class="mt-1.5 shrink-0">
-                    <div class="w-2.5 h-2.5 rounded-full ${app.status==='confirmed'?'bg-pink-500 shadow-[0_0_8px_2px_rgba(236,72,153,.5)]':'bg-zinc-700'}"></div>
-                </div>
-                <div>
-                    <p class="text-[12px] font-extrabold text-white leading-none">${app.clients?.full_name||'Гість'}</p>
-                    <p class="text-[9px] text-zinc-500 mt-1.5">${app.service_name||''}</p>
-                    <p class="text-[8px] font-black text-rose-500 uppercase mt-2 tracking-widest">${app.staff?.name||'---'}</p>
-                </div>
+        <div class="relative flex justify-between items-start pl-5 mb-6">
+            <div class="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full z-10 ${app.status==='confirmed'?'bg-pink-500 shadow-[0_0_8px_2px_rgba(236,72,153,.5)]':app.status==='done'||app.status==='completed'?'bg-emerald-500':'bg-zinc-700'}" style="border:2px solid #0d0d0f"></div>
+            <div class="flex-1 min-w-0">
+                <p class="text-[12px] font-extrabold text-white leading-none truncate">${app.clients?.full_name||'Гість'}</p>
+                <p class="text-[9px] text-zinc-500 mt-1 truncate">${app.service_name||''}</p>
+                <p class="text-[8px] font-black text-rose-500 uppercase mt-1 tracking-widest">${app.staff?.name||'---'}</p>
             </div>
-            <span class="text-[9px] font-bold text-zinc-600 flex-shrink-0">${(app.appointment_time||'').substring(0,5)}</span>
+            <span class="text-[9px] font-bold text-zinc-600 flex-shrink-0 ml-2">${(app.appointment_time||'').substring(0,5)}</span>
         </div>`;
 
     let html = apps.map(renderAppt).join('');
 
     if (tomorrowApps.length) {
         html += `
-        <div class="flex items-center gap-2 py-1">
-            <div class="h-px flex-1" style="background:rgba(255,255,255,.06)"></div>
-            <span class="text-[8px] font-black text-amber-500 uppercase tracking-widest px-1">Завтра</span>
-            <div class="h-px flex-1" style="background:rgba(255,255,255,.06)"></div>
+        <div class="flex items-center gap-2 mb-4 pl-5">
+            <span class="text-[8px] font-black text-amber-500 uppercase tracking-widest">— Завтра</span>
         </div>`;
         html += tomorrowApps.map(renderAppt).join('');
     }
 
-    container.innerHTML = `<div class="space-y-8">${html}</div>`;
+    container.innerHTML = html;
 }
 
 // ── Staff Efficiency (real computed data) ─────────────
@@ -220,12 +218,15 @@ async function loadStockStatus() {
     if (!items || !container) return;
     if (!items.length) { container.innerHTML = '<p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Склад порожній</p>'; return; }
     container.innerHTML = items.map(item => {
-        const pct = item.max_stock > 0 ? Math.round((item.current_stock / item.max_stock) * 100) : 0;
+        const itemName = item.name || item.item_name || item.title || 'Без назви';
+        const current = parseFloat(item.current_stock ?? item.quantity ?? item.stock ?? 0);
+        const max     = parseFloat(item.max_stock ?? item.max_quantity ?? item.capacity ?? 100);
+        const pct = max > 0 ? Math.min(Math.round((current / max) * 100), 100) : 0;
         let color = 'bg-emerald-500';
         if (pct <= 20) color = 'bg-rose-500 animate-pulse';
         else if (pct <= 50) color = 'bg-amber-500';
         return `<div class="space-y-1.5">
-            <div class="flex justify-between text-[9px] font-black uppercase text-zinc-400"><span>${item.name}</span><span class="text-white">${pct}%</span></div>
+            <div class="flex justify-between text-[9px] font-black uppercase text-zinc-400"><span class="truncate">${itemName}</span><span class="text-white ml-2 flex-shrink-0">${pct}%</span></div>
             <div class="h-1 w-full bg-zinc-900 rounded-full overflow-hidden"><div class="h-full ${color}" style="width:${pct}%"></div></div>
         </div>`;
     }).join('');
@@ -233,10 +234,11 @@ async function loadStockStatus() {
 
 // ── Dashboard Settings ────────────────────────────────
 const DASH_BLOCKS = [
-    { id:'analytics-block',  label:'Аналітика доходів', icon:'fa-chart-line' },
-    { id:'today-block',      label:'Візити сьогодні',   icon:'fa-calendar-day' },
-    { id:'efficiency-block', label:'Ефективність майстрів', icon:'fa-users' },
-    { id:'stock-block',      label:'Стан складу',       icon:'fa-boxes-stacked' },
+    { id:'analytics-block',    label:'Аналітика доходів',    icon:'fa-chart-line' },
+    { id:'today-block',        label:'Візити сьогодні',      icon:'fa-calendar-day' },
+    { id:'efficiency-block',   label:'Ефективність майстрів',icon:'fa-users' },
+    { id:'stock-block',        label:'Стан складу',          icon:'fa-boxes-stacked' },
+    { id:'top-services-block', label:'Топ-послуги + Відгуки',icon:'fa-star' },
 ];
 
 function initDashSettings() {
@@ -283,6 +285,85 @@ window.closeDashSettings = function() {
     document.getElementById('dash-settings-overlay').classList.add('hidden');
     document.getElementById('dash-settings-drawer').classList.add('translate-x-full');
 };
+
+// ── Top Services ──────────────────────────────────────
+async function loadTopServices() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const monthEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().split('T')[0];
+
+    const { data } = await window.db
+        .from('appointment_history')
+        .select('service_name, price')
+        .gte('visit_date', monthStart)
+        .lte('visit_date', monthEnd);
+
+    const container = document.getElementById('top-services-list');
+    if (!container) return;
+
+    if (!data?.length) {
+        container.innerHTML = '<p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Немає даних</p>';
+        return;
+    }
+
+    const map = {};
+    data.forEach(a => {
+        const k = a.service_name || 'Без назви';
+        if (!map[k]) map[k] = { count:0, revenue:0 };
+        map[k].count++;
+        map[k].revenue += parseFloat(a.price||0);
+    });
+
+    const sorted = Object.entries(map).sort((a,b) => b[1].count - a[1].count).slice(0, 5);
+    const maxCount = sorted[0]?.[1]?.count || 1;
+
+    container.innerHTML = sorted.map(([name, stats]) => `
+        <div class="space-y-1">
+            <div class="flex justify-between text-[10px]">
+                <span class="font-bold text-white truncate">${name}</span>
+                <span class="text-zinc-500 flex-shrink-0 ml-2">${stats.count} · ₴${stats.revenue.toLocaleString('uk-UA')}</span>
+            </div>
+            <div class="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                <div class="h-full bg-rose-500/60 rounded-full" style="width:${Math.round(stats.count/maxCount*100)}%"></div>
+            </div>
+        </div>`).join('');
+}
+
+// ── Recent Reviews ────────────────────────────────────
+async function loadRecentReviews() {
+    const { data } = await window.db
+        .from('reviews')
+        .select('rating, comment, created_at, clients(full_name), staff(name)')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+    const container = document.getElementById('recent-reviews-list');
+    if (!container) return;
+
+    if (!data?.length) {
+        container.innerHTML = '<p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Немає відгуків</p>';
+        return;
+    }
+
+    const stars = n => Array.from({length:5},(_,i) =>
+        `<i class="fa-solid fa-star text-[8px] ${i < Math.round(n) ? 'text-amber-400' : 'text-zinc-700'}"></i>`
+    ).join('');
+
+    const fmtD = s => { const d = new Date(s); return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`; };
+
+    container.innerHTML = data.map(r => `
+        <div class="py-2 border-b border-white/5 last:border-0">
+            <div class="flex items-center justify-between gap-2">
+                <p class="text-[11px] font-bold text-white truncate">${r.clients?.full_name||'Клієнт'}</p>
+                <div class="flex items-center gap-0.5 flex-shrink-0">${stars(r.rating)}</div>
+            </div>
+            <div class="flex justify-between mt-0.5">
+                <p class="text-[9px] text-zinc-600">${r.staff?.name||'—'}</p>
+                <p class="text-[9px] text-zinc-700">${fmtD(r.created_at)}</p>
+            </div>
+            ${r.comment ? `<p class="text-[9px] text-zinc-500 mt-1 line-clamp-1">${r.comment}</p>` : ''}
+        </div>`).join('');
+}
 
 // ── Profit Chart ──────────────────────────────────────
 function initProfitChart() {

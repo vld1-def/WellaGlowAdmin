@@ -109,8 +109,8 @@
         </header>
 
         <!-- KPI КАРТКИ (5 ШТУК) -->
-        <div class="grid grid-cols-2 gap-4 mb-8">
-    <div class="glass-panel p-5 rounded-2xl col-span-2">
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+    <div class="glass-panel p-5 rounded-2xl col-span-2 lg:col-span-2">
         <div class="flex items-end justify-between gap-4">
             <div>
                 <p class="text-zinc-500 text-[9px] uppercase font-black mb-2 tracking-widest">Прибуток місяця</p>
@@ -154,9 +154,10 @@
                 <div class="h-72"><canvas id="profitChart"></canvas></div>
             </div>
             <div id="today-block" class="lg:col-span-1 glass-panel p-6 rounded-3xl">
-                <h4 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-8 leading-none">Візити сьогодні</h4>
-                <div id="today-timeline" class="relative space-y-8">
-                    <!-- Завантажиться через JS (з майстром!) -->
+                <h4 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6 leading-none">Візити сьогодні</h4>
+                <div id="today-timeline" class="relative">
+                    <!-- Vertical line -->
+                    <div class="absolute left-[5px] top-2 bottom-2 w-px" style="background:rgba(255,255,255,.06)"></div>
                 </div>
             </div>
         </div>
@@ -179,6 +180,24 @@
                 <div id="stock-status-list" class="space-y-6"></div>
             </div>
         </div>
+
+        <!-- TOP SERVICES + RECENT REVIEWS -->
+        <div id="top-services-block" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <!-- Топ-послуги місяця -->
+            <div class="glass-panel p-6 rounded-3xl">
+                <h4 class="text-xs font-black text-white uppercase tracking-widest mb-4">Топ-послуги місяця</h4>
+                <div id="top-services-list" class="space-y-3">
+                    <p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Завантаження...</p>
+                </div>
+            </div>
+            <!-- Останні відгуки -->
+            <div class="glass-panel p-6 rounded-3xl">
+                <h4 class="text-xs font-black text-white uppercase tracking-widest mb-4">Останні відгуки</h4>
+                <div id="recent-reviews-list" class="space-y-3">
+                    <p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Завантаження...</p>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -197,6 +216,10 @@
         <a href="admin-finance.html" class="mob-more-itm "><i class="fa-solid fa-wallet text-lg"></i><span>Фінанси</span></a>
         <a href="admin-inventory.html" class="mob-more-itm "><i class="fa-solid fa-boxes-stacked text-lg"></i><span>Склад</span></a>
         <a href="admin-bonuses.html" class="mob-more-itm "><i class="fa-solid fa-gift text-lg"></i><span>Бонуси</span></a>
+        <button onclick="doLogout()" class="mob-more-itm" style="color:#f43f5e">
+            <i class="fa-solid fa-arrow-right-from-bracket" style="font-size:18px"></i>
+            <span>Вийти</span>
+        </button>
     </div>
 </nav>
 <!-- ═══════ DASH SETTINGS DRAWER ═══════ -->
@@ -213,11 +236,11 @@
         <div class="mt-6 pt-4 border-t border-white/5">
             <p class="text-[9px] text-zinc-600 font-black uppercase tracking-widest mb-3">Запропонувати нові блоки</p>
             <div class="space-y-2 text-[10px] text-zinc-500">
-                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Топ-послуги місяця</div>
-                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Відгуки останні</div>
-                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Прогноз виручки</div>
-                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Дні народження клієнтів</div>
-                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Нові запити / лід форма</div>
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Прогноз виручки на місяць</div>
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Дні народження клієнтів цього тижня</div>
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Записів без майстра (не призначені)</div>
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Конверсія нових клієнтів у повторних</div>
+                <div class="p-3 rounded-xl border border-white/5 bg-white/2">💡 Відсоток скасувань по майстрах</div>
             </div>
         </div>
     </div>

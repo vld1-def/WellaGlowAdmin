@@ -20,6 +20,12 @@ const DAY_UA = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
 const DAY_FULL_UA = ['Неділя','Понеділок','Вівторок','Середа','Четвер','Пятниця','Субота'];
 const MONTH_UA = ['Січня','Лютого','Березня','Квітня','Травня','Червня','Липня','Серпня','Вересня','Жовтня','Листопада','Грудня'];
 
+function fmtShort(n) {
+    if (n >= 1000000) return (n/1000000).toFixed(1).replace('.0','') + ' млн';
+    if (n >= 1000) return Math.round(n/1000) + ' тис.';
+    return n.toLocaleString();
+}
+
 window.doLogout = function() {
     ['wella_staff_id','wella_staff_role','wella_staff_name','wella_proc_list'].forEach(k => localStorage.removeItem(k));
     window.location.href = 'staff-login.html';
@@ -190,12 +196,16 @@ function renderUpcomingCal(appts) {
     const cells = days.map(d => {
         const ds = localDate(d);
         const dayAppts = appts.filter(a => a.appointment_date === ds);
-        const chips = dayAppts.map(a =>
-            `<div class="cal-appt-chip" title="${a.clients?.full_name||'Гість'} · ${a.service_name||''}">
-                <span class="text-[7px] font-black block">${fmtTime(a.appointment_time)}</span>
+        const chips = dayAppts.map(a => {
+            const safeClient = (a.clients?.full_name||'Гість').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+            const safeService = (a.service_name||'—').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+            const safeTime = fmtTime(a.appointment_time);
+            const safePrice = (a.price||0).toLocaleString();
+            return `<div class="cal-appt-chip" onclick="showCalApptInfo('${safeClient}','${safeService}','${safeTime}','${safePrice}','${a.client_id||''}')">
+                <span class="text-[7px] font-black block">${safeTime}</span>
                 <span class="truncate block text-[7px]">${a.clients?.full_name?.split(' ')[0]||''}</span>
-            </div>`
-        ).join('');
+            </div>`;
+        }).join('');
         return `<div class="cal-day-cell">${chips}</div>`;
     }).join('');
 
@@ -227,24 +237,25 @@ async function loadMonthStats() {
 
     const allAppts = [...(histAppts||[]).map(a => ({price: a.price, date: a.visit_date})),
                       ...(activeAppts||[]).map(a => ({price: a.price, date: a.appointment_date}))];
+    const doneMonthCount = (histAppts||[]).length + (activeAppts||[]).filter(a => a.status === 'done' || a.status === 'completed').length;
 
     const totalRev  = allAppts.reduce((s,a) => s + (a.price||0), 0);
     const staffData = await window.db.from('staff').select('commission_rate').eq('id', masterId).single();
     const rate      = staffData.data?.commission_rate || 40;
     const earned    = Math.round(totalRev * rate / 100);
 
-    document.getElementById('kpi-month').textContent  = allAppts.length;
-    document.getElementById('kpi-earned').textContent = `₴${earned.toLocaleString()}`;
+    document.getElementById('kpi-month').textContent  = `${doneMonthCount}/${allAppts.length}`;
+    document.getElementById('kpi-earned').textContent = `₴${fmtShort(earned)}`;
 
     // Projected income: extrapolate to end of month
     const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
     const dayOfMonth = now.getDate();
     const projected = dayOfMonth > 0 ? Math.round(earned / dayOfMonth * daysInMonth) : 0;
     const kpiEarnedSub = document.getElementById('kpi-earned-sub');
-    if (kpiEarnedSub) kpiEarnedSub.textContent = `~₴${projected.toLocaleString()} прогноз`;
+    if (kpiEarnedSub) kpiEarnedSub.textContent = `~₴${fmtShort(projected)} прогноз`;
 
     const kpiMonthSub = document.getElementById('kpi-month-sub');
-    if (kpiMonthSub) kpiMonthSub.textContent = `${allAppts.length} записів`;
+    if (kpiMonthSub) kpiMonthSub.textContent = `виконано`;
 
     if (reviews?.length) {
         const avg = reviews.reduce((s,r) => s + parseFloat(r.rating), 0) / reviews.length;
@@ -373,5 +384,47 @@ window.saveClientNotes = async function() {
             btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Зберегти нотатки';
             btn.style.background = '';
         }, 2000);
+    }
+};
+
+// ── Calendar appointment info popup ──────────────────
+window.showCalApptInfo = function(clientName, serviceName, time, price, clientId) {
+    document.getElementById('sheet-title').textContent = clientName;
+    document.getElementById('sheet-sub').textContent   = `${serviceName} · ${time} · ₴${price}`;
+
+    // Hide action buttons, show only notes
+    const actionBtns = document.getElementById('sheet-action-btns');
+    if (actionBtns) actionBtns.style.display = 'none';
+
+    _actionApptId   = null;
+    _actionClientId = clientId || null;
+
+    // Clear note fields
+    ['note-allergies','note-preferences','note-formula','note-general'].forEach(f => {
+        const el = document.getElementById(f);
+        if (el) el.value = '';
+    });
+
+    document.getElementById('appt-overlay').classList.remove('hidden');
+    document.getElementById('appt-action-sheet').classList.add('open');
+
+    const noteSec = document.getElementById('sheet-notes-section');
+
+    if (clientId) {
+        if (noteSec) noteSec.style.display = '';
+        window.db.from('clients')
+            .select('notes_allergies, preferences, color_formula, notes')
+            .eq('id', clientId)
+            .single()
+            .then(({ data: cl }) => {
+                if (!cl) return;
+                const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+                set('note-allergies',   cl.notes_allergies);
+                set('note-preferences', cl.preferences);
+                set('note-formula',     cl.color_formula);
+                set('note-general',     cl.notes);
+            });
+    } else {
+        if (noteSec) noteSec.style.display = 'none';
     }
 };
