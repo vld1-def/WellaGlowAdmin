@@ -371,7 +371,9 @@
 <div id="dot-portal" style="position:fixed;z-index:9999;display:none;background:#111113;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:4px;min-width:150px;box-shadow:0 16px 40px rgba(0,0,0,.8)"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-init.js"></script>
+<script>window.PAGE_MODULE='inventory';</script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/permissions-guard.js"></script>
 <script src="js/admin-inventory.js"></script>
 <script>
 function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
