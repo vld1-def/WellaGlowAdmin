@@ -38,7 +38,19 @@
       "Bash(ls *.html)",
       "Bash(where git:*)",
       "Bash(export PATH=\"$PATH:/usr/bin:/usr/local/bin:/mingw64/bin:/c/Program Files/Git/bin:/c/Program Files/Git/cmd\")",
-      "Bash(find /c /usr -name \"git\" -type f)"
+      "Bash(find /c /usr -name \"git\" -type f)",
+      "Bash(git -C \"D:/GitHub/WellaGlowAdmin/.claude/worktrees/charming-brown\" status)",
+      "Bash(powershell -Command \"cd 'D:\\\\GitHub\\\\WellaGlowAdmin\\\\.claude\\\\worktrees\\\\charming-brown'; git status\")",
+      "Bash(powershell.exe -Command \"cd 'D:\\\\GitHub\\\\WellaGlowAdmin\\\\.claude\\\\worktrees\\\\charming-brown'; git status\")",
+      "Read(//mingw64/bin/**)",
+      "Read(//c/Windows/System32/**)",
+      "Bash(D:/Git/cmd/git.exe -C \"D:/GitHub/WellaGlowAdmin/.claude/worktrees/charming-brown\" status)",
+      "Bash(D:/Git/cmd/git.exe -C \"D:/GitHub/WellaGlowAdmin/.claude/worktrees/charming-brown\" add master-dashboard.html js/master-dashboard.js master-history.html js/master-history.js master-portfolio.html master-reviews.html js/admin-clients-base.js)",
+      "Bash(D:/Git/cmd/git.exe -C \"D:/GitHub/WellaGlowAdmin/.claude/worktrees/charming-brown\" commit -m \"Master dashboard: 4-col KPIs, remove unused blocks, new nav + pages + reviews fix\")",
+      "Bash(\"C:\\\\Program Files\\\\Git\\\\bin\\\\git.exe\" log --oneline -5)",
+      "Bash(command -v git)",
+      "Bash(export PATH=\"$PATH:/mingw64/bin:/usr/bin:/c/Program Files/Git/bin:/c/Program Files/Git/cmd\")",
+      "Bash(git --version)"
     ]
   }
 }

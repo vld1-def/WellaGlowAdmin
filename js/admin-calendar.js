@@ -206,7 +206,9 @@ window.navPrev=function(){ step(-1); };
 window.navNext=function(){ step(1);  };
 window.goToday=function(){ curDate=new Date(); Promise.all([refreshAppts(),loadShifts()]).then(()=>{render();renderKPIs();}); };
 function step(dir){
-    if(view==='week') curDate=new Date(curDate.getTime()+dir*7*86400000);
+    const isMobile=window.innerWidth<640;
+    if(view==='week' && isMobile) curDate=new Date(curDate.getTime()+dir*3*86400000);
+    else if(view==='week') curDate=new Date(curDate.getTime()+dir*7*86400000);
     else curDate=new Date(curDate.getFullYear(),curDate.getMonth()+dir,1);
     Promise.all([refreshAppts(),loadShifts()]).then(()=>{render();renderKPIs();});
 }
@@ -221,12 +223,18 @@ function periodLabel(){
     if(view==='month'){
         return curDate.toLocaleDateString('uk-UA',{month:'long',year:'numeric'});
     }
+    const isMobile=window.innerWidth<640;
+    const fmt=d=>d.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit'});
+    if(isMobile){
+        // Show 3-day range
+        const end=new Date(curDate.getFullYear(),curDate.getMonth(),curDate.getDate()+2);
+        return fmt(curDate)+' – '+fmt(end);
+    }
     const ws=weekStart(curDate);
     const todayWs=weekStart(new Date());
     const diff=Math.round((ws-todayWs)/(7*86400000));
     const we=new Date(ws.getTime()+6*86400000);
-    const fmt=d=>d.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit'});
-    if(diff===0)  return fmt(ws)+' – '+fmt(we); // current week: always show dates
+    if(diff===0)  return fmt(ws)+' – '+fmt(we);
     if(diff===1)  return 'Наступний тиждень · '+fmt(ws)+' – '+fmt(we);
     if(diff===-1) return 'Попередній тиждень · '+fmt(ws)+' – '+fmt(we);
     return fmt(ws)+' – '+fmt(we);
@@ -265,15 +273,21 @@ const DAY_UA=['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
 function renderWeek(){
     document.getElementById('period-label').textContent=periodLabel();
     const isMobile=window.innerWidth<640;
-    const ws=weekStart(curDate);
     const today=localDate(new Date());
-    const numDays=isMobile?3:7;
-    // On mobile, center 3-day window on curDate
-    const startOffset=isMobile?Math.max(0,Math.min((parseLD(localDate(curDate)).getDay()||7)-2,4)):0;
-    const days=Array.from({length:numDays},(_,i)=>{
-        const d=new Date(ws.getTime()+(startOffset+i)*86400000);
-        return {d,str:localDate(d)};
-    });
+    let days;
+    if(isMobile){
+        // 3-day view: start from curDate directly
+        days=Array.from({length:3},(_,i)=>{
+            const d=new Date(curDate.getFullYear(),curDate.getMonth(),curDate.getDate()+i);
+            return {d,str:localDate(d)};
+        });
+    } else {
+        const ws=weekStart(curDate);
+        days=Array.from({length:7},(_,i)=>{
+            const d=new Date(ws.getTime()+i*86400000);
+            return {d,str:localDate(d)};
+        });
+    }
     filterMId ? renderTimeline(days,today) : renderLanes(days,today);
 }
 

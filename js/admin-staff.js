@@ -334,8 +334,8 @@ async function renderStaffTable(list) {
     const [{ data: histMonth }, { data: histWeek }, { data: activeMonth }, { data: activeWeek }] = await Promise.all([
         window.db.from('appointment_history').select('master_id, price').gte('visit_date', monthStart).lte('visit_date', monthEnd),
         window.db.from('appointment_history').select('master_id, price').gte('visit_date', weekStart).lte('visit_date', weekEnd),
-        window.db.from('appointments').select('master_id, price').gte('appointment_date', monthStart).lte('appointment_date', monthEnd).neq('status','cancelled'),
-        window.db.from('appointments').select('master_id, price').gte('appointment_date', weekStart).lte('appointment_date', weekEnd).neq('status','cancelled'),
+        window.db.from('appointments').select('master_id, price').gte('appointment_date', monthStart).lte('appointment_date', monthEnd).in('status',['done','completed']),
+        window.db.from('appointments').select('master_id, price').gte('appointment_date', weekStart).lte('appointment_date', weekEnd).in('status',['done','completed']),
     ]);
     const appts    = [...(histMonth||[]), ...(activeMonth||[])];
     const weekAppts = [...(histWeek||[]),  ...(activeWeek||[])];
@@ -572,7 +572,6 @@ window.togglePin = function(id) {
 window.openRoleAccess = function() {
     roleAccessTab = 'admin';
     document.getElementById('rtab-admin').classList.add('active');
-    document.getElementById('rtab-master').classList.remove('active');
     renderRolePermList('admin');
     document.getElementById('role-access-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
@@ -585,9 +584,7 @@ window.closeRoleAccess = function() {
 
 window.switchRoleTab = function(role) {
     roleAccessTab = role;
-    ['admin','master'].forEach(r => {
-        document.getElementById('rtab-' + r).classList.toggle('active', r === role);
-    });
+    document.getElementById('rtab-admin').classList.toggle('active', role === 'admin');
     renderRolePermList(role);
 };
 
@@ -1159,13 +1156,12 @@ async function renderModalChart(sid) {
         const start = localDate(d);
         const end   = localDate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
         labels.push(d.toLocaleDateString('uk-UA', { month: 'short' }));
-        const { data } = await window.db
-            .from('appointment_history')
-            .select('price')
-            .eq('master_id', sid)
-            .gte('visit_date', start)
-            .lte('visit_date', end);
-        values.push((data || []).reduce((s, r) => s + parseFloat(r.price || 0), 0));
+        const [{ data: hist }, { data: active }] = await Promise.all([
+            window.db.from('appointment_history').select('price').eq('master_id', sid).gte('visit_date', start).lte('visit_date', end),
+            window.db.from('appointments').select('price').eq('master_id', sid).gte('appointment_date', start).lte('appointment_date', end).in('status', ['done','completed']),
+        ]);
+        const total = [...(hist||[]), ...(active||[])].reduce((s, r) => s + parseFloat(r.price || 0), 0);
+        values.push(total);
     }
 
     const ctx = document.getElementById('modal-revenue-chart').getContext('2d');
