@@ -155,10 +155,7 @@
             </div>
             <div id="today-block" class="lg:col-span-1 glass-panel p-6 rounded-3xl">
                 <h4 class="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6 leading-none">Візити сьогодні</h4>
-                <div id="today-timeline" class="relative">
-                    <!-- Vertical line -->
-                    <div class="absolute left-[5px] top-2 bottom-2 w-px" style="background:rgba(255,255,255,.06)"></div>
-                </div>
+                <div id="today-timeline" class="relative"></div>
             </div>
         </div>
 
@@ -182,16 +179,16 @@
         </div>
 
         <!-- TOP SERVICES + RECENT REVIEWS -->
-        <div id="top-services-block" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <!-- Топ-послуги місяця -->
-            <div class="glass-panel p-6 rounded-3xl">
+            <div id="top-services-block" class="glass-panel p-6 rounded-3xl">
                 <h4 class="text-xs font-black text-white uppercase tracking-widest mb-4">Топ-послуги місяця</h4>
                 <div id="top-services-list" class="space-y-3">
                     <p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Завантаження...</p>
                 </div>
             </div>
             <!-- Останні відгуки -->
-            <div class="glass-panel p-6 rounded-3xl">
+            <div id="recent-reviews-block" class="glass-panel p-6 rounded-3xl">
                 <h4 class="text-xs font-black text-white uppercase tracking-widest mb-4">Останні відгуки</h4>
                 <div id="recent-reviews-list" class="space-y-3">
                     <p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Завантаження...</p>
