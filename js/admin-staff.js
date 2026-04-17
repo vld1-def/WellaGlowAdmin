@@ -33,18 +33,19 @@ let staffApptMap = {};      // cached per-staff stats for sorting
 // Role access
 let roleAccessTab = 'admin';
 const ROLE_DEFAULTS = {
-    admin:  { dashboard:true,  calendar:true,  finance:true,  clients:true,  inventory:true,  staff:true,  bonuses:true  },
-    master: { dashboard:false, calendar:true,  finance:false, clients:false, inventory:false, staff:false, bonuses:false },
+    admin:  { dashboard:true,  calendar:true,  finance:true,  clients:true,  inventory:true,  staff:true,  bonuses:true,  role_access:true  },
+    master: { dashboard:false, calendar:true,  finance:false, clients:false, inventory:false, staff:false, bonuses:false, role_access:false },
 };
 
 const MODULES = [
-    { key: 'dashboard',  label: 'Дашборд',   icon: 'fa-chart-pie'      },
-    { key: 'calendar',   label: 'Записи',     icon: 'fa-calendar-check' },
-    { key: 'finance',    label: 'Фінанси',    icon: 'fa-wallet'         },
-    { key: 'clients',    label: 'Клієнти',    icon: 'fa-address-book'   },
-    { key: 'inventory',  label: 'Склад',      icon: 'fa-boxes-stacked'  },
-    { key: 'staff',      label: 'Персонал',   icon: 'fa-users-gear'     },
-    { key: 'bonuses',    label: 'Бонуси',     icon: 'fa-gift'           },
+    { key: 'dashboard',  label: 'Дашборд',         icon: 'fa-chart-pie'      },
+    { key: 'calendar',   label: 'Записи',           icon: 'fa-calendar-check' },
+    { key: 'finance',    label: 'Фінанси',          icon: 'fa-wallet'         },
+    { key: 'clients',    label: 'Клієнти',          icon: 'fa-address-book'   },
+    { key: 'inventory',  label: 'Склад',            icon: 'fa-boxes-stacked'  },
+    { key: 'staff',      label: 'Персонал',         icon: 'fa-users-gear'     },
+    { key: 'bonuses',    label: 'Бонуси',           icon: 'fa-gift'           },
+    { key: 'role_access',label: 'Доступи по ролях', icon: 'fa-shield-halved'  },
 ];
 
 // Deterministic avatar color from staff id (no DB column needed)
@@ -884,7 +885,15 @@ window.openPermissions = async function(id) {
     const permMap = {};
     (perms || []).forEach(p => { permMap[p.module] = p.can_access; });
 
-    document.getElementById('perm-list').innerHTML = MODULES.map(m => `
+    // Filter: only show modules that are ALLOWED at role level
+    // (no point granting individual access to something blocked for the whole role)
+    const staffRole = s?.role || 'master';
+    const roleLevelPerms = staffRole === 'admin'
+        ? (JSON.parse(localStorage.getItem('wella_role_perms_admin') || 'null') || ROLE_DEFAULTS.admin)
+        : (ROLE_DEFAULTS[staffRole] || {});
+    const visibleModules = MODULES.filter(m => roleLevelPerms[m.key] !== false);
+
+    document.getElementById('perm-list').innerHTML = visibleModules.map(m => `
         <div class="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/2">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(244,63,94,0.1)">
@@ -914,7 +923,14 @@ window.closePermissions = function() {
 
 window.savePermissions = async function() {
     if (!permStaffId) return;
-    const upserts = MODULES.map(m => ({
+    // Only save modules that are visible (role-level allowed); hidden ones keep their DB value
+    const saved = [...allStaff, ...allCandidates, ...archiveStaff].find(x => x.id === permStaffId);
+    const sRole = saved?.role || 'master';
+    const roleLvl = sRole === 'admin'
+        ? (JSON.parse(localStorage.getItem('wella_role_perms_admin') || 'null') || ROLE_DEFAULTS.admin)
+        : (ROLE_DEFAULTS[sRole] || {});
+    const saveable = MODULES.filter(m => roleLvl[m.key] !== false);
+    const upserts = saveable.map(m => ({
         staff_id:   permStaffId,
         module:     m.key,
         can_access: document.getElementById('perm-' + m.key)?.checked ?? false,
