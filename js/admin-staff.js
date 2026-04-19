@@ -449,14 +449,14 @@ window.toggleCol = function(id, val) {
     colState[id] = val;
     applyColState();
 };
-window.toggleColDropdown = function() {
-    const dd  = document.getElementById('col-dropdown');
-    const btn = document.querySelector('#col-toggle-wrap button');
+window.toggleColDropdown = function(btn) {
+    const dd = document.getElementById('col-dropdown');
     if (dd.style.display === 'none' || !dd.style.display) {
         const r = btn.getBoundingClientRect();
-        dd.style.top   = (r.bottom + 4) + 'px';
-        dd.style.right = (window.innerWidth - r.right) + 'px';
-        dd.style.left  = 'auto';
+        // position:absolute relative to document (not viewport)
+        dd.style.top     = (r.bottom + window.scrollY + 4) + 'px';
+        dd.style.right   = (document.documentElement.clientWidth - r.right) + 'px';
+        dd.style.left    = 'auto';
         dd.style.display = 'block';
     } else {
         dd.style.display = 'none';
@@ -803,7 +803,9 @@ function openStaffDrawer(staffData = null) {
 
 function editStaff(id) {
     const s = [...allStaff, ...allCandidates, ...archiveStaff].find(s => s.id === id);
-    if (s) openStaffDrawer(s);
+    if (!s) return;
+    if (s.role === 'owner' && localStorage.getItem('wella_staff_role') === 'admin') return;
+    openStaffDrawer(s);
 }
 
 window.saveStaff = async function() {
@@ -901,8 +903,9 @@ function renderArchiveList(tab) {
 
 // ── Permissions Drawer ────────────────────────────────
 window.openPermissions = async function(id) {
-    permStaffId = id;
     const s = [...allStaff, ...allCandidates, ...archiveStaff].find(x => x.id === id);
+    if (s?.role === 'owner' && localStorage.getItem('wella_staff_role') === 'admin') return;
+    permStaffId = id;
     document.getElementById('perm-staff-name').textContent = s?.name || '';
 
     const { data: perms } = await window.db
@@ -1042,18 +1045,23 @@ function toggleActions(id, btn) {
                <i class="fa-solid fa-user-check w-4"></i> Взяти у штат
            </div>`;
 
+    const myRole = localStorage.getItem('wella_staff_role') || '';
+    const isOwnerTarget = s.role === 'owner';
+    const canEdit = !(myRole === 'admin' && isOwnerTarget);
+
     const portal = document.getElementById('actions-portal');
     portal.innerHTML = `
         <div class="actions-item" onclick="openProfile('${id}'); closeActions()">
             <i class="fa-solid fa-id-card w-4"></i> Картка
         </div>
+        ${canEdit ? `
         <div class="actions-item" onclick="editStaff('${id}'); closeActions()">
             <i class="fa-solid fa-pen w-4"></i> Редагувати
         </div>
         <div class="actions-item" onclick="openPermissions('${id}'); closeActions()">
             <i class="fa-solid fa-shield-halved w-4"></i> Доступи
         </div>
-        ${archiveOrActivate}
+        ${archiveOrActivate}` : ''}
     `;
 
     const rect = btn.getBoundingClientRect();
