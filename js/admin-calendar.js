@@ -709,7 +709,7 @@ function renderSlotGrid(bookedSet, startH, startM, endH, endM, dateStr=''){
                    padding:6px 4px;border-radius:8px;font-size:10px;font-weight:800;text-align:center;
                    border:1px solid rgba(255,255,255,.08);background:${inRange?'rgba(244,63,94,.25)':'rgba(255,255,255,.04)'};
                    color:${inRange?'#fff':'#a1a1aa'};transition:all .18s;line-height:1;width:100%">
-            ${hhmm(h,m)}</button>`;
+            ${hhmm(h,m)}–${hhmm(m===30?h+1:h,m===30?0:30)}</button>`;
     }).join('');
 
     updateTimeBadge();
