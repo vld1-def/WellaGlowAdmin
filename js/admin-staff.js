@@ -608,12 +608,22 @@ function renderRolePermList(role) {
     `).join('');
 }
 
-window.saveRolePermissions = function() {
+window.saveRolePermissions = async function() {
     const perms = {};
     MODULES.forEach(m => { perms[m.key] = document.getElementById('rperm-' + m.key)?.checked ?? false; });
+    // Keep localStorage for backward compat (owner's own UI rendering)
     localStorage.setItem('wella_role_perms_' + roleAccessTab, JSON.stringify(perms));
+
+    // Persist to DB: update staff_permissions for every staff member with this role
+    const targets = [...allStaff, ...allCandidates, ...archiveStaff].filter(s => s.role === roleAccessTab);
+    if (targets.length) {
+        const upserts = targets.flatMap(s =>
+            MODULES.map(m => ({ staff_id: s.id, module: m.key, can_access: perms[m.key] }))
+        );
+        await window.db.from('staff_permissions').upsert(upserts, { onConflict: 'staff_id,module' });
+    }
+
     closeRoleAccess();
-    // Show brief confirmation
     const btn = document.querySelector('#role-access-drawer .neo-gradient');
     if (btn) { btn.textContent = 'Збережено ✓'; setTimeout(() => { btn.textContent = 'Зберегти'; }, 1500); }
 };
@@ -902,7 +912,7 @@ window.openPermissions = async function(id) {
                 <span class="text-[12px] font-bold text-white">${m.label}</span>
             </div>
             <label class="perm-toggle">
-                <input type="checkbox" id="perm-${m.key}" ${permMap[m.key] ? 'checked' : ''}>
+                <input type="checkbox" id="perm-${m.key}" ${(m.key in permMap ? permMap[m.key] : (roleLevelPerms[m.key] !== false)) ? 'checked' : ''}>
                 <span class="perm-slider"></span>
             </label>
         </div>
