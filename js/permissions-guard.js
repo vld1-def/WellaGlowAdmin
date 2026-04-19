@@ -20,14 +20,17 @@
     document.documentElement.style.visibility = 'hidden';
 
     try {
-        const { data: rows } = await window.db
+        const { data: rows, error: readErr } = await window.db
             .from('staff_permissions')
             .select('module, can_access')
             .eq('staff_id', staffId);
 
+        console.log('[guard] staffId:', staffId, 'rows:', rows, 'error:', readErr);
+
         // Build map; if no DB rows yet → treat as full default access for admins
         const permMap = {};
         (rows || []).forEach(r => { permMap[r.module] = r.can_access; });
+        console.log('[guard] permMap:', permMap, 'PAGE_MODULE:', window.PAGE_MODULE);
 
         const URLS = {
             dashboard: 'owner-dashboard.html', calendar:  'admin-calendar.html',
