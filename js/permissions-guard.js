@@ -7,20 +7,34 @@
  * Requires: window.PAGE_MODULE set before this loads, window.db already init'd.
  */
 
-// ── Inject spinner into <html> so it shows while html{visibility:hidden} ──
+// ── Inject loader into <html> so it shows while html{visibility:hidden} ──
 (function () {
-    const el = document.createElement('div');
+    var style = document.createElement('style');
+    style.textContent =
+        '@keyframes _plspin{to{transform:rotate(360deg)}}' +
+        '@keyframes _plpulse{0%,100%{opacity:.3}50%{opacity:1}}';
+    document.head.appendChild(style);
+
+    var el = document.createElement('div');
     el.id = '_page-loader';
-    el.style.cssText = [
-        'position:fixed', 'inset:0', 'z-index:2147483647',
-        'background:#09090b', 'display:flex', 'align-items:center',
-        'justify-content:center', 'visibility:visible',
-    ].join(';');
+    el.style.cssText =
+        'position:fixed;inset:0;z-index:2147483647;background:#09090b;' +
+        'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+        'gap:20px;visibility:visible';
     el.innerHTML =
-        '<div id="_pl-spin" style="width:34px;height:34px;border-radius:50%;' +
-        'border:3px solid rgba(255,255,255,.08);border-top-color:#f43f5e;' +
-        'animation:_plspin .7s linear infinite"></div>' +
-        '<style>@keyframes _plspin{to{transform:rotate(360deg)}}</style>';
+        '<div style="position:relative;width:52px;height:52px">' +
+          '<div style="position:absolute;inset:0;border-radius:50%;' +
+               'border:3px solid rgba(255,255,255,.06)"></div>' +
+          '<div style="position:absolute;inset:0;border-radius:50%;' +
+               'border:3px solid transparent;border-top-color:#f43f5e;' +
+               'animation:_plspin .75s linear infinite"></div>' +
+          '<div style="position:absolute;inset:6px;border-radius:50%;' +
+               'border:2px solid transparent;border-top-color:rgba(244,63,94,.4);' +
+               'animation:_plspin .5s linear infinite reverse"></div>' +
+        '</div>' +
+        '<p style="font-size:10px;font-weight:800;letter-spacing:.15em;' +
+            'text-transform:uppercase;color:rgba(255,255,255,.25);' +
+            'animation:_plpulse 1.5s ease-in-out infinite">Завантаження...</p>';
     document.documentElement.appendChild(el);
 })();
 
@@ -44,10 +58,10 @@ function revealPage(fn) {
             loader.style.opacity = '0';
             setTimeout(function () {
                 loader.remove();
-                document.documentElement.style.visibility = '';
+                document.documentElement.style.visibility = 'visible';
             }, 250);
         } else {
-            document.documentElement.style.visibility = '';
+            document.documentElement.style.visibility = 'visible';
         }
     });
 }
