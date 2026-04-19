@@ -912,7 +912,7 @@ window.openPermissions = async function(id) {
                 <span class="text-[12px] font-bold text-white">${m.label}</span>
             </div>
             <label class="perm-toggle">
-                <input type="checkbox" id="perm-${m.key}" ${permMap[m.key] ? 'checked' : ''}>
+                <input type="checkbox" id="perm-${m.key}" ${(m.key in permMap ? permMap[m.key] : (roleLevelPerms[m.key] !== false)) ? 'checked' : ''}>
                 <span class="perm-slider"></span>
             </label>
         </div>
