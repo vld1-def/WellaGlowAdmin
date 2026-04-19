@@ -763,11 +763,12 @@ function openOverlay() {
 }
 
 function closeAllDrawers() {
-    ['staff-drawer','archive-drawer','reviews-drawer','candidates-drawer','role-access-drawer'].forEach(id => {
+    ['staff-drawer','archive-drawer','reviews-drawer','candidates-drawer','role-access-drawer','permissions-drawer'].forEach(id => {
         document.getElementById(id).classList.remove('open');
     });
     document.getElementById('drawer-overlay').classList.remove('open');
     editingStaffId = null;
+    permStaffId = null;
 }
 
 // ── Add/Edit Staff Drawer ─────────────────────────────
