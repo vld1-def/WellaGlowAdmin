@@ -106,7 +106,10 @@
     <main class="flex-1 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
         <header class="flex justify-between items-center mb-8">
             <h2 class="text-2xl font-extrabold text-white tracking-tight">Панель власника</h2>
-            <button onclick="openDashSettings()" class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white transition"><i class="fa-solid fa-gear"></i></button>
+            <div class="flex items-center gap-2">
+                <button onclick="openHelpModal()" class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white transition" title="Довідка по системі"><i class="fa-solid fa-circle-question"></i></button>
+                <button onclick="openDashSettings()" class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white transition"><i class="fa-solid fa-gear"></i></button>
+            </div>
         </header>
 
         <!-- KPI КАРТКИ (5 ШТУК) -->
@@ -197,6 +200,331 @@
             </div>
         </div>
     </main>
+
+<!-- ══════════════ HELP MODAL ══════════════ -->
+<div id="help-modal" onclick="if(event.target===this)closeHelpModal()"
+     class="fixed inset-0 z-[200] hidden items-center justify-center p-4"
+     style="background:rgba(0,0,0,.75);backdrop-filter:blur(10px)">
+  <div class="relative bg-[#0d0d0f] border border-white/8 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-5 border-b border-white/6 flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center neo-gradient">
+          <i class="fa-solid fa-circle-question text-white text-sm"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-black text-white">Довідка по системі</h3>
+          <p class="text-[10px] text-zinc-500 font-semibold">Wella Glow Admin Panel</p>
+        </div>
+      </div>
+      <button onclick="closeHelpModal()" class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Scrollable content -->
+    <div class="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+
+      <!-- ДАШБОРД -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(244,63,94,.15)">
+            <i class="fa-solid fa-chart-pie text-rose-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Дашборд</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(251,113,133,.12)"><i class="fa-solid fa-sack-dollar text-rose-400"></i></div>
+            <div>
+              <p class="help-title">Прибуток місяця</p>
+              <p class="help-desc">Сума всіх транзакцій типу «дохід» за поточний місяць. Прогрес-бар — відсоток відносно попереднього місяця.</p>
+            </div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-user-plus text-emerald-400"></i></div>
+            <div>
+              <p class="help-title">Нові клієнти</p>
+              <p class="help-desc">Кількість клієнтів, доданих у поточному місяці. Відсоток — зміна відносно минулого місяця.</p>
+            </div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(99,102,241,.12)"><i class="fa-solid fa-calendar-check text-indigo-400"></i></div>
+            <div>
+              <p class="help-title">Записи місяця</p>
+              <p class="help-desc">Загальна кількість записів (appointments) за місяць. Міні-бари — розподіл по тижнях.</p>
+            </div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(251,191,36,.1)"><i class="fa-solid fa-receipt text-amber-400"></i></div>
+            <div>
+              <p class="help-title">Середній чек</p>
+              <p class="help-desc">Прибуток місяця ÷ кількість записів. Показує середню вартість одного візиту.</p>
+            </div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-arrow-rotate-left text-emerald-400"></i></div>
+            <div>
+              <p class="help-title">Retention Rate</p>
+              <p class="help-desc">Відсоток клієнтів, які повернулись повторно. Рахується: клієнти з 2+ записами ÷ всього унікальних клієнтів.</p>
+            </div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(139,92,246,.12)"><i class="fa-solid fa-chart-area text-violet-400"></i></div>
+            <div>
+              <p class="help-title">Графік доходів</p>
+              <p class="help-desc">Доходи по днях поточного місяця з таблиці transactions. Перемикається між місяцями стрілками в сайдбарі.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ЗАПИСИ СЬОГОДНІ -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,.15)">
+            <i class="fa-solid fa-clock text-indigo-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Візити сьогодні</span>
+        </div>
+        <div class="help-card">
+          <div class="help-icon" style="background:rgba(99,102,241,.12)"><i class="fa-solid fa-timeline text-indigo-400"></i></div>
+          <div>
+            <p class="help-title">Таймлайн дня</p>
+            <p class="help-desc">Усі записи на сьогодні впорядковані за часом. Вертикальна лінія показує поточний момент. Відображає ім'я клієнта, майстра та послугу. Дані з таблиць appointments + appointment_history.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- СКЛАД -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(251,191,36,.12)">
+            <i class="fa-solid fa-boxes-stacked text-amber-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Стан складу</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-check text-emerald-400"></i></div>
+            <div><p class="help-title">В наявності</p><p class="help-desc">current_stock &gt; min_stock</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(251,191,36,.1)"><i class="fa-solid fa-triangle-exclamation text-amber-400"></i></div>
+            <div><p class="help-title">Закінчується</p><p class="help-desc">current_stock ≤ min_stock але &gt; 0</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(244,63,94,.12)"><i class="fa-solid fa-circle-xmark text-rose-400"></i></div>
+            <div><p class="help-title">Немає</p><p class="help-desc">current_stock = 0</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ТОП-ПОСЛУГИ -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(251,113,133,.12)">
+            <i class="fa-solid fa-star text-rose-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Топ-послуги місяця</span>
+        </div>
+        <div class="help-card">
+          <div class="help-icon" style="background:rgba(244,63,94,.1)"><i class="fa-solid fa-ranking-star text-rose-400"></i></div>
+          <div>
+            <p class="help-title">Рейтинг послуг</p>
+            <p class="help-desc">Топ-5 послуг за кількістю виконань у поточному місяці. Дані з поля service_name у таблицях appointments та appointment_history. Бар показує відсоток від найпопулярнішої послуги.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ВІДГУКИ -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(251,191,36,.12)">
+            <i class="fa-solid fa-star-half-stroke text-amber-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Останні відгуки</span>
+        </div>
+        <div class="help-card">
+          <div class="help-icon" style="background:rgba(251,191,36,.1)"><i class="fa-regular fa-comment-dots text-amber-400"></i></div>
+          <div>
+            <p class="help-title">Відгуки клієнтів</p>
+            <p class="help-desc">5 найновіших відгуків з таблиці reviews. Відображає ім'я клієнта, майстра, зірки (1–5) та текст відгуку. Повний список — в розділі «Персонал → Відгуки».</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ЗАПИСИ (КАЛЕНДАР) -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,.15)">
+            <i class="fa-solid fa-calendar-check text-indigo-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Записи (Календар)</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(99,102,241,.12)"><i class="fa-solid fa-table-cells text-indigo-400"></i></div>
+            <div><p class="help-title">Сітка по майстрах</p><p class="help-desc">Кожна колонка — окремий майстер. Рядки — 30-хвилинні слоти від 9:00 до 21:00. Кольорові блоки — активні записи.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(244,63,94,.1)"><i class="fa-solid fa-plus text-rose-400"></i></div>
+            <div><p class="help-title">Новий запис</p><p class="help-desc">Оберіть дату, майстра, клікніть на слот часу (колір — проміжок 30хв), введіть дані клієнта та послугу. Система зберігає в appointments.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(239,68,68,.1)"><i class="fa-solid fa-ban text-red-400"></i></div>
+            <div><p class="help-title">Зайнятість / вихідний</p><p class="help-desc">Сірі слоти — вже заброньовані або минулий час. Оранжева смуга — вихідний майстра. Зелена — зміна.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-history text-emerald-400"></i></div>
+            <div><p class="help-title">Історія</p><p class="help-desc">Завершені записи зберігаються в appointment_history. Переглядаються разом з активними у загальному календарі.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ФІНАНСИ -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(34,197,94,.12)">
+            <i class="fa-solid fa-wallet text-emerald-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Фінанси</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-arrow-up text-emerald-400"></i></div>
+            <div><p class="help-title">Дохід</p><p class="help-desc">Транзакції типу income. Рахуються окремо від витрат. Відображаються в KPI та графіку доходів.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(244,63,94,.1)"><i class="fa-solid fa-arrow-down text-rose-400"></i></div>
+            <div><p class="help-title">Витрати</p><p class="help-desc">Транзакції типу expense. Включають оренду, закупівлі, зарплати. Відображаються окремим рядком.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(251,191,36,.1)"><i class="fa-solid fa-scale-balanced text-amber-400"></i></div>
+            <div><p class="help-title">Прибуток</p><p class="help-desc">Дохід − Витрати за обраний період. Якщо від'ємний — відображається червоним.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(139,92,246,.12)"><i class="fa-solid fa-filter text-violet-400"></i></div>
+            <div><p class="help-title">Фільтри</p><p class="help-desc">Фільтрація по типу, категорії, майстру та датах. Таблиця відображає всі відповідні транзакції з таблиці transactions.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- КЛІЄНТИ -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(14,165,233,.12)">
+            <i class="fa-solid fa-address-book text-sky-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Клієнти</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(14,165,233,.1)"><i class="fa-solid fa-user text-sky-400"></i></div>
+            <div><p class="help-title">База клієнтів</p><p class="help-desc">Всі клієнти з таблиці clients. Показує загальну кількість відвідувань, суму витрат, дату останнього візиту.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(251,191,36,.1)"><i class="fa-solid fa-crown text-amber-400"></i></div>
+            <div><p class="help-title">VIP статус</p><p class="help-desc">Клієнти з найбільшою сумою витрат або кількістю візитів. Встановлюється автоматично або вручну в картці клієнта.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ПЕРСОНАЛ -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(168,85,247,.15)">
+            <i class="fa-solid fa-users-gear text-violet-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Персонал</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(244,63,94,.1)"><i class="fa-solid fa-sack-dollar text-rose-400"></i></div>
+            <div><p class="help-title">Принесено (міс.)</p><p class="help-desc">Сума доходів від усіх записів майстра за поточний місяць з appointments + appointment_history.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-hand-holding-dollar text-emerald-400"></i></div>
+            <div><p class="help-title">Зароблено (міс.)</p><p class="help-desc">Принесено × % ЗП майстра. Відображає реальний заробіток співробітника за місяць.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(139,92,246,.12)"><i class="fa-solid fa-shield-halved text-violet-400"></i></div>
+            <div><p class="help-title">Доступи по ролях</p><p class="help-desc">Власник може обмежити які розділи бачить адміністратор. Налаштування зберігаються у таблиці staff_permissions і перевіряються при кожному завантаженні сторінки.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(251,191,36,.1)"><i class="fa-solid fa-star text-amber-400"></i></div>
+            <div><p class="help-title">Рейтинг</p><p class="help-desc">Середня оцінка з таблиці reviews для кожного майстра. Оновлюється при додаванні нових відгуків.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- БОНУСИ -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(251,191,36,.15)">
+            <i class="fa-solid fa-gift text-amber-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Бонуси</span>
+        </div>
+        <div class="help-card">
+          <div class="help-icon" style="background:rgba(251,191,36,.1)"><i class="fa-solid fa-gift text-amber-400"></i></div>
+          <div>
+            <p class="help-title">Система бонусів</p>
+            <p class="help-desc">Нарахування та списання бонусних балів для клієнтів. Можна налаштувати відсоток нарахування від суми чеку та умови списання. Зберігається в таблиці bonuses.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- РОЛІ та ДОСТУПИ -->
+      <div class="help-section">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(239,68,68,.12)">
+            <i class="fa-solid fa-user-lock text-red-400 text-xs"></i>
+          </div>
+          <span class="text-[11px] font-black text-white uppercase tracking-widest">Ролі та доступи</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(251,191,36,.12)"><i class="fa-solid fa-crown text-amber-400"></i></div>
+            <div><p class="help-title">Власник</p><p class="help-desc">Повний доступ до всіх розділів. Може змінювати доступи адміністраторів. Не можна редагувати ззовні.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(99,102,241,.12)"><i class="fa-solid fa-user-tie text-indigo-400"></i></div>
+            <div><p class="help-title">Адміністратор</p><p class="help-desc">Доступ визначається власником індивідуально через «Доступи по ролях» у розділі Персонал.</p></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-scissors text-emerald-400"></i></div>
+            <div><p class="help-title">Майстер</p><p class="help-desc">Бачить тільки свої записи та власний профіль. Не має доступу до фінансів та персоналу.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-center text-[9px] text-zinc-700 font-bold uppercase tracking-widest pt-2">Wella Glow Admin · v1.0</p>
+    </div>
+  </div>
+</div>
+
+<style>
+.help-section { background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); border-radius:16px; padding:16px; }
+.help-card { display:flex; align-items:flex-start; gap:10px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); border-radius:12px; padding:10px 12px; }
+.help-icon { width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px; }
+.help-title { font-size:10px; font-weight:800; color:#e4e4e7; margin-bottom:3px; }
+.help-desc { font-size:9.5px; color:#71717a; font-weight:600; line-height:1.5; }
+</style>
+
+<script>
+function openHelpModal() {
+    const m = document.getElementById('help-modal');
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+}
+function closeHelpModal() {
+    const m = document.getElementById('help-modal');
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHelpModal(); });
+</script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>window.PAGE_MODULE='dashboard';</script>
