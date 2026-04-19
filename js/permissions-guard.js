@@ -1,8 +1,30 @@
 /**
  * permissions-guard.js
- * Helper: runs fn immediately if DOM is ready, otherwise waits for DOMContentLoaded.
- * Needed because the async Supabase fetch often resolves AFTER DOMContentLoaded fires.
+ * 1. Injects a full-screen loader immediately (visible even while html{visibility:hidden}).
+ * 2. For admin: reads staff_permissions from Supabase, redirects if blocked, hides nav items.
+ * 3. For owner: no DB check — full access.
+ * 4. For others: just reveal the page.
+ * Requires: window.PAGE_MODULE set before this loads, window.db already init'd.
  */
+
+// ── Inject spinner into <html> so it shows while html{visibility:hidden} ──
+(function () {
+    const el = document.createElement('div');
+    el.id = '_page-loader';
+    el.style.cssText = [
+        'position:fixed', 'inset:0', 'z-index:2147483647',
+        'background:#09090b', 'display:flex', 'align-items:center',
+        'justify-content:center', 'visibility:visible',
+    ].join(';');
+    el.innerHTML =
+        '<div id="_pl-spin" style="width:34px;height:34px;border-radius:50%;' +
+        'border:3px solid rgba(255,255,255,.08);border-top-color:#f43f5e;' +
+        'animation:_plspin .7s linear infinite"></div>' +
+        '<style>@keyframes _plspin{to{transform:rotate(360deg)}}</style>';
+    document.documentElement.appendChild(el);
+})();
+
+// ── Helpers ──────────────────────────────────────────────────────────────
 function whenReady(fn) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', fn);
@@ -11,26 +33,43 @@ function whenReady(fn) {
     }
 }
 
-/**
- * Async guard — reads staff_permissions from Supabase DB (not localStorage).
- * Requires: window.PAGE_MODULE set before this loads, window.db already init'd.
- * owner: always full access. admin: checked against DB staff_permissions.
- */
+function revealPage(fn) {
+    // fn (optional) runs after DOM is ready, before we reveal
+    whenReady(function () {
+        if (fn) fn();
+        // fade out loader, then reveal html
+        const loader = document.getElementById('_page-loader');
+        if (loader) {
+            loader.style.transition = 'opacity .25s';
+            loader.style.opacity = '0';
+            setTimeout(function () {
+                loader.remove();
+                document.documentElement.style.visibility = '';
+            }, 250);
+        } else {
+            document.documentElement.style.visibility = '';
+        }
+    });
+}
+
+// ── Main guard ───────────────────────────────────────────────────────────
 (async function () {
     const role    = localStorage.getItem('wella_staff_role') || '';
     const staffId = localStorage.getItem('wella_staff_id');
 
     if (!staffId) { window.location.href = 'staff-login.html'; return; }
+
     if (role === 'owner') {
-        // Owner: just apply nav (nothing hidden)
-        whenReady(() => applyNavVisibility({}));
+        revealPage(function () { applyNavVisibility({}); });
         return;
     }
-    if (role !== 'admin') return; // master pages handle their own auth
 
-    // Hide page while we check DB — avoids flash of forbidden content
-    document.documentElement.style.visibility = 'hidden';
+    if (role !== 'admin') {
+        revealPage(); // master/other pages handle their own auth
+        return;
+    }
 
+    // Admin: check DB permissions
     try {
         const { data: rows, error: readErr } = await window.db
             .from('staff_permissions')
@@ -39,7 +78,6 @@ function whenReady(fn) {
 
         console.log('[guard] staffId:', staffId, 'rows:', rows, 'error:', readErr);
 
-        // Build map; if no DB rows yet → treat as full default access for admins
         const permMap = {};
         (rows || []).forEach(r => { permMap[r.module] = r.can_access; });
         console.log('[guard] permMap:', permMap, 'PAGE_MODULE:', window.PAGE_MODULE);
@@ -52,35 +90,31 @@ function whenReady(fn) {
         };
 
         const mod = window.PAGE_MODULE;
-        // Only block if explicitly set to false in DB (missing key = allow)
         if (mod && permMap[mod] === false) {
             const first = Object.keys(URLS).find(k => permMap[k] !== false);
             window.location.href = first ? URLS[first] : 'staff-login.html';
             return;
         }
 
-        // Page is accessible — reveal and apply nav hiding
-        document.documentElement.style.visibility = '';
-        whenReady(() => applyNavVisibility(permMap, URLS));
+        revealPage(function () { applyNavVisibility(permMap, URLS); });
 
     } catch (e) {
-        // On error fail open — don't lock everyone out
-        document.documentElement.style.visibility = '';
+        revealPage(); // fail open — don't lock everyone out
     }
 })();
 
+// ── Nav visibility ───────────────────────────────────────────────────────
 function applyNavVisibility(permMap, URLS) {
     if (!URLS) return;
-    Object.entries(URLS).forEach(([key, href]) => {
+    Object.entries(URLS).forEach(function ([key, href]) {
         if (permMap[key] === false) {
-            document.querySelectorAll(`a[href="${href}"], a[href*="${href}"]`).forEach(el => {
+            document.querySelectorAll('a[href="' + href + '"], a[href*="' + href + '"]').forEach(function (el) {
                 el.style.display = 'none';
             });
         }
     });
-    // Hide "Доступи по ролях" button if role_access is explicitly disabled
     if (permMap['role_access'] === false) {
-        document.querySelectorAll('[onclick*="openRoleAccess"]').forEach(el => {
+        document.querySelectorAll('[onclick*="openRoleAccess"]').forEach(function (el) {
             el.style.display = 'none';
         });
     }
