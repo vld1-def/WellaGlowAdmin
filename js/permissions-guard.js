@@ -1,75 +1,72 @@
 /**
  * permissions-guard.js
- * Runs on every admin page. Redirects if the current user's role doesn't have
- * permission for this module. Also hides nav links and role-access button.
- *
- * Each page must set window.PAGE_MODULE = 'calendar' (etc.) BEFORE this loads.
- * owner: always full access. admin: checked against localStorage wella_role_perms_admin.
+ * Async guard — reads staff_permissions from Supabase DB (not localStorage).
+ * Requires: window.PAGE_MODULE set before this loads, window.db already init'd.
+ * owner: always full access. admin: checked against DB staff_permissions.
  */
-(function () {
+(async function () {
     const role    = localStorage.getItem('wella_staff_role') || '';
     const staffId = localStorage.getItem('wella_staff_id');
 
     if (!staffId) { window.location.href = 'staff-login.html'; return; }
-    if (role === 'owner') { applyNavVisibility(role); return; }
+    if (role === 'owner') {
+        // Owner: just apply nav (nothing hidden)
+        document.addEventListener('DOMContentLoaded', () => applyNavVisibility({}));
+        return;
+    }
+    if (role !== 'admin') return; // master pages handle their own auth
 
-    if (role === 'admin') {
-        const DEFAULTS = {
-            dashboard:true, calendar:true, finance:true, clients:true,
-            inventory:true, staff:true, bonuses:true, role_access:true
+    // Hide page while we check DB — avoids flash of forbidden content
+    document.documentElement.style.visibility = 'hidden';
+
+    try {
+        const { data: rows } = await window.db
+            .from('staff_permissions')
+            .select('module, can_access')
+            .eq('staff_id', staffId);
+
+        // Build map; if no DB rows yet → treat as full default access for admins
+        const permMap = {};
+        (rows || []).forEach(r => { permMap[r.module] = r.can_access; });
+
+        const URLS = {
+            dashboard: 'owner-dashboard.html', calendar:  'admin-calendar.html',
+            finance:   'admin-finance.html',   clients:   'admin-clients-base.html',
+            inventory: 'admin-inventory.html', staff:     'admin-staff.html',
+            bonuses:   'admin-bonuses.html',
         };
-        const saved = JSON.parse(localStorage.getItem('wella_role_perms_admin') || 'null');
-        const perms = saved ? Object.assign({}, DEFAULTS, saved) : DEFAULTS;
 
-        const module = window.PAGE_MODULE;
-        if (module && perms[module] === false) {
-            const URLS = {
-                dashboard:'owner-dashboard.html', calendar:'admin-calendar.html',
-                finance:'admin-finance.html',     clients:'admin-clients-base.html',
-                inventory:'admin-inventory.html', staff:'admin-staff.html',
-                bonuses:'admin-bonuses.html'
-            };
-            const first = Object.keys(URLS).find(k => perms[k] !== false);
+        const mod = window.PAGE_MODULE;
+        // Only block if explicitly set to false in DB (missing key = allow)
+        if (mod && permMap[mod] === false) {
+            const first = Object.keys(URLS).find(k => permMap[k] !== false);
             window.location.href = first ? URLS[first] : 'staff-login.html';
             return;
         }
-        applyNavVisibility(role, perms);
-        return;
+
+        // Page is accessible — reveal and apply nav hiding
+        document.documentElement.style.visibility = '';
+        document.addEventListener('DOMContentLoaded', () => applyNavVisibility(permMap, URLS));
+
+    } catch (e) {
+        // On error fail open — don't lock everyone out
+        document.documentElement.style.visibility = '';
     }
-    // master: handled by master pages
 })();
 
-function applyNavVisibility(role, perms) {
-    if (role === 'owner' || !perms) return;
-
-    const NAV_MAP = {
-        dashboard:  ['owner-dashboard.html'],
-        calendar:   ['admin-calendar.html'],
-        finance:    ['admin-finance.html'],
-        clients:    ['admin-clients-base.html'],
-        inventory:  ['admin-inventory.html'],
-        staff:      ['admin-staff.html'],
-        bonuses:    ['admin-bonuses.html'],
-    };
-
-    document.addEventListener('DOMContentLoaded', function () {
-        // Hide page links for blocked modules
-        Object.entries(NAV_MAP).forEach(([key, hrefs]) => {
-            if (perms[key] === false) {
-                hrefs.forEach(href => {
-                    document.querySelectorAll(`a[href="${href}"], a[href*="${href}"]`).forEach(el => {
-                        el.style.display = 'none';
-                    });
-                });
-            }
-        });
-
-        // Hide "Доступи по ролях" button if role_access is disabled
-        if (perms.role_access === false) {
-            // Sidebar button (admin-staff.html)
-            document.querySelectorAll('[onclick*="openRoleAccess"]').forEach(el => {
+function applyNavVisibility(permMap, URLS) {
+    if (!URLS) return;
+    Object.entries(URLS).forEach(([key, href]) => {
+        if (permMap[key] === false) {
+            document.querySelectorAll(`a[href="${href}"], a[href*="${href}"]`).forEach(el => {
                 el.style.display = 'none';
             });
         }
     });
+    // Hide "Доступи по ролях" button if role_access is explicitly disabled
+    if (permMap['role_access'] === false) {
+        document.querySelectorAll('[onclick*="openRoleAccess"]').forEach(el => {
+            el.style.display = 'none';
+        });
+    }
 }
