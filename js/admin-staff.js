@@ -620,7 +620,14 @@ window.saveRolePermissions = async function() {
         const upserts = targets.flatMap(s =>
             MODULES.map(m => ({ staff_id: s.id, module: m.key, can_access: perms[m.key] }))
         );
-        await window.db.from('staff_permissions').upsert(upserts, { onConflict: 'staff_id,module' });
+        console.log('[saveRolePerms] upserting', upserts.length, 'rows for role', roleAccessTab);
+        const { error: upsertErr } = await window.db.from('staff_permissions').upsert(upserts, { onConflict: 'staff_id,module' });
+        if (upsertErr) {
+            alert('Помилка збереження доступів по ролі: ' + upsertErr.message);
+            console.error('[saveRolePerms] error:', upsertErr);
+            return;
+        }
+        console.log('[saveRolePerms] saved OK');
     }
 
     closeRoleAccess();
@@ -946,11 +953,17 @@ window.savePermissions = async function() {
         can_access: document.getElementById('perm-' + m.key)?.checked ?? false,
     }));
 
+    console.log('[savePerms] upserting', upserts.length, 'rows for staff', permStaffId);
     const { error } = await window.db
         .from('staff_permissions')
         .upsert(upserts, { onConflict: 'staff_id,module' });
 
-    if (error) { alert('Помилка: ' + error.message); return; }
+    if (error) {
+        alert('Помилка збереження доступів: ' + error.message + '\n\nКод: ' + error.code);
+        console.error('[savePerms] error:', error);
+        return;
+    }
+    console.log('[savePerms] saved OK, upserts:', upserts);
     closePermissions();
 };
 
