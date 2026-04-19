@@ -294,9 +294,6 @@
                         <i class="fa-solid fa-table-columns text-xs"></i>
                         <span class="hidden sm:inline">Стовпці</span>
                     </button>
-                    <div id="col-dropdown" class="hidden fixed bg-[#111113] border border-white/10 rounded-xl p-2 min-w-[180px] shadow-xl space-y-1" style="z-index:9999">
-                        <!-- JS fills -->
-                    </div>
                 </div>
                 <!-- Report -->
                 <div class="relative" id="report-dropdown-wrap">
@@ -628,6 +625,11 @@
         </div>
     </div>
 </div>
+
+<!-- Column dropdown portal (body-level, escapes backdrop-filter stacking context) -->
+<div id="col-dropdown" style="display:none; position:fixed; z-index:99999; min-width:180px;
+     background:#111113; border:1px solid rgba(255,255,255,0.1); border-radius:12px;
+     padding:8px; box-shadow:0 16px 40px rgba(0,0,0,0.75);"></div>
 
 <!-- ═══════════════════ ACTIONS PORTAL (body-level, escapes backdrop-filter stacking) ═══════════════════ -->
 <div id="actions-portal" style="display:none; position:fixed; z-index:99999; min-width:168px;

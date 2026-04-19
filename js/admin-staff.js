@@ -452,21 +452,24 @@ window.toggleCol = function(id, val) {
 window.toggleColDropdown = function() {
     const dd  = document.getElementById('col-dropdown');
     const btn = document.querySelector('#col-toggle-wrap button');
-    if (dd.classList.contains('hidden')) {
+    if (dd.style.display === 'none' || !dd.style.display) {
         const r = btn.getBoundingClientRect();
-        dd.style.top  = (r.bottom + 4) + 'px';
+        dd.style.top   = (r.bottom + 4) + 'px';
         dd.style.right = (window.innerWidth - r.right) + 'px';
         dd.style.left  = 'auto';
+        dd.style.display = 'block';
+    } else {
+        dd.style.display = 'none';
     }
-    dd.classList.toggle('hidden');
 };
 
 document.addEventListener('click', e => {
     if (!e.target.closest('#report-dropdown-wrap')) {
         document.getElementById('report-dropdown')?.classList.add('hidden');
     }
-    if (!e.target.closest('#col-toggle-wrap')) {
-        document.getElementById('col-dropdown')?.classList.add('hidden');
+    if (!e.target.closest('#col-toggle-wrap') && !e.target.closest('#col-dropdown')) {
+        const dd = document.getElementById('col-dropdown');
+        if (dd) dd.style.display = 'none';
     }
 });
 

@@ -1,5 +1,17 @@
 /**
  * permissions-guard.js
+ * Helper: runs fn immediately if DOM is ready, otherwise waits for DOMContentLoaded.
+ * Needed because the async Supabase fetch often resolves AFTER DOMContentLoaded fires.
+ */
+function whenReady(fn) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', fn);
+    } else {
+        fn();
+    }
+}
+
+/**
  * Async guard — reads staff_permissions from Supabase DB (not localStorage).
  * Requires: window.PAGE_MODULE set before this loads, window.db already init'd.
  * owner: always full access. admin: checked against DB staff_permissions.
@@ -11,7 +23,7 @@
     if (!staffId) { window.location.href = 'staff-login.html'; return; }
     if (role === 'owner') {
         // Owner: just apply nav (nothing hidden)
-        document.addEventListener('DOMContentLoaded', () => applyNavVisibility({}));
+        whenReady(() => applyNavVisibility({}));
         return;
     }
     if (role !== 'admin') return; // master pages handle their own auth
@@ -49,7 +61,7 @@
 
         // Page is accessible — reveal and apply nav hiding
         document.documentElement.style.visibility = '';
-        document.addEventListener('DOMContentLoaded', () => applyNavVisibility(permMap, URLS));
+        whenReady(() => applyNavVisibility(permMap, URLS));
 
     } catch (e) {
         // On error fail open — don't lock everyone out
