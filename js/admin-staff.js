@@ -450,7 +450,15 @@ window.toggleCol = function(id, val) {
     applyColState();
 };
 window.toggleColDropdown = function() {
-    document.getElementById('col-dropdown').classList.toggle('hidden');
+    const dd  = document.getElementById('col-dropdown');
+    const btn = document.querySelector('#col-toggle-wrap button');
+    if (dd.classList.contains('hidden')) {
+        const r = btn.getBoundingClientRect();
+        dd.style.top  = (r.bottom + 4) + 'px';
+        dd.style.right = (window.innerWidth - r.right) + 'px';
+        dd.style.left  = 'auto';
+    }
+    dd.classList.toggle('hidden');
 };
 
 document.addEventListener('click', e => {
