@@ -193,12 +193,12 @@ function makePill(label,id,active,avatarUrl){
 
     if(id && avatarUrl){
         const img=document.createElement('img');
-        img.src=avatarUrl; img.style.cssText='width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0';
+        img.src=avatarUrl; img.style.cssText='width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0';
         btn.appendChild(img);
     } else if(id){
         const ini=document.createElement('span');
         const c=mColor(id);
-        ini.style.cssText=`width:18px;height:18px;border-radius:50%;background:${c}33;color:${c};font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
+        ini.style.cssText=`width:26px;height:26px;border-radius:50%;background:${c}33;color:${c};font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
         ini.textContent=label.charAt(0).toUpperCase();
         btn.appendChild(ini);
     }
