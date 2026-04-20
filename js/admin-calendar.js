@@ -38,11 +38,13 @@ let _shiftDetailId = null;
 // Day-list context for "back" button
 let _dayListCtx = null;
 
-// Autocomplete state
+// Autocomplete state (client only — service now uses multi-picker)
 const acState = {
     client:  { query:'', selectedId:'', items:[] },
-    service: { query:'', selectedId:'', items:[], acIdx:-1 },
 };
+
+// Multi-service picker state
+let selectedServices = []; // [{id, name, price, duration, category}]
 
 // Colors
 const PALETTE = ['#f43f5e','#fb923c','#facc15','#34d399','#22d3ee','#818cf8','#c084fc','#f472b6'];
@@ -127,7 +129,6 @@ async function loadClients(){
 async function loadServices(){
     const {data}=await window.db.from('services').select('*').order('name');
     services=data||[];
-    acState.service.items=services;
 }
 async function loadStaffSvc(){
     const {data}=await window.db.from('staff_services').select('staff_id,service_id');
@@ -437,7 +438,7 @@ function apptBlockHTML(a){
     return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}28;border-left-color:${color};z-index:3"
         onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
         <p style="font-size:11px;font-weight:800;color:${textColor};line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
-        ${durMin>30?`<p style="font-size:10px;color:${color}cc" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
+        ${durMin>30?`<p style="font-size:10px;color:${color}cc" class="truncate mt-0.5">${a.service_name||svc?.name||''}</p>`:''}
     </div>`;
 }
 
@@ -465,7 +466,7 @@ function renderLanes(days, today){
                 return `<div class="appt-card" style="background:${co}18;border-left-color:${co}"
                     onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
                     <p style="font-size:9px;font-weight:800;color:#fff;line-height:1.2" class="truncate">${t} ${cl?.full_name?.split(' ')[0]||'—'}</p>
-                    <p style="font-size:8px;color:${co}aa" class="truncate">${sv?.name||''}</p>
+                    <p style="font-size:8px;color:${co}aa" class="truncate">${a.service_name||sv?.name||''}</p>
                 </div>`;
             }).join('');
             return `<div class="lane-cell" style="height:auto;min-height:56px" ondblclick="openApptDrawer('${str}','','${s.id}')">${cards}</div>`;
@@ -570,20 +571,22 @@ function renderMonth(){
     }
 }
 
-// ══ Autocomplete ══════════════════════════════════════
+// ══ Client Autocomplete ═══════════════════════════════
 window.acSearch=function(type){
+    if(type!=='client') return;
     const input=document.getElementById(type+'-search');
     const q=input.value.toLowerCase().trim();
     acState[type].query=q;
     acState[type].selectedId='';
-    if(type==='client') document.getElementById('a-client').value='';
-    if(type==='service'){ document.getElementById('a-service').value=''; }
+    document.getElementById('a-client').value='';
     renderAcDropdown(type);
 };
 window.acOpen=function(type){
+    if(type!=='client') return;
     renderAcDropdown(type);
 };
 window.acKey=function(e,type){
+    if(type!=='client') return;
     const dd=document.getElementById(type+'-dropdown');
     const items=dd.querySelectorAll('.ac-item');
     let idx=Array.from(items).findIndex(i=>i.classList.contains('active'));
@@ -593,33 +596,99 @@ window.acKey=function(e,type){
     else if(e.key==='Escape'){ closeAcAll(); }
 };
 function renderAcDropdown(type){
+    if(type!=='client') return;
     const dd=document.getElementById(type+'-dropdown');
     const q=acState[type].query;
-    let list=type==='client' ? clients : services;
-    if(q) list=list.filter(x=>(x.full_name||x.name||'').toLowerCase().includes(q));
+    let list=clients;
+    if(q) list=list.filter(x=>(x.full_name||'').toLowerCase().includes(q));
     if(!list.length){ dd.innerHTML='<div class="ac-empty">Нічого не знайдено</div>'; dd.classList.add('open'); return; }
     dd.innerHTML=list.slice(0,12).map(x=>{
-        const label=x.full_name||x.name;
-        const sub=type==='client'?(x.phone||''):(x.category||'')+(x.price?' · ₴'+x.price:'');
-        return `<div class="ac-item" onclick="acSelect('${type}','${x.id}','${label.replace(/'/g,"\\'")}')">
-            <span class="font-bold text-white">${label}</span>
-            ${sub?`<span class="text-zinc-600 text-[10px] ml-1">${sub}</span>`:''}
+        return `<div class="ac-item" onclick="acSelect('client','${x.id}','${(x.full_name||'').replace(/'/g,"\\'")}')">
+            <span class="font-bold text-white">${x.full_name||'—'}</span>
+            ${x.phone?`<span class="text-zinc-600 text-[10px] ml-1">${x.phone}</span>`:''}
         </div>`;
     }).join('');
     dd.classList.add('open');
 }
 window.acSelect=function(type,id,label){
+    if(type!=='client') return;
     document.getElementById(type+'-search').value=label;
     acState[type].selectedId=id;
-    if(type==='client') document.getElementById('a-client').value=id;
-    if(type==='service'){
-        document.getElementById('a-service').value=id;
-        const svc=services.find(s=>s.id===id);
-        if(svc?.price) document.getElementById('a-price').value=svc.price;
-        onServicePicked(id);
-    }
+    document.getElementById('a-client').value=id;
     document.getElementById(type+'-dropdown').classList.remove('open');
 };
+
+// ══ Service Multi-Picker ═══════════════════════════════
+function _updateSvcWrapVisibility(){
+    const masterId=document.getElementById('a-master').value;
+    const wrap=document.getElementById('add-svc-wrap');
+    const hint=document.getElementById('svc-no-master-hint');
+    if(masterId){ wrap.classList.remove('hidden'); if(hint)hint.classList.add('hidden'); }
+    else { wrap.classList.add('hidden'); if(hint)hint.classList.remove('hidden'); }
+}
+
+window.renderSvcDropdown=function(q=''){
+    const masterId=document.getElementById('a-master').value;
+    if(!masterId) return;
+    const dd=document.getElementById('service-dropdown');
+    const selIds=new Set(selectedServices.map(s=>s.id));
+    // Services this master provides
+    const masterSvcIds=new Set(staffSvc.filter(x=>x.staff_id===masterId).map(x=>x.service_id));
+    let list=services.filter(s=>masterSvcIds.has(s.id)&&!selIds.has(s.id));
+    if(q) list=list.filter(s=>s.name.toLowerCase().includes(q));
+    if(!list.length){
+        dd.innerHTML=`<div class="ac-empty">${q?'Нічого не знайдено':'Всі послуги вже додано'}</div>`;
+        dd.classList.add('open'); return;
+    }
+    dd.innerHTML=list.slice(0,15).map(s=>{
+        const meta=[s.duration?s.duration+' хв':null,s.price?'₴'+s.price:null].filter(Boolean).join(' · ');
+        return `<div class="ac-item" onclick="addServiceItem('${s.id}')">
+            <span class="font-bold text-white">${s.name}</span>
+            ${meta?`<span class="text-zinc-600 text-[10px] ml-1">${meta}</span>`:''}
+        </div>`;
+    }).join('');
+    dd.classList.add('open');
+};
+
+window.addServiceItem=function(id){
+    const svc=services.find(s=>s.id===id);
+    if(!svc||selectedServices.find(s=>s.id===id)) return;
+    selectedServices.push(svc);
+    renderSelectedChips();
+    updatePriceFromServices();
+    document.getElementById('service-search').value='';
+    document.getElementById('service-dropdown').classList.remove('open');
+};
+
+window.removeServiceItem=function(id){
+    selectedServices=selectedServices.filter(s=>s.id!==id);
+    renderSelectedChips();
+    updatePriceFromServices();
+};
+
+function renderSelectedChips(){
+    const el=document.getElementById('selected-services-list');
+    if(!el) return;
+    if(!selectedServices.length){ el.innerHTML=''; return; }
+    el.innerHTML=selectedServices.map(s=>{
+        const meta=[s.duration?s.duration+' хв':null,s.price?'₴'+s.price:null].filter(Boolean).join(' · ');
+        return `<div class="flex items-center gap-2 px-3 py-2 rounded-xl" style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2)">
+            <div class="flex-1 min-w-0">
+                <p class="text-[11px] font-bold text-white truncate">${s.name}</p>
+                ${meta?`<p class="text-[10px] text-zinc-500">${meta}</p>`:''}
+            </div>
+            <button onclick="removeServiceItem('${s.id}')" class="text-zinc-600 hover:text-rose-400 transition flex-shrink-0 pl-2"><i class="fa-solid fa-xmark text-xs"></i></button>
+        </div>`;
+    }).join('');
+}
+
+function updatePriceFromServices(){
+    const total=selectedServices.reduce((sum,s)=>sum+(parseFloat(s.price)||0),0);
+    document.getElementById('a-price').value=total>0?total:'';
+    const totalDur=selectedServices.reduce((sum,s)=>sum+(parseInt(s.duration)||0),0);
+    const hint=document.getElementById('svc-duration-hint');
+    if(hint) hint.textContent=totalDur>0?`Загальний час: ${totalDur} хв`:'';
+}
 function closeAcAll(){
     document.querySelectorAll('.ac-dropdown').forEach(d=>d.classList.remove('open'));
 }
@@ -633,48 +702,54 @@ window.openApptDrawer=function(prefillDate='',prefillTime='',prefillMasterId='',
     document.getElementById('client-search').value='';
     document.getElementById('service-search').value='';
     document.getElementById('a-client').value='';
-    document.getElementById('a-service').value='';
     document.getElementById('a-price').value='';
     document.getElementById('a-date').value=prefillDate||localDate(new Date());
-    acState.client.selectedId=''; acState.service.selectedId='';
+    acState.client.selectedId='';
+    // Reset multi-services
+    selectedServices=[];
+    renderSelectedChips();
+    const durHint=document.getElementById('svc-duration-hint');
+    if(durHint) durHint.textContent='';
 
-    populateMasterSelect('');
-    if(prefillMasterId) document.getElementById('a-master').value=prefillMasterId;
-    else if(filterMId)  document.getElementById('a-master').value=filterMId;
+    populateMasterSelect();
+    const masterSel=document.getElementById('a-master');
+    if(prefillMasterId) masterSel.value=prefillMasterId;
+    else if(filterMId)  masterSel.value=filterMId;
+    _updateSvcWrapVisibility();
 
     document.getElementById('appt-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
 
-    if(document.getElementById('a-master').value && document.getElementById('a-date').value)
+    if(masterSel.value && document.getElementById('a-date').value)
         onMasterOrDateChange();
     else renderSlotGrid([],selStartHour,selStartMin,selEndHour,selEndMin);
 };
 
-function onServicePicked(serviceId){
-    populateMasterSelect(serviceId);
-    if(document.getElementById('a-master').value && document.getElementById('a-date').value)
-        onMasterOrDateChange();
-}
+// Called when master select changes
+window.onMasterChange=function(){
+    selectedServices=[];
+    renderSelectedChips();
+    document.getElementById('service-search').value='';
+    document.getElementById('service-dropdown').classList.remove('open');
+    document.getElementById('a-price').value='';
+    const durHint=document.getElementById('svc-duration-hint');
+    if(durHint) durHint.textContent='';
+    _updateSvcWrapVisibility();
+    onMasterOrDateChange();
+};
 
-function populateMasterSelect(serviceId){
+function populateMasterSelect(){
     const sel=document.getElementById('a-master');
     const prev=sel.value;
     sel.innerHTML='<option value="">— Оберіть майстра —</option>';
-    let list=masters;
-    if(serviceId){
-        const allowed=new Set(staffSvc.filter(x=>x.service_id===serviceId).map(x=>x.staff_id));
-        list=masters.filter(s=>allowed.has(s.id));
-    }
-    list.forEach(s=>{
+    masters.forEach(s=>{
         const o=document.createElement('option'); o.value=s.id;
         o.textContent=s.name+(s.position?' ('+s.position+')':'');
         sel.appendChild(o);
     });
-    const hint=document.getElementById('master-hint');
-    if(serviceId&&!list.length){ hint.textContent='⚠ Жоден майстер не надає цю послугу'; hint.classList.remove('hidden'); }
-    else hint.classList.add('hidden');
-    if(prev&&list.find(s=>s.id===prev)) sel.value=prev;
-    else if(filterMId&&list.find(s=>s.id===filterMId)) sel.value=filterMId;
+    document.getElementById('master-hint').classList.add('hidden');
+    if(prev&&masters.find(s=>s.id===prev)) sel.value=prev;
+    else if(filterMId&&masters.find(s=>s.id===filterMId)) sel.value=filterMId;
 }
 
 window.onMasterOrDateChange=async function(){
@@ -800,26 +875,27 @@ function updateTimeBadge(){
 // ══ Save ══════════════════════════════════════════════
 window.saveAppt=async function(){
     const clientId=document.getElementById('a-client').value;
-    const serviceId=document.getElementById('a-service').value;
     const masterId=document.getElementById('a-master').value;
     const date=document.getElementById('a-date').value;
     const price=parseFloat(document.getElementById('a-price').value)||0;
-    const svc=services.find(s=>s.id===serviceId);
+    const serviceId=selectedServices[0]?.id||null;
+    const serviceName=selectedServices.map(s=>s.name).join(' + ');
 
     if(!clientId){ alert('Оберіть клієнта'); return; }
     if(!masterId){ alert('Оберіть майстра'); return; }
+    if(!selectedServices.length){ alert('Оберіть хоча б одну послугу'); return; }
     if(!date){ alert('Вкажіть дату'); return; }
     if(selStartHour===null){ alert('Оберіть час запису (клікніть на слот)'); return; }
 
+    const autoPrice=selectedServices.reduce((sum,s)=>sum+(parseFloat(s.price)||0),0);
     const payload={
-        client_id:masterId?masterId:undefined,
         master_id:masterId,
         service_id:serviceId||null,
-        service_name:svc?.name||'',
+        service_name:serviceName||'',
         appointment_date:date,
         appointment_time:hhmm(selStartHour,selStartMin)+':00',
         end_time:hhmm(selEndHour,selEndMin)+':00',
-        price:price||svc?.price||0,
+        price:price||autoPrice||0,
         status:'waiting',
         client_id:clientId,
         created_by_role: localStorage.getItem('wella_staff_role') || null,
@@ -906,17 +982,30 @@ function openEditDrawer(a,tbl){
     selEndHour=endHour(a);     selEndMin=endMin(a);
     document.getElementById('drawer-title').textContent='Редагувати запис';
     const client=clients.find(c=>c.id===a.client_id);
-    const svc=services.find(s=>s.id===a.service_id);
     document.getElementById('client-search').value=client?.full_name||'';
     document.getElementById('a-client').value=a.client_id||'';
-    document.getElementById('service-search').value=svc?.name||a.service_name||'';
-    document.getElementById('a-service').value=a.service_id||'';
+    document.getElementById('service-search').value='';
     document.getElementById('a-price').value=a.price||'';
     document.getElementById('a-date').value=a._date||'';
     acState.client.selectedId=a.client_id||'';
-    acState.service.selectedId=a.service_id||'';
-    populateMasterSelect(a.service_id||'');
+
+    // Restore services from appointment
+    selectedServices=[];
+    if(a.service_id){
+        const existingSvc=services.find(s=>s.id===a.service_id);
+        if(existingSvc) selectedServices=[existingSvc];
+        else if(a.service_name) selectedServices=[{id:a.service_id,name:a.service_name,price:a.price||0,duration:null}];
+    } else if(a.service_name) {
+        // service_name only (no id) — treat as read-only label
+        selectedServices=[{id:'__legacy__',name:a.service_name,price:a.price||0,duration:null}];
+    }
+    renderSelectedChips();
+    // Keep original price (don't auto-recalculate on edit)
+    document.getElementById('a-price').value=a.price||'';
+
+    populateMasterSelect();
     document.getElementById('a-master').value=a.master_id||'';
+    _updateSvcWrapVisibility();
     document.getElementById('appt-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
     onMasterOrDateChange();
