@@ -116,7 +116,7 @@ window.addEventListener('monthchange', async ()=>{
 
 // ══ Loaders ══════════════════════════════════════════
 async function loadMasters(){
-    const {data}=await window.db.from('staff').select('id,name,role,position,is_active').eq('is_active',true).neq('role','owner').order('name');
+    const {data}=await window.db.from('staff').select('id,name,role,position,is_active,avatar_url').eq('is_active',true).neq('role','owner').order('name');
     masters=data||[];
 }
 async function loadClients(){
@@ -158,18 +158,54 @@ async function loadShifts(){
 
 function allAppts(){ return [...appts,...histAppts]; }
 
+// ══ Mobile swipe to navigate days ════════════════════
+(function(){
+    let _tx=0,_ty=0;
+    document.addEventListener('touchstart',e=>{
+        const t=e.touches[0];
+        _tx=t.clientX; _ty=t.clientY;
+    },{passive:true});
+    document.addEventListener('touchend',e=>{
+        const t=e.changedTouches[0];
+        const dx=t.clientX-_tx, dy=t.clientY-_ty;
+        // Only horizontal swipes > 60px that are more horizontal than vertical
+        if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){
+            if(dx<0) navNext(); else navPrev();
+        }
+    },{passive:true});
+})();
+
 // ══ Master Filter ═════════════════════════════════════
 function buildMasterPills(){
     const wrap=document.getElementById('master-filters');
     wrap.innerHTML='';
     wrap.appendChild(makePill('Всі','',true));
-    masters.forEach(s=>wrap.appendChild(makePill(s.name.split(' ')[0],s.id,false)));
+    masters.forEach(s=>wrap.appendChild(makePill(s.name.split(' ')[0],s.id,false,s.avatar_url)));
 }
-function makePill(label,id,active){
+function makePill(label,id,active,avatarUrl){
     const btn=document.createElement('button');
     btn.className='master-pill'+(active?' active':'');
     btn.dataset.id=id;
-    btn.textContent=label;
+    btn.style.display='flex';
+    btn.style.alignItems='center';
+    btn.style.gap='5px';
+    btn.style.padding='4px 10px 4px 4px';
+
+    if(id && avatarUrl){
+        const img=document.createElement('img');
+        img.src=avatarUrl; img.style.cssText='width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0';
+        btn.appendChild(img);
+    } else if(id){
+        const ini=document.createElement('span');
+        const c=mColor(id);
+        ini.style.cssText=`width:18px;height:18px;border-radius:50%;background:${c}33;color:${c};font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
+        ini.textContent=label.charAt(0).toUpperCase();
+        btn.appendChild(ini);
+    }
+    const txt=document.createElement('span');
+    txt.textContent=label;
+    btn.appendChild(txt);
+
     if(active) applyPillStyle(btn, id?mColor(id):'#f43f5e');
     btn.onclick=()=>setMasterFilter(id);
     return btn;

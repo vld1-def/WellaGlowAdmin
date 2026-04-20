@@ -47,6 +47,7 @@ window.doLogout = function() {
 let _allClients   = [];   // raw from DB with ltv/visits computed
 let _currentSort  = 'name';
 let _vipOnly      = false;
+let _coldFilter   = false;
 let _searchQ      = '';
 let _currentId  = null; // open modal client id
 let _activeTab  = 'history';
@@ -55,7 +56,18 @@ let _activeTab  = 'history';
 document.addEventListener('DOMContentLoaded', async () => {
     initSidebarMonth();
     initSidebarProfile();
+    // Show export button for owners only
+    if (localStorage.getItem('wella_staff_role') === 'owner') {
+        document.getElementById('export-btn-wrap')?.classList.remove('hidden');
+    }
     await loadClients();
+});
+
+// Close export dropdown on outside click
+document.addEventListener('click', e => {
+    if (!e.target.closest('#export-dropdown-wrap')) {
+        document.getElementById('export-dropdown')?.classList.add('hidden');
+    }
 });
 
 window.addEventListener('monthchange', async () => {
@@ -112,12 +124,22 @@ async function loadClients() {
     renderTable();
 }
 
-// ── Render table ──────────────────────────────────────
-function renderTable() {
+// ── Get filtered + sorted clients (shared by render & export) ─
+function getFilteredClients() {
     let list = [..._allClients];
 
     // VIP filter
     if (_vipOnly) list = list.filter(c => c.vip_status);
+
+    // Cold filter (no visit in 3+ months)
+    if (_coldFilter) {
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        list = list.filter(c => {
+            if (!c._lastDate) return true;
+            return new Date(c._lastDate) < threeMonthsAgo;
+        });
+    }
 
     // Search
     if (_searchQ) {
@@ -130,11 +152,18 @@ function renderTable() {
     }
 
     // Sort
-    if (_currentSort === 'ltv')   list.sort((a, b) => b._ltv    - a._ltv);
+    if (_currentSort === 'ltv')    list.sort((a, b) => b._ltv    - a._ltv);
     if (_currentSort === 'visits') list.sort((a, b) => b._visits - a._visits);
-    if (_currentSort === 'last')  list.sort((a, b) => (b._lastDate || '').localeCompare(a._lastDate || ''));
-    if (_currentSort === 'new')   list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-    if (_currentSort === 'name')  list.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'uk'));
+    if (_currentSort === 'last')   list.sort((a, b) => (b._lastDate || '').localeCompare(a._lastDate || ''));
+    if (_currentSort === 'new')    list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    if (_currentSort === 'name')   list.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'uk'));
+
+    return list;
+}
+
+// ── Render table ──────────────────────────────────────
+function renderTable() {
+    const list = getFilteredClients();
 
     const tbody = document.getElementById('clients-tbody');
     if (!list.length) {
@@ -186,9 +215,71 @@ window.filterClients = function() {
     renderTable();
 };
 
+window.toggleColdFilter = function() {
+    _coldFilter = !_coldFilter;
+    const btn = document.getElementById('cold-filter-btn');
+    if (btn) {
+        btn.classList.toggle('active', _coldFilter);
+    }
+    renderTable();
+};
+
+// ── Export helpers ────────────────────────────────────
+window.toggleExportDropdown = function() {
+    document.getElementById('export-dropdown').classList.toggle('hidden');
+};
+
+window.exportClientsCSV = function() {
+    const rows = getFilteredClients();
+    const headers = ['Імя', 'Телефон', 'Instagram', 'Візити', 'LTV', 'Бонуси', 'Останній візит'];
+    const lines = [headers.join(',')];
+    rows.forEach(c => {
+        lines.push([
+            `"${c.full_name || ''}"`,
+            `"${c.phone || ''}"`,
+            `"${c.instagram || ''}"`,
+            c._visits || 0,
+            c._ltv || 0,
+            c.bonuses || 0,
+            `"${c._lastDate || ''}"`
+        ].join(','));
+    });
+    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `clients_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+};
+
+window.exportClientsPDF = function() {
+    const rows = getFilteredClients();
+    let html = `<html><head><meta charset="utf-8"><style>
+        body{font-family:Arial,sans-serif;font-size:11px;color:#111}
+        h2{margin-bottom:12px}
+        table{width:100%;border-collapse:collapse}
+        th{background:#f43f5e;color:#fff;padding:6px 8px;text-align:left;font-size:10px}
+        td{padding:5px 8px;border-bottom:1px solid #eee}
+        tr:nth-child(even) td{background:#fafafa}
+    </style></head><body>
+    <h2>База клієнтів — ${new Date().toLocaleDateString('uk-UA')}</h2>
+    <table><thead><tr>
+        <th>Ім\'я</th><th>Телефон</th><th>Візити</th><th>LTV</th><th>Бонуси</th><th>Останній візит</th>
+    </tr></thead><tbody>`;
+    rows.forEach(c => {
+        const lastStr = c._lastDate ? c._lastDate.split('-').reverse().join('.') : '—';
+        html += `<tr><td>${c.full_name || ''}</td><td>${c.phone || ''}</td><td>${c._visits || 0}</td><td>₴${c._ltv || 0}</td><td>${c.bonuses || 0}</td><td>${lastStr}</td></tr>`;
+    });
+    html += `</tbody></table></body></html>`;
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    w.print();
+};
+
 // ── Open client modal ─────────────────────────────────
 window.openClientModal = async function(id) {
     _currentId = id;
+    window._openClientId = id;
     _activeTab = 'history';
 
     // Show modal
@@ -215,16 +306,21 @@ window.openClientModal = async function(id) {
 
     fillForm(client);
     renderHistoryPanel(client);
+
+    // Load call-centre notes
+    const notesEl = document.getElementById('client-notes');
+    if (notesEl) notesEl.value = client.callcenter_notes || '';
 };
 
 window.closeClientModal = function() {
     document.getElementById('client-modal').classList.remove('open');
     document.getElementById('modal-overlay').classList.remove('open');
     _currentId = null;
+    window._openClientId = null;
 };
 
 function clearModal() {
-    ['f-name','f-phone','f-instagram','f-birthday','f-allergies','f-preferences','f-formula','f-notes'].forEach(id => {
+    ['f-name','f-phone','f-instagram','f-birthday','f-allergies','f-preferences','f-formula','f-notes','client-notes','manual-bonus-input'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -405,3 +501,40 @@ function paymentLabel(method) {
     const map = { cash: 'Готівка', card: 'Картка', transfer: 'Переказ' };
     return map[method] || method || '';
 }
+
+// ── Call-centre notes ─────────────────────────────────
+window.saveClientNotes = async function() {
+    const clientId = window._openClientId;
+    if (!clientId) return;
+    const notes = document.getElementById('client-notes')?.value || '';
+    const { error } = await window.db.from('clients').update({ callcenter_notes: notes }).eq('id', clientId);
+    if (error) { alert('Помилка: ' + error.message); return; }
+    // Update local cache
+    const cached = _allClients.find(c => c.id === clientId);
+    if (cached) cached.callcenter_notes = notes;
+    // Button feedback
+    const btn = document.querySelector('button[onclick="saveClientNotes()"]');
+    if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Збережено';
+        setTimeout(() => btn.innerHTML = orig, 1500);
+    }
+};
+
+// ── Manual bonus ──────────────────────────────────────
+window.addManualBonus = async function() {
+    const clientId = window._openClientId;
+    const pts = parseInt(document.getElementById('manual-bonus-input')?.value || '0');
+    if (!clientId || !pts || pts < 1) { alert('Введіть кількість балів'); return; }
+    // Get current bonuses
+    const { data: c } = await window.db.from('clients').select('bonuses').eq('id', clientId).single();
+    const newPts = (c?.bonuses || 0) + pts;
+    const { error } = await window.db.from('clients').update({ bonuses: newPts }).eq('id', clientId);
+    if (error) { alert('Помилка: ' + error.message); return; }
+    // Update local cache and modal display
+    const cached = _allClients.find(cl => cl.id === clientId);
+    if (cached) cached.bonuses = newPts;
+    document.getElementById('modal-bonuses').textContent = newPts;
+    document.getElementById('manual-bonus-input').value = '';
+    alert(`Нараховано ${pts} бонусів. Всього: ${newPts}`);
+};
