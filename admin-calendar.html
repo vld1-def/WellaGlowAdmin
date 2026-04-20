@@ -365,24 +365,33 @@
                 <input type="hidden" id="a-client">
             </div>
 
-            <!-- Service autocomplete -->
-            <div>
-                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Послуга *</label>
-                <div class="ac-wrap">
-                    <input id="service-search" type="text" placeholder="Пошук послуги..." class="cal-input"
-                        oninput="acSearch('service')" onfocus="acOpen('service')" onkeydown="acKey(event,'service')" autocomplete="off">
-                    <div id="service-dropdown" class="ac-dropdown"></div>
-                </div>
-                <input type="hidden" id="a-service">
-            </div>
-
-            <!-- Master -->
+            <!-- Master (FIRST) -->
             <div>
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Майстер *</label>
-                <select id="a-master" class="cal-input" onchange="onMasterOrDateChange()">
+                <select id="a-master" class="cal-input" onchange="onMasterChange()">
                     <option value="">— Оберіть майстра —</option>
                 </select>
                 <p id="master-hint" class="text-[9px] text-zinc-600 mt-1.5 font-semibold hidden"></p>
+            </div>
+
+            <!-- Services multi-picker (filtered by master) -->
+            <div>
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Послуги *</label>
+                <!-- Chips of selected services -->
+                <div id="selected-services-list" class="space-y-1.5 mb-2"></div>
+                <!-- Add service search (shown after master is picked) -->
+                <div id="add-svc-wrap" class="hidden">
+                    <div class="ac-wrap">
+                        <input id="service-search" type="text" placeholder="Додати послугу..." class="cal-input"
+                            oninput="renderSvcDropdown(this.value.toLowerCase().trim())"
+                            onfocus="renderSvcDropdown(this.value.toLowerCase().trim())"
+                            onkeydown="if(event.key==='Escape')document.getElementById('service-dropdown').classList.remove('open')"
+                            autocomplete="off">
+                        <div id="service-dropdown" class="ac-dropdown"></div>
+                    </div>
+                    <p id="svc-duration-hint" class="text-[10px] text-zinc-600 mt-1.5 font-semibold"></p>
+                </div>
+                <p id="svc-no-master-hint" class="text-[9px] text-zinc-500 font-semibold mt-1">← Спочатку оберіть майстра</p>
             </div>
 
             <!-- Date + Time range -->
