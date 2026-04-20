@@ -104,6 +104,7 @@
         /* Mobile overrides: force-show revenue/earned, force-hide rate/rating regardless of column toggle */
         @media (max-width: 767px) {
             #staff-table .sc-revenue { display:table-cell !important; }
+            #staff-table .sc-status  { display:none !important; }
             #staff-table .sc-earned  { display:table-cell !important; }
             #staff-table .sc-rate    { display:none !important; }
             #staff-table .sc-rating  { display:none !important; }
@@ -112,6 +113,8 @@
             #staff-table .sc-wrev    { display:none !important; }
             #staff-table .sc-wearn   { display:none !important; }
         }
+
+        .relative > i.fa-magnifying-glass { display:flex; align-items:center; }
 
         /* Sort buttons */
         .sort-btn { padding:5px 10px; border-radius:8px; font-size:9px; font-weight:800;
@@ -229,9 +232,9 @@
     </header>
 
     <!-- KPI CARDS -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
         <!-- Фонд оплати праці -->
-        <div class="glass-panel rounded-2xl py-2 px-5">
+        <div class="glass-panel rounded-2xl py-2 px-5 col-span-2 sm:col-span-1">
             <div class="flex items-center justify-between mb-1.5">
                 <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Фонд оплати праці</p>
                 <div class="w-7 h-7 rounded-xl flex items-center justify-center" style="background:rgba(244,63,94,0.12)">

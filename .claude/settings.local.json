@@ -54,7 +54,10 @@
       "Bash(sed -i 's|<th class=\"px-4 py-4 text-\\\\[9px\\\\] font-black text-zinc-600 uppercase tracking-widest\">Бонуси</th>|<th class=\"px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden md:table-cell\">Бонуси</th>|' admin-clients-base.html)",
       "Bash(sed -i 's|<th class=\"px-4 py-4 text-\\\\[9px\\\\] font-black text-zinc-600 uppercase tracking-widest\">Останній візит</th>|<th class=\"px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden sm:table-cell\">Останній візит</th>|' admin-clients-base.html)",
       "Bash(sed -i 's|<th class=\"px-4 py-4 text-\\\\[9px\\\\] font-black text-zinc-600 uppercase tracking-widest\">Телефон</th>|<th class=\"px-4 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest hidden sm:table-cell\">Телефон</th>|' admin-clients-base.html)",
-      "Bash(grep -l \"wella_staff_role\\\\|staffRole\\\\|doLogout\" *.html)"
+      "Bash(grep -l \"wella_staff_role\\\\|staffRole\\\\|doLogout\" *.html)",
+      "Bash(grep -l \"permissions-guard\" *.html)",
+      "Bash(grep -rn \"placeholder.*[Пп]ошук\\\\|id.*search\\\\|type.*search\" *.html)",
+      "Bash(grep -rln \"mob-more-itm\" *.html)"
     ]
   }
 }
