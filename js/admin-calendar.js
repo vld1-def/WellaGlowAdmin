@@ -193,12 +193,12 @@ function makePill(label,id,active,avatarUrl){
 
     if(id && avatarUrl){
         const img=document.createElement('img');
-        img.src=avatarUrl; img.style.cssText='width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0';
+        img.src=avatarUrl; img.style.cssText='width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0';
         btn.appendChild(img);
     } else if(id){
         const ini=document.createElement('span');
         const c=mColor(id);
-        ini.style.cssText=`width:18px;height:18px;border-radius:50%;background:${c}33;color:${c};font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
+        ini.style.cssText=`width:26px;height:26px;border-radius:50%;background:${c}33;color:${c};font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
         ini.textContent=label.charAt(0).toUpperCase();
         btn.appendChild(ini);
     }
@@ -432,7 +432,7 @@ function apptBlockHTML(a){
     const durMin=(eh!==null&&sh!==null)?((eh*60+em)-(sh*60+sm)):60;
     const height=Math.max(durMin-4,22);
     const t=a._start?a._start.slice(0,5):'';
-    return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}28;border-left-color:${color};z-index:3"
+    return `<div class="appt-block" style="top:2px;height:${height-3}px;background:${color}28;border-left-color:${color};z-index:3"
         onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
         <p style="font-size:11px;font-weight:800;color:${textColor};line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
         ${durMin>30?`<p style="font-size:10px;color:${color}cc" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
@@ -820,7 +820,6 @@ window.saveAppt=async function(){
         price:price||svc?.price||0,
         status:'waiting',
         client_id:clientId,
-        created_by_id:   localStorage.getItem('wella_staff_id')   || null,
         created_by_role: localStorage.getItem('wella_staff_role') || null,
         created_by_name: localStorage.getItem('wella_staff_name') || null,
     };
