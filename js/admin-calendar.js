@@ -430,8 +430,8 @@ function apptBlockHTML(a){
     const textColor=isDone?'#a1a1aa':'#fff';
     const sh=startHour(a),sm=startMin(a),eh=endHour(a),em=endMin(a);
     const durMin=(eh!==null&&sh!==null)?((eh*60+em)-(sh*60+sm)):60;
-    // Use actual cell height from DOM so mobile (36px) and desktop (30px) both work
-    const cellPx = document.querySelector('.tl-cell')?.getBoundingClientRect().height || 30;
+    // Match CSS: @media(max-width:639px) .tl-cell { min-height:36px }
+    const cellPx = window.innerWidth <= 639 ? 36 : 30;
     const height = Math.max(Math.round(durMin / 30 * cellPx) - 2, cellPx * 0.7);
     const t=a._start?a._start.slice(0,5):'';
     return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}28;border-left-color:${color};z-index:3"
