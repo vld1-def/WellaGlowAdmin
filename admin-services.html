@@ -56,6 +56,13 @@
             font-family:'Manrope',sans-serif; font-weight:600; outline:none; transition:border-color .2s; }
         .svc-input:focus { border-color:rgba(244,63,94,.5); }
         .svc-input option { background:#111113; color:#e2e8f0; }
+        /* Toggle switch */
+        .svc-toggle { position:relative; width:38px; height:22px; display:inline-block; flex-shrink:0; }
+        .svc-toggle input { opacity:0; width:0; height:0; }
+        .svc-slider { position:absolute; inset:0; background:#27272a; border-radius:20px; cursor:pointer; transition:.2s; border:1px solid rgba(255,255,255,.06); }
+        .svc-slider:before { content:''; position:absolute; left:3px; bottom:3px; width:14px; height:14px; background:#71717a; border-radius:50%; transition:.2s; }
+        .svc-toggle input:checked + .svc-slider { background:rgba(99,102,241,.25); border-color:rgba(99,102,241,.4); }
+        .svc-toggle input:checked + .svc-slider:before { transform:translateX(16px); background:#818cf8; }
     </style>
     <style>@media(max-width:767px){input[placeholder*="Пошук"],input[placeholder*="пошук"],input[placeholder*="пошу"]{font-size:9px!important;padding-top:6px!important;padding-bottom:6px!important}}</style>
     <style>html{visibility:hidden}</style>
@@ -223,6 +230,20 @@
             <div>
                 <label class="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1.5">Опис</label>
                 <textarea id="svc-desc" rows="3" placeholder="Короткий опис послуги..." class="svc-input resize-none"></textarea>
+            </div>
+            <!-- Allow quantity toggle -->
+            <div class="flex items-center justify-between p-3 rounded-xl" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)">
+                <div class="flex-1 min-w-0 mr-4">
+                    <p class="text-[11px] font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-hashtag text-indigo-400 text-[10px]"></i>
+                        Послуга з кількістю
+                    </p>
+                    <p class="text-[9px] text-zinc-500 mt-1 leading-relaxed">При записі можна вказати кількість. Ціна × кількість (напр: дизайн 1 нігтя × 10 = ₴100)</p>
+                </div>
+                <label class="svc-toggle">
+                    <input type="checkbox" id="svc-allow-qty">
+                    <span class="svc-slider"></span>
+                </label>
             </div>
             <div>
                 <label class="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-2">Майстри які виконують</label>
