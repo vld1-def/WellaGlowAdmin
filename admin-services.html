@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wella Glow | Послуги</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;600;700;800&display=swap');
+        :root { --bg: #050505; --accent: #f43f5e; }
+        body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: #e2e8f0; letter-spacing: -0.01em; }
+        * { font-style: normal !important; }
+        html, body { overflow-x: hidden; max-width: 100%; }
+        .glass-panel { background: rgba(17,17,19,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
+        .neo-gradient { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%); }
+        .sidebar-link.active { background: rgba(244,63,94,0.1); color: #f43f5e; border-left: 3px solid #f43f5e; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1e1e21; border-radius: 10px; }
+        .skeleton { background: linear-gradient(90deg,#111113 25%,#1a1a1d 50%,#111113 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        /* Role access drawer */
+        #role-access-drawer { transform:translateX(100%); transition:transform .35s cubic-bezier(.4,0,.2,1); }
+        #role-access-drawer.open { transform:translateX(0); }
+        .role-tab { padding:7px 16px; border-radius:9px; font-size:10px; font-weight:800;
+            text-transform:uppercase; letter-spacing:.06em; cursor:pointer; transition:all .2s; color:#52525b; }
+        .role-tab.active { background:rgba(244,63,94,.12); color:#f43f5e; }
+
+        /* Mobile bottom nav */
+        .mob-nav-lnk { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+            padding:8px 6px; flex:1; font-size:7px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+            color:#52525b; transition:color .2s; min-height:52px; text-decoration:none; justify-content:center; }
+        .mob-nav-lnk.active { color:#f43f5e; }
+        .mob-nav-lnk i { font-size:18px; }
+        .mob-more-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px 12px; border-top:1px solid rgba(255,255,255,.05); }
+        .mob-more-itm { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 4px; border-radius:10px;
+            background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05);
+            font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#71717a; text-decoration:none; justify-content:center; }
+        .mob-more-itm.active { color:#f43f5e; background:rgba(244,63,94,.06); border-color:rgba(244,63,94,.15); }
+
+        /* Service drawer */
+        .svc-drawer { position:fixed; top:0; right:0; height:100%; width:100%; max-width:420px;
+            background:#0d0d0f; border-left:1px solid rgba(255,255,255,.08);
+            overflow-y:auto; transform:translateX(100%); transition:transform .3s; z-index:70; }
+        .svc-drawer.open { transform:translateX(0); }
+        #svc-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(4px);
+            z-index:60; opacity:0; pointer-events:none; transition:opacity .3s; }
+        #svc-overlay.open { opacity:1; pointer-events:all; }
+        .cat-btn { width:100%; display:flex; align-items:center; padding:8px 12px; border-radius:10px;
+            font-size:10px; font-weight:800; color:#71717a; text-align:left; transition:all .15s; }
+        .cat-btn:hover { background:rgba(255,255,255,.04); color:#fff; }
+        .cat-btn.active { background:rgba(244,63,94,.1); color:#f43f5e; }
+        .svc-input { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+            border-radius:12px; padding:10px 14px; color:#e2e8f0; font-size:13px;
+            font-family:'Manrope',sans-serif; font-weight:600; outline:none; transition:border-color .2s; }
+        .svc-input:focus { border-color:rgba(244,63,94,.5); }
+        .svc-input option { background:#111113; color:#e2e8f0; }
+    </style>
+    <style>@media(max-width:767px){input[placeholder*="Пошук"],input[placeholder*="пошук"],input[placeholder*="пошу"]{font-size:9px!important;padding-top:6px!important;padding-bottom:6px!important}}</style>
+    <style>html{visibility:hidden}</style>
+</head>
+<body class="flex min-h-screen">
+
+<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+<aside class="hidden lg:flex lg:flex-col lg:w-64 bg-black/50 border-r border-white/5 fixed h-full z-50">
+    <div class="p-6">
+        <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none hidden lg:block">Wella Glow</h1>
+        <h1 class="text-lg font-extrabold text-white tracking-tighter uppercase leading-none lg:hidden">W</h1>
+        <p class="text-[8px] text-rose-500 font-bold tracking-[0.4em] mt-1 uppercase hidden lg:block">studio</p>
+    </div>
+    <nav class="flex-1 px-4 space-y-8 mt-4 overflow-y-auto pb-4">
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Аналітика</p>
+            <div class="space-y-1">
+                <a href="owner-dashboard.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-chart-pie w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Дашборд</span></a>
+                <a href="admin-finance.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-wallet w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Фінанси</span></a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Студія</p>
+            <div class="space-y-1">
+                <a href="admin-calendar.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-calendar-check w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Записи</span></a>
+                <a href="admin-staff.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl font-bold"><i class="fa-solid fa-users-gear w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Персонал</span></a>
+                <a href="admin-services.html" class="sidebar-link active flex items-center gap-3 p-3 pl-8 rounded-r-xl transition font-bold"><i class="fa-solid fa-list-check w-3 text-[10px]"></i><span class="hidden lg:block text-[10px] uppercase tracking-widest">Послуги</span></a>
+                <button onclick="openRoleAccess()" class="sidebar-link flex items-center gap-3 p-3 pl-8 text-zinc-600 hover:text-white transition rounded-r-xl w-full text-left"><i class="fa-solid fa-shield-halved w-3 text-[10px]"></i> <span class="hidden lg:block text-[10px] uppercase tracking-widest">Доступи по ролях</span></button>
+                <a href="admin-inventory.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-boxes-stacked w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Склад</span></a>
+            </div>
+        </div>
+        <div>
+            <p class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mb-3 ml-4 hidden lg:block">Клієнти</p>
+            <div class="space-y-1">
+                <a href="admin-clients-base.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-address-book w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">База клієнтів</span></a>
+                <a href="admin-bonuses.html" class="sidebar-link flex items-center gap-3 p-3 text-zinc-500 hover:text-white transition rounded-r-xl"><i class="fa-solid fa-gift w-4"></i> <span class="hidden lg:block text-xs uppercase tracking-widest">Бонуси</span></a>
+            </div>
+        </div>
+    </nav>
+    <!-- ── Month Selector ── -->
+    <div class="px-3 pb-2 hidden lg:block">
+        <div class="flex items-center gap-1 p-2 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)">
+            <button onclick="monthStep(-1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="sidebar-month-label" class="text-[10px] font-black uppercase tracking-widest text-zinc-300 flex-1 text-center">—</span>
+            <button onclick="monthStep(1)" class="w-6 h-6 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+    </div>
+    <!-- ── Profile + Logout ── -->
+    <div class="border-t border-white/5 p-3">
+        <div class="flex items-center gap-3">
+            <div id="sidebar-avatar" class="w-8 h-8 rounded-full neo-gradient flex-shrink-0 flex items-center justify-center text-white font-black text-xs">A</div>
+            <div class="hidden lg:block flex-1 min-w-0">
+                <p id="sidebar-uname" class="text-xs font-bold text-white truncate">—</p>
+                <p id="sidebar-urole" class="text-[9px] text-zinc-500 uppercase tracking-widest">—</p>
+            </div>
+            <button onclick="doLogout()" title="Вийти" class="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition flex-shrink-0">
+                <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            </button>
+        </div>
+        <button onclick="doLogout()" class="lg:hidden mt-2 w-full flex items-center justify-center p-2 rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 transition">
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+    </div>
+</aside>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main class="flex-1 min-w-0 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
+
+    <!-- HEADER -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+            <h2 class="text-2xl font-extrabold text-white tracking-tight">Послуги</h2>
+            <p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">
+                Всього: <span id="svc-total-count" class="text-rose-500">—</span>
+            </p>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+            <button id="export-svc-btn" onclick="exportServicesCSV()" class="hidden glass-panel px-4 py-3 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition">
+                <i class="fa-solid fa-file-csv text-zinc-500"></i>
+                <span class="hidden sm:inline">Експорт CSV</span>
+            </button>
+            <button onclick="openNew()" class="neo-gradient px-5 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2 hover:opacity-90 transition">
+                <i class="fa-solid fa-plus"></i>
+                <span class="hidden sm:inline">Нова послуга</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-5">
+
+        <!-- LEFT: Categories -->
+        <div class="lg:col-span-1">
+            <div class="glass-panel rounded-2xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Категорії</p>
+                    <button onclick="showAddCategory()" class="text-[9px] text-rose-500 font-black uppercase tracking-widest hover:text-rose-400 transition">+ Нова</button>
+                </div>
+                <!-- New category inline input -->
+                <div id="new-cat-row" class="hidden mb-2 flex gap-2">
+                    <input id="new-cat-input" type="text" placeholder="Назва категорії..." class="svc-input text-xs py-2"
+                        onkeydown="if(event.key==='Enter')addCategory();if(event.key==='Escape')hideAddCategory()">
+                    <button onclick="addCategory()" class="px-3 py-2 rounded-xl neo-gradient text-[10px] font-black text-white whitespace-nowrap hover:opacity-90 transition">OK</button>
+                </div>
+                <div id="cat-list" class="space-y-0.5">
+                    <div class="skeleton h-8 rounded-xl mb-1"></div>
+                    <div class="skeleton h-8 rounded-xl mb-1"></div>
+                    <div class="skeleton h-8 rounded-xl"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Services list -->
+        <div class="lg:col-span-3">
+            <div id="staff-filter-banner" class="hidden"></div>
+            <div id="svc-list" class="space-y-3">
+                <div class="glass-panel rounded-2xl p-4 animate-pulse">
+                    <div class="skeleton h-5 rounded w-1/3 mb-2"></div>
+                    <div class="skeleton h-3 rounded w-1/2"></div>
+                </div>
+                <div class="glass-panel rounded-2xl p-4 animate-pulse">
+                    <div class="skeleton h-5 rounded w-2/5 mb-2"></div>
+                    <div class="skeleton h-3 rounded w-1/3"></div>
+                </div>
+                <div class="glass-panel rounded-2xl p-4 animate-pulse">
+                    <div class="skeleton h-5 rounded w-1/4 mb-2"></div>
+                    <div class="skeleton h-3 rounded w-2/5"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- ═══════════════════ SERVICE DRAWER OVERLAY ═══════════════════ -->
+<div id="svc-overlay" onclick="closeDrawer()"></div>
+
+<!-- ═══════════════════ ADD/EDIT SERVICE DRAWER ═══════════════════ -->
+<div id="svc-drawer" class="svc-drawer">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 id="svc-drawer-title" class="text-sm font-black text-white">Нова послуга</h3>
+            <button onclick="closeDrawer()" class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1.5">Назва послуги *</label>
+                <input id="svc-name" type="text" placeholder="Стрижка, Манікюр..." class="svc-input">
+            </div>
+            <div>
+                <label class="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1.5">Категорія (тип майстра)</label>
+                <input id="svc-category" type="text" list="cat-datalist" placeholder="Перукар, Майстер манікюру..." class="svc-input">
+                <datalist id="cat-datalist"></datalist>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1.5">Ціна (₴)</label>
+                    <input id="svc-price" type="number" placeholder="500" class="svc-input">
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1.5">Тривалість (хв)</label>
+                    <input id="svc-duration" type="number" placeholder="60" class="svc-input">
+                </div>
+            </div>
+            <div>
+                <label class="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1.5">Опис</label>
+                <textarea id="svc-desc" rows="3" placeholder="Короткий опис послуги..." class="svc-input resize-none"></textarea>
+            </div>
+            <div>
+                <label class="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-2">Майстри які виконують</label>
+                <div id="staff-assign-list" class="space-y-1 max-h-48 overflow-y-auto"></div>
+            </div>
+            <button onclick="saveService()" class="w-full py-3 rounded-2xl neo-gradient text-[11px] font-black text-white uppercase tracking-widest hover:opacity-90 transition mt-2">
+                <i class="fa-solid fa-floppy-disk mr-2"></i>Зберегти
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ ROLE ACCESS DRAWER ═══════════════════ -->
+<div id="role-access-drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-[#0d0d0f] border-l border-white/8 overflow-y-auto" style="z-index:70">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">Доступи по ролях</h3>
+            <button onclick="closeRoleAccess()" class="text-zinc-600 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <p class="text-[10px] text-zinc-600 font-semibold mb-5 leading-relaxed">Налаштування за замовчуванням для кожної ролі. Індивідуальні доступи змінюються через картку працівника.</p>
+        <div class="flex gap-2 mb-5">
+            <button class="role-tab active" id="rtab-admin" onclick="switchRoleTab('admin')">Адмін</button>
+        </div>
+        <div id="role-perm-list" class="space-y-2"></div>
+        <div class="flex gap-3 mt-6">
+            <button onclick="closeRoleAccess()" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-500 hover:text-white transition">Скасувати</button>
+            <button onclick="saveRolePermissions()" class="flex-1 neo-gradient py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:opacity-90 transition">Зберегти</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>window.PAGE_MODULE='staff';</script>
+<script src="js/supabase-init.js"></script>
+<script src="js/permissions-guard.js"></script>
+<script src="js/admin-services.js"></script>
+<script>
+function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
+function monthStep(d){/* stub – month navigation if needed */}
+function openRoleAccess(){document.getElementById('role-access-drawer').classList.add('open');}
+function closeRoleAccess(){document.getElementById('role-access-drawer').classList.remove('open');}
+function switchRoleTab(r){}
+function saveRolePermissions(){}
+(function(){
+    const n=localStorage.getItem('wella_staff_name')||'Адмін';
+    const r=localStorage.getItem('wella_staff_role')||'admin';
+    const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');
+    if(av)av.textContent=n.charAt(0).toUpperCase();
+    if(un)un.textContent=n;
+    if(ur)ur.textContent=r==='owner'?'Власник':r==='admin'?'Адміністратор':'Майстер';
+    // Init month label
+    const ml=document.getElementById('sidebar-month-label');
+    if(ml){const now=new Date();ml.textContent=now.toLocaleString('uk',{month:'long',year:'numeric'});}
+})();
+function exportServicesCSV(){
+    if(typeof allServices==='undefined'||!allServices.length){alert('Немає даних для експорту');return;}
+    const rows=[['ID','Назва','Категорія','Ціна','Тривалість (хв)','Опис']];
+    allServices.forEach(s=>rows.push([s.id,s.name,s.category||'',s.price||'',s.duration||'',s.description||'']));
+    const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+    a.download='services.csv';a.click();
+}
+</script>
+<!-- ══ MOBILE BOTTOM NAV ══ -->
+<nav id="mob-nav" class="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style="background:rgba(7,7,9,.97);border-top:1px solid rgba(255,255,255,.06);backdrop-filter:blur(16px)">
+    <div class="flex items-stretch">
+        <a href="owner-dashboard.html" class="mob-nav-lnk"><i class="fa-solid fa-chart-pie"></i><span>Дашборд</span></a>
+        <a href="admin-calendar.html" class="mob-nav-lnk"><i class="fa-solid fa-calendar-check"></i><span>Записи</span></a>
+        <a href="admin-staff.html" class="mob-nav-lnk active"><i class="fa-solid fa-users-gear"></i><span>Персонал</span></a>
+        <a href="admin-clients-base.html" class="mob-nav-lnk"><i class="fa-solid fa-address-book"></i><span>Клієнти</span></a>
+        <button onclick="document.getElementById('mob-more-panel').classList.toggle('hidden')" class="mob-nav-lnk"><i class="fa-solid fa-ellipsis"></i><span>Ще</span></button>
+    </div>
+    <div id="mob-more-panel" class="hidden mob-more-grid">
+        <a href="admin-finance.html" class="mob-more-itm"><i class="fa-solid fa-wallet text-lg"></i><span>Фінанси</span></a>
+        <a href="admin-inventory.html" class="mob-more-itm"><i class="fa-solid fa-boxes-stacked text-lg"></i><span>Склад</span></a>
+        <a href="admin-bonuses.html" class="mob-more-itm"><i class="fa-solid fa-gift text-lg"></i><span>Бонуси</span></a>
+        <a href="admin-services.html" class="mob-more-itm active"><i class="fa-solid fa-list-check text-lg"></i><span>Послуги</span></a>
+        <button onclick="doLogout()" class="mob-more-itm" style="color:#f43f5e">
+            <i class="fa-solid fa-arrow-right-from-bracket" style="font-size:18px"></i>
+            <span>Вийти</span>
+        </button>
+    </div>
+</nav>
+</body>
+</html>
