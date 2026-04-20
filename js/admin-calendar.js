@@ -44,7 +44,8 @@ const acState = {
 };
 
 // Multi-service picker state
-let selectedServices = []; // [{id, name, price, duration, category}]
+let selectedServices = []; // [{id, name, price, duration, category, allow_quantity}]
+let svcQuantities    = {}; // {[serviceId]: number}  — only for allow_quantity services
 
 // Colors
 const PALETTE = ['#f43f5e','#fb923c','#facc15','#34d399','#22d3ee','#818cf8','#c084fc','#f472b6'];
@@ -435,10 +436,10 @@ function apptBlockHTML(a){
     const cellPx = window.innerWidth <= 639 ? 36 : 30;
     const height = Math.max(Math.round(durMin / 30 * cellPx) - 2, cellPx * 0.7);
     const t=a._start?a._start.slice(0,5):'';
-    return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}28;border-left-color:${color};z-index:3"
+    return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}28;border-left-color:${color};z-index:3;overflow:hidden"
         onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
-        <p style="font-size:11px;font-weight:800;color:${textColor};line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
-        ${durMin>30?`<p style="font-size:10px;color:${color}cc" class="truncate mt-0.5">${a.service_name||svc?.name||''}</p>`:''}
+        <p style="font-size:11px;font-weight:800;color:${textColor};line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
+        ${durMin>30?`<p style="font-size:10px;color:${color}cc;line-height:1.3;word-break:break-word;white-space:normal;margin-top:2px">${a.service_name||svc?.name||''}</p>`:''}
     </div>`;
 }
 
@@ -642,9 +643,11 @@ window.renderSvcDropdown=function(q=''){
     }
     dd.innerHTML=list.slice(0,15).map(s=>{
         const meta=[s.duration?s.duration+' хв':null,s.price?'₴'+s.price:null].filter(Boolean).join(' · ');
+        const qtyBadge=s.allow_quantity?`<span style="font-size:8px;background:rgba(99,102,241,.15);color:#818cf8;border-radius:4px;padding:1px 6px;margin-left:4px;font-weight:800">× кількість</span>`:'';
         return `<div class="ac-item" onclick="addServiceItem('${s.id}')">
             <span class="font-bold text-white">${s.name}</span>
             ${meta?`<span class="text-zinc-600 text-[10px] ml-1">${meta}</span>`:''}
+            ${qtyBadge}
         </div>`;
     }).join('');
     dd.classList.add('open');
@@ -654,6 +657,7 @@ window.addServiceItem=function(id){
     const svc=services.find(s=>s.id===id);
     if(!svc||selectedServices.find(s=>s.id===id)) return;
     selectedServices.push(svc);
+    if(svc.allow_quantity) svcQuantities[id]=1;
     renderSelectedChips();
     updatePriceFromServices();
     document.getElementById('service-search').value='';
@@ -662,7 +666,18 @@ window.addServiceItem=function(id){
 
 window.removeServiceItem=function(id){
     selectedServices=selectedServices.filter(s=>s.id!==id);
+    delete svcQuantities[id];
     renderSelectedChips();
+    updatePriceFromServices();
+};
+
+// Quantity stepper (only for allow_quantity services)
+window.setSvcQty=function(id,delta){
+    const cur=svcQuantities[id]||1;
+    const next=Math.max(1,cur+delta);
+    svcQuantities[id]=next;
+    const el=document.getElementById('svc-qty-'+id);
+    if(el) el.textContent=next;
     updatePriceFromServices();
 };
 
@@ -671,21 +686,38 @@ function renderSelectedChips(){
     if(!el) return;
     if(!selectedServices.length){ el.innerHTML=''; return; }
     el.innerHTML=selectedServices.map(s=>{
-        const meta=[s.duration?s.duration+' хв':null,s.price?'₴'+s.price:null].filter(Boolean).join(' · ');
+        const qty=s.allow_quantity?(svcQuantities[s.id]||1):1;
+        const unitPrice=parseFloat(s.price)||0;
+        const linePrice=unitPrice*qty;
+        const meta=[
+            s.duration?(s.duration*(s.allow_quantity?qty:1))+' хв':null,
+            linePrice?'₴'+linePrice:null
+        ].filter(Boolean).join(' · ');
         return `<div class="flex items-center gap-2 px-3 py-2 rounded-xl" style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2)">
             <div class="flex-1 min-w-0">
                 <p class="text-[11px] font-bold text-white truncate">${s.name}</p>
                 ${meta?`<p class="text-[10px] text-zinc-500">${meta}</p>`:''}
             </div>
-            <button onclick="removeServiceItem('${s.id}')" class="text-zinc-600 hover:text-rose-400 transition flex-shrink-0 pl-2"><i class="fa-solid fa-xmark text-xs"></i></button>
+            ${s.allow_quantity?`<div class="flex items-center gap-1 flex-shrink-0">
+                <button onclick="setSvcQty('${s.id}',-1)" class="w-6 h-6 rounded-lg flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition font-black text-sm leading-none">−</button>
+                <span id="svc-qty-${s.id}" class="text-[11px] font-black text-white min-w-[20px] text-center">${qty}</span>
+                <button onclick="setSvcQty('${s.id}',1)" class="w-6 h-6 rounded-lg flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition font-black text-sm leading-none">+</button>
+            </div>`:''}
+            <button onclick="removeServiceItem('${s.id}')" class="text-zinc-600 hover:text-rose-400 transition flex-shrink-0 pl-1"><i class="fa-solid fa-xmark text-xs"></i></button>
         </div>`;
     }).join('');
 }
 
 function updatePriceFromServices(){
-    const total=selectedServices.reduce((sum,s)=>sum+(parseFloat(s.price)||0),0);
+    const total=selectedServices.reduce((sum,s)=>{
+        const qty=s.allow_quantity?(svcQuantities[s.id]||1):1;
+        return sum+(parseFloat(s.price)||0)*qty;
+    },0);
     document.getElementById('a-price').value=total>0?total:'';
-    const totalDur=selectedServices.reduce((sum,s)=>sum+(parseInt(s.duration)||0),0);
+    const totalDur=selectedServices.reduce((sum,s)=>{
+        const qty=s.allow_quantity?(svcQuantities[s.id]||1):1;
+        return sum+(parseInt(s.duration)||0)*qty;
+    },0);
     const hint=document.getElementById('svc-duration-hint');
     if(hint) hint.textContent=totalDur>0?`Загальний час: ${totalDur} хв`:'';
 }
@@ -706,7 +738,7 @@ window.openApptDrawer=function(prefillDate='',prefillTime='',prefillMasterId='',
     document.getElementById('a-date').value=prefillDate||localDate(new Date());
     acState.client.selectedId='';
     // Reset multi-services
-    selectedServices=[];
+    selectedServices=[]; svcQuantities={};
     renderSelectedChips();
     const durHint=document.getElementById('svc-duration-hint');
     if(durHint) durHint.textContent='';
@@ -727,7 +759,7 @@ window.openApptDrawer=function(prefillDate='',prefillTime='',prefillMasterId='',
 
 // Called when master select changes
 window.onMasterChange=function(){
-    selectedServices=[];
+    selectedServices=[]; svcQuantities={};
     renderSelectedChips();
     document.getElementById('service-search').value='';
     document.getElementById('service-dropdown').classList.remove('open');
@@ -879,7 +911,10 @@ window.saveAppt=async function(){
     const date=document.getElementById('a-date').value;
     const price=parseFloat(document.getElementById('a-price').value)||0;
     const serviceId=selectedServices[0]?.id||null;
-    const serviceName=selectedServices.map(s=>s.name).join(' + ');
+    const serviceName=selectedServices.map(s=>{
+        const qty=s.allow_quantity?(svcQuantities[s.id]||1):1;
+        return qty>1?`${s.name} × ${qty}`:s.name;
+    }).join(' + ');
 
     if(!clientId){ alert('Оберіть клієнта'); return; }
     if(!masterId){ alert('Оберіть майстра'); return; }
@@ -937,7 +972,7 @@ window.openDetail=function(id,tbl){
             <span style="font-size:9px" class="px-2 py-1 rounded-full font-black ${si.cls}">${si.label}</span>
         </div>
         ${dRow('fa-user','Клієнт',client?.full_name||'—',client?.phone||'')}
-        ${dRow('fa-scissors','Послуга',svc?.name||a.service_name||'—',svc?.category||'')}
+        ${dRow('fa-scissors','Послуга',a.service_name||svc?.name||'—',a.service_name&&a.service_name.includes(' + ')?'Кілька послуг':svc?.category||'')}
         ${dRow('fa-circle','Майстер',master?.name||'—',master?.position||'','style="color:'+color+'"')}
         ${dRow('fa-hryvnia-sign','Сума','₴'+parseFloat(a.price||0).toLocaleString('uk-UA'),'','style="color:#f43f5e;font-size:16px;font-weight:800"')}
         ${(()=>{

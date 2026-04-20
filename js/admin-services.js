@@ -114,6 +114,7 @@ function renderServices() {
                     ${s.category ? `<span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style="background:rgba(99,102,241,.15);color:#818cf8">${s.category}</span>` : ''}
                     ${s.price ? `<span class="text-[10px] font-bold text-emerald-400">₴${s.price}</span>` : ''}
                     ${s.duration ? `<span class="text-[10px] font-bold text-zinc-500">${s.duration} хв</span>` : ''}
+                    ${s.allow_quantity ? `<span class="text-[9px] font-black px-2 py-0.5 rounded-full" style="background:rgba(99,102,241,.1);color:#818cf8"><i class="fa-solid fa-hashtag text-[8px] mr-1"></i>× кількість</span>` : ''}
                     <span class="text-[10px] font-bold text-zinc-600"><i class="fa-solid fa-user text-[8px] mr-1"></i>${staffCount} майстрів</span>
                 </div>
                 ${s.description ? `<p class="text-[10px] text-zinc-600 mt-1 truncate">${s.description}</p>` : ''}
@@ -163,6 +164,7 @@ window.openNew = function() {
     document.getElementById('svc-price').value = '';
     document.getElementById('svc-duration').value = '';
     document.getElementById('svc-desc').value = '';
+    document.getElementById('svc-allow-qty').checked = false;
     renderStaffAssign([]);
     openDrawer();
 };
@@ -177,6 +179,7 @@ window.openEdit = function(id) {
     document.getElementById('svc-price').value = s.price || '';
     document.getElementById('svc-duration').value = s.duration || '';
     document.getElementById('svc-desc').value = s.description || '';
+    document.getElementById('svc-allow-qty').checked = !!s.allow_quantity;
     const assigned = staffServices.filter(x => x.service_id == id).map(x => x.staff_id);
     renderStaffAssign(assigned);
     openDrawer();
@@ -229,6 +232,7 @@ window.saveService = async function() {
         price: parseFloat(document.getElementById('svc-price').value) || null,
         duration: parseInt(document.getElementById('svc-duration').value) || null,
         description: document.getElementById('svc-desc').value.trim() || null,
+        allow_quantity: document.getElementById('svc-allow-qty').checked,
     };
 
     let serviceId = editingServiceId;
