@@ -452,18 +452,15 @@ window.toggleCol = function(id, val) {
 window.toggleColDropdown = function(btn) {
     const dd = document.getElementById('col-dropdown');
     if (dd.style.display === 'none' || !dd.style.display) {
-        const r = btn.getBoundingClientRect();
-        // position:absolute relative to document (not viewport)
-        dd.style.top   = (r.bottom + window.scrollY + 4) + 'px';
-        const rightVal = document.documentElement.clientWidth - r.right;
-        if (rightVal >= 0) {
-            dd.style.right = rightVal + 'px';
-            dd.style.left  = 'auto';
-        } else {
-            // near right edge — align to left of button instead
-            dd.style.left  = Math.max(4, r.left) + 'px';
-            dd.style.right = 'auto';
-        }
+        const r   = btn.getBoundingClientRect();
+        const vw  = document.documentElement.clientWidth;
+        const ddW = 184; // min-width + border
+        // Right-align under button, but clamp so it never goes off-screen
+        const leftIdeal  = r.right - ddW;
+        const leftClamped = Math.max(4, Math.min(leftIdeal, vw - ddW - 4));
+        dd.style.top     = (r.bottom + window.scrollY + 4) + 'px';
+        dd.style.left    = (leftClamped + window.scrollX) + 'px';
+        dd.style.right   = 'auto';
         dd.style.display = 'block';
     } else {
         dd.style.display = 'none';

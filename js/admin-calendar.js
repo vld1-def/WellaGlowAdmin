@@ -820,6 +820,9 @@ window.saveAppt=async function(){
         price:price||svc?.price||0,
         status:'waiting',
         client_id:clientId,
+        created_by_id:   localStorage.getItem('wella_staff_id')   || null,
+        created_by_role: localStorage.getItem('wella_staff_role') || null,
+        created_by_name: localStorage.getItem('wella_staff_name') || null,
     };
 
     let error;
@@ -859,7 +862,17 @@ window.openDetail=function(id,tbl){
         ${dRow('fa-user','Клієнт',client?.full_name||'—',client?.phone||'')}
         ${dRow('fa-scissors','Послуга',svc?.name||a.service_name||'—',svc?.category||'')}
         ${dRow('fa-circle','Майстер',master?.name||'—',master?.position||'','style="color:'+color+'"')}
-        ${dRow('fa-hryvnia-sign','Сума','₴'+parseFloat(a.price||0).toLocaleString('uk-UA'),'','style="color:#f43f5e;font-size:16px;font-weight:800"')}`;
+        ${dRow('fa-hryvnia-sign','Сума','₴'+parseFloat(a.price||0).toLocaleString('uk-UA'),'','style="color:#f43f5e;font-size:16px;font-weight:800"')}
+        ${(()=>{
+            const role=a.created_by_role, name=a.created_by_name;
+            let label,sub='',icon='fa-user-pen';
+            if(!role||role==='online'){label='Онлайн (самостійно)';icon='fa-globe';}
+            else if(role==='owner'){label=name||'Власник';sub='Власник';icon='fa-crown';}
+            else if(role==='admin'){label=name||'Адміністратор';sub='Адміністратор';icon='fa-user-tie';}
+            else{label=name||role;sub=role;}
+            return dRow(icon,'Створив запис',label,sub);
+        })()}`;
+
 
     document.getElementById('d-edit').style.display='';
     document.getElementById('d-cancel').style.display='';
