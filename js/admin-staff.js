@@ -1059,6 +1059,9 @@ function toggleActions(id, btn) {
         <div class="actions-item" onclick="openProfile('${id}'); closeActions()">
             <i class="fa-solid fa-id-card w-4"></i> Картка
         </div>
+        <div class="actions-item" onclick="window.location.href='admin-services.html?staff=${id}'; closeActions()">
+            <i class="fa-solid fa-list-check w-4"></i> Послуги
+        </div>
         ${canEdit ? `
         <div class="actions-item" onclick="editStaff('${id}'); closeActions()">
             <i class="fa-solid fa-pen w-4"></i> Редагувати
