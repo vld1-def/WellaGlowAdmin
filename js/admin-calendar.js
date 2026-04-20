@@ -432,7 +432,7 @@ function apptBlockHTML(a){
     const durMin=(eh!==null&&sh!==null)?((eh*60+em)-(sh*60+sm)):60;
     const height=Math.max(durMin-4,22);
     const t=a._start?a._start.slice(0,5):'';
-    return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}28;border-left-color:${color};z-index:3"
+    return `<div class="appt-block" style="top:2px;height:${height-3}px;background:${color}28;border-left-color:${color};z-index:3"
         onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
         <p style="font-size:11px;font-weight:800;color:${textColor};line-height:1.2" class="truncate">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
         ${durMin>30?`<p style="font-size:10px;color:${color}cc" class="truncate mt-0.5">${svc?.name||''}</p>`:''}
