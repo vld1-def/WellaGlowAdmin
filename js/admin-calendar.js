@@ -820,7 +820,6 @@ window.saveAppt=async function(){
         price:price||svc?.price||0,
         status:'waiting',
         client_id:clientId,
-        created_by_id:   localStorage.getItem('wella_staff_id')   || null,
         created_by_role: localStorage.getItem('wella_staff_role') || null,
         created_by_name: localStorage.getItem('wella_staff_name') || null,
     };
