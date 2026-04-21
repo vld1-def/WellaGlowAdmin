@@ -373,15 +373,15 @@ async function loadTopServices() {
         });
     });
 
-    // Sort by count descending, revenue as tiebreaker
+    // Sort by revenue descending, count as tiebreaker
     const sorted = Object.entries(map)
-        .sort((a, b) => b[1].count - a[1].count || b[1].revenue - a[1].revenue)
+        .sort((a, b) => b[1].revenue - a[1].revenue || b[1].count - a[1].count)
         .slice(0, 5);
-    const maxCount = sorted[0]?.[1]?.count || 1;
+    const maxRevenue = sorted[0]?.[1]?.revenue || 1;
 
     container.innerHTML = sorted.map(([name, stats], i) => {
-        const pct  = Math.round(stats.count / maxCount * 100);
-        const barW = Math.max(pct, 4); // minimum 4% so bar is always visible
+        const pct  = Math.round(stats.revenue / maxRevenue * 100);
+        const barW = Math.max(pct, 4);
         return `
         <div class="space-y-1.5">
             <div class="flex items-center justify-between gap-2 text-[10px]">
