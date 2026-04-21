@@ -85,11 +85,12 @@ async function loadDashboardStats() {
     const {start, end, days} = getPeriodRange();
     const {y,m} = getSelectedYM();
 
-    const [historyRes, activeRes, clientsRes, allHistoryRes] = await Promise.all([
+    const [historyRes, activeRes, clientsRes, allHistoryRes, planRes] = await Promise.all([
         window.db.from('appointment_history').select('price, client_id, visit_date').gte('visit_date', start).lte('visit_date', end),
         window.db.from('appointments').select('price, client_id, appointment_date').in('status',['done','completed','Виконано']).gte('appointment_date', start).lte('appointment_date', end),
         window.db.from('clients').select('*', { count: 'exact', head: true }).gte('created_at', start),
-        window.db.from('appointment_history').select('client_id')
+        window.db.from('appointment_history').select('client_id'),
+        window.db.from('cash_register').select('monthly_plan').single(),
     ]);
 
     const histRows   = historyRes.data || [];
@@ -101,10 +102,11 @@ async function loadDashboardStats() {
         const totalVisits = allRows.length;
 
         document.getElementById('kpi-profit').innerText = `₴${totalProfit.toLocaleString('uk-UA')}`;
-        const pct = Math.min(Math.round((totalProfit / 215000) * 100), 100);
+        const monthlyPlan = planRes?.data?.monthly_plan || 0;
+        const pct = monthlyPlan > 0 ? Math.min(Math.round((totalProfit / monthlyPlan) * 100), 100) : 0;
         document.getElementById('kpi-profit-bar').style.width = `${pct}%`;
         const pctEl = document.getElementById('kpi-profit-pct');
-        if (pctEl) pctEl.textContent = `${pct}%`;
+        if (pctEl) pctEl.textContent = monthlyPlan > 0 ? `${pct}%` : 'План не встановлено';
 
         document.getElementById('kpi-total-bookings').innerText = totalVisits;
         const bars = document.querySelectorAll('#kpi-bookings-bars div');
@@ -358,25 +360,45 @@ async function loadTopServices() {
 
     const map = {};
     data.forEach(a => {
-        const k = a.service_name || 'Без назви';
-        if (!map[k]) map[k] = { count:0, revenue:0 };
-        map[k].count++;
-        map[k].revenue += parseFloat(a.price||0);
+        const price = parseFloat(a.price || 0);
+        // Split combined names like "Манікюр × 10 + Стрижка" into individual services
+        const parts = (a.service_name || 'Без назви').split(' + ');
+        const share = parts.length > 0 ? price / parts.length : price;
+        parts.forEach(raw => {
+            // Strip quantity suffix "× N"
+            const name = raw.replace(/\s*×\s*\d+\s*$/, '').trim() || 'Без назви';
+            if (!map[name]) map[name] = { count: 0, revenue: 0 };
+            map[name].count++;
+            map[name].revenue += share;
+        });
     });
 
-    const sorted = Object.entries(map).sort((a,b) => b[1].count - a[1].count).slice(0, 5);
+    // Sort by count descending, revenue as tiebreaker
+    const sorted = Object.entries(map)
+        .sort((a, b) => b[1].count - a[1].count || b[1].revenue - a[1].revenue)
+        .slice(0, 5);
     const maxCount = sorted[0]?.[1]?.count || 1;
 
-    container.innerHTML = sorted.map(([name, stats]) => `
-        <div class="space-y-1">
-            <div class="flex justify-between text-[10px]">
-                <span class="font-bold text-white truncate">${name}</span>
-                <span class="text-zinc-500 flex-shrink-0 ml-2">${stats.count} · ₴${stats.revenue.toLocaleString('uk-UA')}</span>
+    container.innerHTML = sorted.map(([name, stats], i) => {
+        const pct  = Math.round(stats.count / maxCount * 100);
+        const barW = Math.max(pct, 4); // minimum 4% so bar is always visible
+        return `
+        <div class="space-y-1.5">
+            <div class="flex items-center justify-between gap-2 text-[10px]">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-[8px] font-black text-zinc-600 flex-shrink-0 w-4 text-right">${i+1}.</span>
+                    <span class="font-bold text-white truncate">${name}</span>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0 ml-1">
+                    <span class="text-[9px] font-black text-zinc-500">${stats.count}×</span>
+                    <span class="text-[9px] font-black text-rose-400">₴${Math.round(stats.revenue).toLocaleString('uk-UA')}</span>
+                </div>
             </div>
             <div class="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
-                <div class="h-full bg-rose-500/60 rounded-full" style="width:${Math.round(stats.count/maxCount*100)}%"></div>
+                <div class="h-full bg-gradient-to-r from-rose-500 to-rose-400 rounded-full transition-all" style="width:${barW}%"></div>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 }
 
 // ── Recent Reviews ────────────────────────────────────
@@ -420,14 +442,22 @@ function initProfitChart(incomeByDay, days) {
     const canvas = document.getElementById('profitChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(244, 63, 94, 0.3)');
-    gradient.addColorStop(1, 'rgba(244, 63, 94, 0)');
     if (window._profitChartInst) { window._profitChartInst.destroy(); }
 
-    // Labels: show every 5th day
-    const labels = Array.from({length: days||30}, (_,i) => (i+1) % 5 === 1 ? String(i+1).padStart(2,'0') : '');
-    const data   = incomeByDay || new Array(days||30).fill(0);
+    const n    = days || 30;
+    const data = incomeByDay || new Array(n).fill(0);
+
+    // One label per day: "1", "2" ... "31"
+    const labels = Array.from({length: n}, (_, i) => String(i + 1));
+
+    // Gradient fill
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 200);
+    gradient.addColorStop(0, 'rgba(244,63,94,0.28)');
+    gradient.addColorStop(1, 'rgba(244,63,94,0)');
+
+    // Y-axis max: round up to nice ceiling
+    const maxVal = Math.max(...data, 1);
+    const yMax   = Math.ceil(maxVal / 1000) * 1000 || 1000;
 
     window._profitChartInst = new Chart(ctx, {
         type: 'line',
@@ -436,31 +466,63 @@ function initProfitChart(incomeByDay, days) {
             datasets: [{
                 data,
                 borderColor: '#f43f5e',
-                borderWidth: 3,
+                borderWidth: 2.5,
                 fill: true,
                 backgroundColor: gradient,
-                tension: 0.4,
+                tension: 0.45,
                 pointRadius: 0,
-                pointHoverRadius: 4
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: '#f43f5e',
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2,
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(10,10,12,0.9)',
-                    borderColor: 'rgba(255,255,255,0.06)',
+                    backgroundColor: 'rgba(9,9,11,0.92)',
+                    borderColor: 'rgba(255,255,255,0.08)',
                     borderWidth: 1,
                     titleColor: '#71717a',
-                    bodyColor: '#e2e8f0',
-                    callbacks: { label: ctx => ` ₴${Math.round(ctx.parsed.y).toLocaleString('uk-UA')}` }
+                    bodyColor: '#f43f5e',
+                    titleFont: { size: 10, weight: '700' },
+                    bodyFont:  { size: 13, weight: '800' },
+                    padding: 10,
+                    displayColors: false,
+                    callbacks: {
+                        title: items => `День ${items[0].label}`,
+                        label: item  => ` ₴${Math.round(item.parsed.y).toLocaleString('uk-UA')}`,
+                    }
                 }
             },
             scales: {
-                y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#52525b', font: { size: 9 }, callback: v => v > 0 ? `₴${(v/1000).toFixed(0)}к` : '' } },
-                x: { grid: { display: false }, ticks: { color: '#52525b', font: { size: 9 } } }
+                x: {
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: {
+                        color: '#3f3f46',
+                        font: { size: 9, weight: '700' },
+                        maxTicksLimit: 8,       // show ~8 labels across the axis
+                        autoSkip: true,
+                        maxRotation: 0,
+                    }
+                },
+                y: {
+                    min: 0,
+                    suggestedMax: yMax,
+                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                    border: { display: false },
+                    ticks: {
+                        color: '#3f3f46',
+                        font: { size: 9, weight: '700' },
+                        maxTicksLimit: 5,
+                        callback: v => v === 0 ? '0' : `₴${(v / 1000).toFixed(v % 1000 ? 1 : 0)}к`
+                    }
+                }
             }
         }
     });
