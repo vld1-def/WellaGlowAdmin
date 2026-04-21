@@ -455,9 +455,10 @@ function initProfitChart(incomeByDay, days) {
     gradient.addColorStop(0, 'rgba(244,63,94,0.28)');
     gradient.addColorStop(1, 'rgba(244,63,94,0)');
 
-    // Y-axis max: round up to nice ceiling
-    const maxVal = Math.max(...data, 1);
-    const yMax   = Math.ceil(maxVal / 1000) * 1000 || 1000;
+    // Y-axis max: smart ceiling based on actual data magnitude
+    const maxVal = Math.max(...data, 0);
+    const magnitude = maxVal > 0 ? Math.pow(10, Math.floor(Math.log10(maxVal))) : 100;
+    const yMax = maxVal > 0 ? Math.ceil(maxVal / magnitude) * magnitude : 1000;
 
     window._profitChartInst = new Chart(ctx, {
         type: 'line',
@@ -519,8 +520,13 @@ function initProfitChart(incomeByDay, days) {
                     ticks: {
                         color: '#3f3f46',
                         font: { size: 9, weight: '700' },
-                        maxTicksLimit: 5,
-                        callback: v => v === 0 ? '0' : `₴${(v / 1000).toFixed(v % 1000 ? 1 : 0)}к`
+                        maxTicksLimit: 6,
+                        callback: v => {
+                            if (v === 0) return '₴0';
+                            if (v >= 1000000) return `₴${(v/1000000).toFixed(1)}м`;
+                            if (v >= 1000)    return `₴${(v/1000).toFixed(v%1000===0?0:1)}к`;
+                            return `₴${v}`;
+                        }
                     }
                 }
             }
