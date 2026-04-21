@@ -373,15 +373,15 @@ async function loadTopServices() {
         });
     });
 
-    // Sort by count descending, revenue as tiebreaker
+    // Sort by revenue descending, count as tiebreaker
     const sorted = Object.entries(map)
-        .sort((a, b) => b[1].count - a[1].count || b[1].revenue - a[1].revenue)
+        .sort((a, b) => b[1].revenue - a[1].revenue || b[1].count - a[1].count)
         .slice(0, 5);
-    const maxCount = sorted[0]?.[1]?.count || 1;
+    const maxRevenue = sorted[0]?.[1]?.revenue || 1;
 
     container.innerHTML = sorted.map(([name, stats], i) => {
-        const pct  = Math.round(stats.count / maxCount * 100);
-        const barW = Math.max(pct, 4); // minimum 4% so bar is always visible
+        const pct  = Math.round(stats.revenue / maxRevenue * 100);
+        const barW = Math.max(pct, 4);
         return `
         <div class="space-y-1.5">
             <div class="flex items-center justify-between gap-2 text-[10px]">
@@ -455,9 +455,10 @@ function initProfitChart(incomeByDay, days) {
     gradient.addColorStop(0, 'rgba(244,63,94,0.28)');
     gradient.addColorStop(1, 'rgba(244,63,94,0)');
 
-    // Y-axis max: round up to nice ceiling
-    const maxVal = Math.max(...data, 1);
-    const yMax   = Math.ceil(maxVal / 1000) * 1000 || 1000;
+    // Y-axis max: smart ceiling based on actual data magnitude
+    const maxVal = Math.max(...data, 0);
+    const magnitude = maxVal > 0 ? Math.pow(10, Math.floor(Math.log10(maxVal))) : 100;
+    const yMax = maxVal > 0 ? Math.ceil(maxVal / magnitude) * magnitude : 1000;
 
     window._profitChartInst = new Chart(ctx, {
         type: 'line',
@@ -519,8 +520,13 @@ function initProfitChart(incomeByDay, days) {
                     ticks: {
                         color: '#3f3f46',
                         font: { size: 9, weight: '700' },
-                        maxTicksLimit: 5,
-                        callback: v => v === 0 ? '0' : `₴${(v / 1000).toFixed(v % 1000 ? 1 : 0)}к`
+                        maxTicksLimit: 6,
+                        callback: v => {
+                            if (v === 0) return '₴0';
+                            if (v >= 1000000) return `₴${(v/1000000).toFixed(1)}м`;
+                            if (v >= 1000)    return `₴${(v/1000).toFixed(v%1000===0?0:1)}к`;
+                            return `₴${v}`;
+                        }
                     }
                 }
             }
