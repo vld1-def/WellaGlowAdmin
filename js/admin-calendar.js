@@ -183,16 +183,38 @@ function allAppts(){ return [...appts,...histAppts]; }
 // ══ Touch drag-to-select (mobile cells) ═════════════
 (function(){
     let _touchDragging=false;
+    let _touchStartX=0,_touchStartY=0,_touchStartTime=0;
+    const DRAG_THRESHOLD=10; // px movement before we consider it a drag
+
     document.addEventListener('touchstart',e=>{
+        // If touch is on an appointment block/card — let the click through, don't drag
+        if(e.target.closest('.appt-block,.appt-card')) return;
+
         const cell=e.target.closest('.tl-cell');
         if(!cell||cell.classList.contains('blocked')||cell.classList.contains('past-cell')) return;
-        _touchDragging=true;
-        const{dataset:{day,hour,min}}=cell;
-        dragBegin({preventDefault:()=>{}},day,parseInt(hour),parseInt(min||0));
+
+        _touchStartX=e.touches[0].clientX;
+        _touchStartY=e.touches[0].clientY;
+        _touchStartTime=Date.now();
+        _touchDragging=false; // wait for movement to confirm drag
     },{passive:true});
+
     document.addEventListener('touchmove',e=>{
-        if(!_touchDragging) return;
         const touch=e.touches[0];
+        const dx=Math.abs(touch.clientX-_touchStartX);
+        const dy=Math.abs(touch.clientY-_touchStartY);
+
+        if(!_touchDragging){
+            // Start drag only after significant movement
+            if(dx<DRAG_THRESHOLD&&dy<DRAG_THRESHOLD) return;
+            const cell=document.elementFromPoint(_touchStartX,_touchStartY)?.closest('.tl-cell');
+            if(!cell||cell.classList.contains('blocked')||cell.classList.contains('past-cell')) return;
+            _touchDragging=true;
+            const{dataset:{day,hour,min}}=cell;
+            dragBegin({preventDefault:()=>{}},day,parseInt(hour),parseInt(min||0));
+        }
+
+        if(!_touchDragging) return;
         const el=document.elementFromPoint(touch.clientX,touch.clientY);
         const cell=el?.closest?.('.tl-cell');
         if(cell&&!cell.classList.contains('blocked')&&!cell.classList.contains('past-cell')){
@@ -200,8 +222,12 @@ function allAppts(){ return [...appts,...histAppts]; }
             dragMove({},day,parseInt(hour),parseInt(min||0));
         }
     },{passive:true});
+
     document.addEventListener('touchend',e=>{
-        if(!_touchDragging) return;
+        if(!_touchDragging){
+            _touchDragging=false;
+            return;
+        }
         _touchDragging=false;
         const touch=e.changedTouches[0];
         const el=document.elementFromPoint(touch.clientX,touch.clientY);
