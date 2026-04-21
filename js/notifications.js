@@ -202,14 +202,20 @@
     }
 
     // ── Polling (free-plan alternative to Realtime) ───
-    const POLL_KEY  = 'wella_notifs_last_poll';
-    const POLL_MS   = 10000; // 10 seconds
+    const POLL_MS       = 10000;                   // 10 seconds
+    const POLL_REV_KEY  = 'wella_notifs_last_rev'; // last review created_at seen
+    const KNOWN_KEY     = 'wella_notifs_known_appts'; // set of known appt IDs
 
-    function getLastPoll() {
-        return localStorage.getItem(POLL_KEY) || new Date(Date.now() - 60000).toISOString();
+    function getKnownAppts() {
+        try { return new Set(JSON.parse(localStorage.getItem(KNOWN_KEY) || '[]')); } catch { return new Set(); }
     }
-    function setLastPoll(iso) {
-        localStorage.setItem(POLL_KEY, iso);
+    function saveKnownAppts(set) {
+        // keep max 500 IDs to avoid bloat
+        const arr = [...set].slice(-500);
+        localStorage.setItem(KNOWN_KEY, JSON.stringify(arr));
+    }
+    function getLastRevPoll() {
+        return localStorage.getItem(POLL_REV_KEY) || new Date(Date.now() - 60000).toISOString();
     }
 
     async function poll() {
@@ -218,31 +224,43 @@
         const role     = localStorage.getItem('wella_staff_role') || '';
         const myId     = localStorage.getItem('wella_staff_id')   || '';
         const isMaster = role === 'master';
-        const since    = getLastPoll();
-        const now      = new Date().toISOString();
 
-        // — New appointments —
+        // ── Appointments: no created_at → track by known IDs ──────────
+        // Query recent window: yesterday → +30 days (catches new bookings)
+        const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+        const fromDate  = yesterday.toISOString().split('T')[0];
+
         let apptQ = window.db
             .from('appointments')
-            .select('id, master_id, service_name, created_by_role, created_at')
-            .gt('created_at', since);
+            .select('id, master_id, service_name, created_by_role, appointment_date')
+            .gte('appointment_date', fromDate);
         if (isMaster) apptQ = apptQ.eq('master_id', myId);
 
         const { data: appts } = await apptQ;
+        const knownAppts  = getKnownAppts();
+        const isFirstAppt = knownAppts.size === 0;
+
         (appts || []).forEach(a => {
+            if (knownAppts.has(String(a.id))) return; // already seen
+            knownAppts.add(String(a.id));
+            if (isFirstAppt) return; // first run — just seed, no notification
             const isOnline = !a.created_by_role || a.created_by_role === 'online';
             push({
                 id:    `appt-${a.id}`,
                 type:  'appointment',
                 title: isOnline ? '🌐 Онлайн запис' : '📋 Новий запис',
                 body:  a.service_name || 'Запис',
-                time:  a.created_at,
+                time:  new Date().toISOString(),
                 read:  false,
                 link:  'admin-calendar.html',
             });
         });
+        saveKnownAppts(knownAppts);
 
-        // — New reviews —
+        // ── Reviews: have created_at → use timestamp ───────────────────
+        const since = getLastRevPoll();
+        const now   = new Date().toISOString();
+
         let revQ = window.db
             .from('reviews')
             .select('id, staff_id, rating, comment, created_at')
@@ -261,14 +279,13 @@
                 link:  'admin-staff.html',
             });
         });
-
-        setLastPoll(now);
+        localStorage.setItem(POLL_REV_KEY, now);
     }
 
     function subscribe() {
         if (!window.db) { setTimeout(subscribe, 400); return; }
-        poll();                          // immediate first check
-        setInterval(poll, POLL_MS);     // then every 10 s
+        poll();                      // immediate first check
+        setInterval(poll, POLL_MS); // then every 10 s
     }
 
     // ── Boot ──────────────────────────────────────────
