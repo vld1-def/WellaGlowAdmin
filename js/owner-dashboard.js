@@ -85,11 +85,12 @@ async function loadDashboardStats() {
     const {start, end, days} = getPeriodRange();
     const {y,m} = getSelectedYM();
 
-    const [historyRes, activeRes, clientsRes, allHistoryRes] = await Promise.all([
+    const [historyRes, activeRes, clientsRes, allHistoryRes, planRes] = await Promise.all([
         window.db.from('appointment_history').select('price, client_id, visit_date').gte('visit_date', start).lte('visit_date', end),
         window.db.from('appointments').select('price, client_id, appointment_date').in('status',['done','completed','Виконано']).gte('appointment_date', start).lte('appointment_date', end),
         window.db.from('clients').select('*', { count: 'exact', head: true }).gte('created_at', start),
-        window.db.from('appointment_history').select('client_id')
+        window.db.from('appointment_history').select('client_id'),
+        window.db.from('cash_register').select('monthly_plan').single(),
     ]);
 
     const histRows   = historyRes.data || [];
@@ -101,10 +102,11 @@ async function loadDashboardStats() {
         const totalVisits = allRows.length;
 
         document.getElementById('kpi-profit').innerText = `₴${totalProfit.toLocaleString('uk-UA')}`;
-        const pct = Math.min(Math.round((totalProfit / 215000) * 100), 100);
+        const monthlyPlan = planRes?.data?.monthly_plan || 0;
+        const pct = monthlyPlan > 0 ? Math.min(Math.round((totalProfit / monthlyPlan) * 100), 100) : 0;
         document.getElementById('kpi-profit-bar').style.width = `${pct}%`;
         const pctEl = document.getElementById('kpi-profit-pct');
-        if (pctEl) pctEl.textContent = `${pct}%`;
+        if (pctEl) pctEl.textContent = monthlyPlan > 0 ? `${pct}%` : 'План не встановлено';
 
         document.getElementById('kpi-total-bookings').innerText = totalVisits;
         const bars = document.querySelectorAll('#kpi-bookings-bars div');
