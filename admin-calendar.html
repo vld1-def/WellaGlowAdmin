@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
@@ -542,9 +542,8 @@
             <!-- Recurrence -->
             <div>
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Повторення</label>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 gap-2">
                     <button type="button" class="shift-type-btn active" data-rec="once"   onclick="selectShiftRec('once')">Один раз</button>
-                    <button type="button" class="shift-type-btn"        data-rec="weekly" onclick="selectShiftRec('weekly')">Щотижня</button>
                     <button type="button" class="shift-type-btn"        data-rec="always" onclick="selectShiftRec('always')">Завжди</button>
                 </div>
             </div>
@@ -553,15 +552,14 @@
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Дата</label>
                 <input id="sh-date" type="date" class="cal-input">
             </div>
-            <!-- Day of week (weekly) -->
+            <!-- Day of week placeholder (kept for layout, hidden) -->
             <div id="sh-dow-wrap" class="hidden">
-                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">День тижня</label>
                 <div class="grid grid-cols-7 gap-1">
-                    <button type="button" data-dow="1" onclick="selectShiftDow(1)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Пн</button>
-                    <button type="button" data-dow="2" onclick="selectShiftDow(2)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Вт</button>
-                    <button type="button" data-dow="3" onclick="selectShiftDow(3)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Ср</button>
-                    <button type="button" data-dow="4" onclick="selectShiftDow(4)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Чт</button>
-                    <button type="button" data-dow="5" onclick="selectShiftDow(5)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Пт</button>
+                    <button type="button" data-dow="1" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Пн</button>
+                    <button type="button" data-dow="2" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Вт</button>
+                    <button type="button" data-dow="3" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Ср</button>
+                    <button type="button" data-dow="4" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Чт</button>
+                    <button type="button" data-dow="5" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Пт</button>
                     <button type="button" data-dow="6" onclick="selectShiftDow(6)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Сб</button>
                     <button type="button" data-dow="7" onclick="selectShiftDow(7)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Нд</button>
                 </div>
@@ -601,6 +599,7 @@
     <script src="js/permissions-guard.js"></script>
     <script src="js/sidebar-nav.js"></script>
 <script src="js/admin-calendar.js"></script>
+    <script src="js/notifications.js"></script>
 <script>
 function doLogout(){['wella_staff_id','wella_staff_role','wella_staff_name'].forEach(k=>localStorage.removeItem(k));window.location.href='staff-login.html';}
 (function(){const n=localStorage.getItem('wella_staff_name')||'Адмін',r=localStorage.getItem('wella_staff_role')||'admin';const av=document.getElementById('sidebar-avatar'),un=document.getElementById('sidebar-uname'),ur=document.getElementById('sidebar-urole');if(av)av.textContent=n.charAt(0).toUpperCase();if(un)un.textContent=n;if(ur)ur.textContent=r==='owner'?'Власник':r==='admin'?'Адміністратор':'Майстер';})();
