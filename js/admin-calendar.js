@@ -1,4 +1,4 @@
-// js/admin-calendar.js — Wella Glow Calendar
+﻿// js/admin-calendar.js — Wella Glow Calendar
 // Uses: appointments (active), appointment_history (done)
 // ═══════════════════════════════════════════════════════
 
@@ -1154,7 +1154,9 @@ window.openShiftCell=function(dateStr,h,masterId){
     _shiftDetailId=sh.id;
     const typeLabel=sh.type==='day_off'?'Вихідний':'Перерва';
     const timeStr=sh.all_day?'Весь день':`${sh.start_time?.slice(0,5)} – ${sh.end_time?.slice(0,5)}`;
-    const recLabel=sh.recurrence==='always'?'Завжди':sh.recurrence==='weekly'?'Щотижня':'Один раз';
+    const DOW_UA=['','Понеділок','Вівторок','Середа','Четвер','П\'ятниця','Субота','Неділя'];
+    const dowName=sh.day_of_week?DOW_UA[sh.day_of_week]||'':''
+    const recLabel=sh.recurrence==='always'?'Завжди':'Один раз';
     document.getElementById('sdm-title').textContent=typeLabel;
     document.getElementById('sdm-body').innerHTML=`
         <div class="flex justify-between items-center p-3 rounded-xl" style="background:rgba(255,255,255,.04)"><span style="font-size:10px;color:#71717a;font-weight:700">Час</span><span style="font-size:11px;color:#fff;font-weight:800">${timeStr}</span></div>
@@ -1262,6 +1264,7 @@ window.openShiftModal=function(dayStr='',hour=null,masterId=''){
     document.querySelectorAll('.shift-type-btn[data-rec]').forEach(b=>b.classList.toggle('active',b.dataset.rec==='once'));
     document.getElementById('sh-date-wrap').classList.remove('hidden');
     document.getElementById('sh-note').value='';
+    document.getElementById('sh-dow-wrap').classList.add('hidden');
 
     const modal=document.getElementById('shift-modal');
     modal.style.opacity='1'; modal.style.pointerEvents='all';
@@ -1282,7 +1285,7 @@ window.selectShiftType=function(type){
 window.selectShiftRec=function(rec){
     shiftRec=rec;
     document.querySelectorAll('.shift-type-btn[data-rec]').forEach(b=>b.classList.toggle('active',b.dataset.rec===rec));
-    document.getElementById('sh-date-wrap').classList.toggle('hidden',rec!=='once');
+    document.getElementById('sh-date-wrap').classList.toggle('hidden', rec!=='once');
 };
 
 window.toggleShiftAllDay=function(){
@@ -1315,12 +1318,9 @@ window.saveShift=async function(){
     };
     const dateVal=document.getElementById('sh-date').value;
     if(shiftRec==='once'){
+        if(!dateVal){ alert('Вкажіть дату'); return; }
         payload.shift_date=dateVal;
         payload.day_of_week=null;
-    } else if(shiftRec==='weekly'){
-        const d=new Date(dateVal+'T12:00:00');
-        payload.day_of_week=d.getDay()||7; // 1=Mon..7=Sun
-        payload.shift_date=null;
     } else { // always — no specific date or weekday
         payload.day_of_week=null;
         payload.shift_date=null;
