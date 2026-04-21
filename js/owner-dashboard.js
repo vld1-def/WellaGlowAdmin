@@ -420,14 +420,22 @@ function initProfitChart(incomeByDay, days) {
     const canvas = document.getElementById('profitChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(244, 63, 94, 0.3)');
-    gradient.addColorStop(1, 'rgba(244, 63, 94, 0)');
     if (window._profitChartInst) { window._profitChartInst.destroy(); }
 
-    // Labels: show every 5th day
-    const labels = Array.from({length: days||30}, (_,i) => (i+1) % 5 === 1 ? String(i+1).padStart(2,'0') : '');
-    const data   = incomeByDay || new Array(days||30).fill(0);
+    const n    = days || 30;
+    const data = incomeByDay || new Array(n).fill(0);
+
+    // One label per day: "1", "2" ... "31"
+    const labels = Array.from({length: n}, (_, i) => String(i + 1));
+
+    // Gradient fill
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 200);
+    gradient.addColorStop(0, 'rgba(244,63,94,0.28)');
+    gradient.addColorStop(1, 'rgba(244,63,94,0)');
+
+    // Y-axis max: round up to nice ceiling
+    const maxVal = Math.max(...data, 1);
+    const yMax   = Math.ceil(maxVal / 1000) * 1000 || 1000;
 
     window._profitChartInst = new Chart(ctx, {
         type: 'line',
@@ -436,31 +444,63 @@ function initProfitChart(incomeByDay, days) {
             datasets: [{
                 data,
                 borderColor: '#f43f5e',
-                borderWidth: 3,
+                borderWidth: 2.5,
                 fill: true,
                 backgroundColor: gradient,
-                tension: 0.4,
+                tension: 0.45,
                 pointRadius: 0,
-                pointHoverRadius: 4
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: '#f43f5e',
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2,
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(10,10,12,0.9)',
-                    borderColor: 'rgba(255,255,255,0.06)',
+                    backgroundColor: 'rgba(9,9,11,0.92)',
+                    borderColor: 'rgba(255,255,255,0.08)',
                     borderWidth: 1,
                     titleColor: '#71717a',
-                    bodyColor: '#e2e8f0',
-                    callbacks: { label: ctx => ` ₴${Math.round(ctx.parsed.y).toLocaleString('uk-UA')}` }
+                    bodyColor: '#f43f5e',
+                    titleFont: { size: 10, weight: '700' },
+                    bodyFont:  { size: 13, weight: '800' },
+                    padding: 10,
+                    displayColors: false,
+                    callbacks: {
+                        title: items => `День ${items[0].label}`,
+                        label: item  => ` ₴${Math.round(item.parsed.y).toLocaleString('uk-UA')}`,
+                    }
                 }
             },
             scales: {
-                y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#52525b', font: { size: 9 }, callback: v => v > 0 ? `₴${(v/1000).toFixed(0)}к` : '' } },
-                x: { grid: { display: false }, ticks: { color: '#52525b', font: { size: 9 } } }
+                x: {
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: {
+                        color: '#3f3f46',
+                        font: { size: 9, weight: '700' },
+                        maxTicksLimit: 8,       // show ~8 labels across the axis
+                        autoSkip: true,
+                        maxRotation: 0,
+                    }
+                },
+                y: {
+                    min: 0,
+                    suggestedMax: yMax,
+                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                    border: { display: false },
+                    ticks: {
+                        color: '#3f3f46',
+                        font: { size: 9, weight: '700' },
+                        maxTicksLimit: 5,
+                        callback: v => v === 0 ? '0' : `₴${(v / 1000).toFixed(v % 1000 ? 1 : 0)}к`
+                    }
+                }
             }
         }
     });
