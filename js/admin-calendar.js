@@ -786,6 +786,19 @@ function updatePriceFromServices(){
     },0);
     const hint=document.getElementById('svc-duration-hint');
     if(hint) hint.textContent=totalDur>0?`Загальний час: ${totalDur} хв`:'';
+
+    // Auto-fill end time based on duration
+    if(totalDur>0 && selStartHour!==null){
+        const startTotalMin=toMinutes(selStartHour,selStartMin)+totalDur;
+        selEndHour=Math.floor(startTotalMin/60);
+        selEndMin=startTotalMin%60;
+        // Re-render slots + badge to reflect new end time
+        const masterId=document.getElementById('a-master')?.value;
+        const date=document.getElementById('a-date')?.value;
+        if(masterId&&date) onMasterOrDateChange();
+        else renderSlotGrid(new Set(),selStartHour,selStartMin,selEndHour,selEndMin,date||'');
+        updateTimeBadge();
+    }
 }
 function closeAcAll(){
     document.querySelectorAll('.ac-dropdown').forEach(d=>d.classList.remove('open'));
