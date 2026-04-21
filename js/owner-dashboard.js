@@ -358,25 +358,45 @@ async function loadTopServices() {
 
     const map = {};
     data.forEach(a => {
-        const k = a.service_name || 'Без назви';
-        if (!map[k]) map[k] = { count:0, revenue:0 };
-        map[k].count++;
-        map[k].revenue += parseFloat(a.price||0);
+        const price = parseFloat(a.price || 0);
+        // Split combined names like "Манікюр × 10 + Стрижка" into individual services
+        const parts = (a.service_name || 'Без назви').split(' + ');
+        const share = parts.length > 0 ? price / parts.length : price;
+        parts.forEach(raw => {
+            // Strip quantity suffix "× N"
+            const name = raw.replace(/\s*×\s*\d+\s*$/, '').trim() || 'Без назви';
+            if (!map[name]) map[name] = { count: 0, revenue: 0 };
+            map[name].count++;
+            map[name].revenue += share;
+        });
     });
 
-    const sorted = Object.entries(map).sort((a,b) => b[1].count - a[1].count).slice(0, 5);
+    // Sort by count descending, revenue as tiebreaker
+    const sorted = Object.entries(map)
+        .sort((a, b) => b[1].count - a[1].count || b[1].revenue - a[1].revenue)
+        .slice(0, 5);
     const maxCount = sorted[0]?.[1]?.count || 1;
 
-    container.innerHTML = sorted.map(([name, stats]) => `
-        <div class="space-y-1">
-            <div class="flex justify-between text-[10px]">
-                <span class="font-bold text-white truncate">${name}</span>
-                <span class="text-zinc-500 flex-shrink-0 ml-2">${stats.count} · ₴${stats.revenue.toLocaleString('uk-UA')}</span>
+    container.innerHTML = sorted.map(([name, stats], i) => {
+        const pct  = Math.round(stats.count / maxCount * 100);
+        const barW = Math.max(pct, 4); // minimum 4% so bar is always visible
+        return `
+        <div class="space-y-1.5">
+            <div class="flex items-center justify-between gap-2 text-[10px]">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-[8px] font-black text-zinc-600 flex-shrink-0 w-4 text-right">${i+1}.</span>
+                    <span class="font-bold text-white truncate">${name}</span>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0 ml-1">
+                    <span class="text-[9px] font-black text-zinc-500">${stats.count}×</span>
+                    <span class="text-[9px] font-black text-rose-400">₴${Math.round(stats.revenue).toLocaleString('uk-UA')}</span>
+                </div>
             </div>
             <div class="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
-                <div class="h-full bg-rose-500/60 rounded-full" style="width:${Math.round(stats.count/maxCount*100)}%"></div>
+                <div class="h-full bg-gradient-to-r from-rose-500 to-rose-400 rounded-full transition-all" style="width:${barW}%"></div>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 }
 
 // ── Recent Reviews ────────────────────────────────────
