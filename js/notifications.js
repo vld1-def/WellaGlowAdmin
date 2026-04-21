@@ -201,58 +201,74 @@
         updateBadge();
     }
 
-    // ── Realtime subscriptions ────────────────────────
+    // ── Polling (free-plan alternative to Realtime) ───
+    const POLL_KEY  = 'wella_notifs_last_poll';
+    const POLL_MS   = 10000; // 10 seconds
+
+    function getLastPoll() {
+        return localStorage.getItem(POLL_KEY) || new Date(Date.now() - 60000).toISOString();
+    }
+    function setLastPoll(iso) {
+        localStorage.setItem(POLL_KEY, iso);
+    }
+
+    async function poll() {
+        if (!window.db) return;
+
+        const role     = localStorage.getItem('wella_staff_role') || '';
+        const myId     = localStorage.getItem('wella_staff_id')   || '';
+        const isMaster = role === 'master';
+        const since    = getLastPoll();
+        const now      = new Date().toISOString();
+
+        // — New appointments —
+        let apptQ = window.db
+            .from('appointments')
+            .select('id, master_id, service_name, created_by_role, created_at')
+            .gt('created_at', since);
+        if (isMaster) apptQ = apptQ.eq('master_id', myId);
+
+        const { data: appts } = await apptQ;
+        (appts || []).forEach(a => {
+            const isOnline = !a.created_by_role || a.created_by_role === 'online';
+            push({
+                id:    `appt-${a.id}`,
+                type:  'appointment',
+                title: isOnline ? '🌐 Онлайн запис' : '📋 Новий запис',
+                body:  a.service_name || 'Запис',
+                time:  a.created_at,
+                read:  false,
+                link:  'admin-calendar.html',
+            });
+        });
+
+        // — New reviews —
+        let revQ = window.db
+            .from('reviews')
+            .select('id, staff_id, rating, comment, created_at')
+            .gt('created_at', since);
+        if (isMaster) revQ = revQ.eq('staff_id', myId);
+
+        const { data: revs } = await revQ;
+        (revs || []).forEach(r => {
+            push({
+                id:    `rev-${r.id}`,
+                type:  'review',
+                title: `⭐ Новий відгук (${r.rating}/5)`,
+                body:  r.comment || 'Без коментаря',
+                time:  r.created_at,
+                read:  false,
+                link:  'admin-staff.html',
+            });
+        });
+
+        setLastPoll(now);
+    }
+
     function subscribe() {
         if (!window.db) { setTimeout(subscribe, 400); return; }
-
-        const role = localStorage.getItem('wella_staff_role') || '';
-        const myId = localStorage.getItem('wella_staff_id')   || '';
-        const isMaster = role === 'master';
-
-        // — Appointments channel —
-        const apptCh = window.db.channel('nb-appts');
-        apptCh.on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'appointments' },
-            payload => {
-                const a = payload.new;
-                // Master: only their appointments
-                if (isMaster && a.master_id !== myId) return;
-
-                const isOnline = !a.created_by_role || a.created_by_role === 'online';
-                push({
-                    id:    `appt-${a.id}`,
-                    type:  'appointment',
-                    title: isOnline ? '🌐 Онлайн запис' : '📋 Новий запис',
-                    body:  a.service_name || 'Запис',
-                    time:  new Date().toISOString(),
-                    read:  false,
-                    link:  'admin-calendar.html',
-                });
-            }
-        ).subscribe();
-
-        // — Reviews channel —
-        const revCh = window.db.channel('nb-reviews');
-        revCh.on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'reviews' },
-            payload => {
-                const r = payload.new;
-                // Master: only their reviews
-                if (isMaster && r.staff_id !== myId) return;
-
-                push({
-                    id:    `rev-${r.id}`,
-                    type:  'review',
-                    title: `⭐ Новий відгук (${r.rating}/5)`,
-                    body:  r.comment || 'Без коментаря',
-                    time:  new Date().toISOString(),
-                    read:  false,
-                    link:  'admin-staff.html',
-                });
-            }
-        ).subscribe();
+        poll();                          // immediate first check
+        setInterval(poll, POLL_MS);     // then every 10 s
     }
 
     // ── Boot ──────────────────────────────────────────
