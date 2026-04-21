@@ -55,6 +55,7 @@ let _bulkGroup   = 'all';
 document.addEventListener('DOMContentLoaded', async () => {
     initSidebarMonth();
     initSidebarProfile();
+    window.loadBonusRules();
     await loadData();
     updateBulkPreview();
 });
@@ -309,6 +310,29 @@ window.closeAllModals = function() {
         document.getElementById(id)?.classList.remove('open')
     );
     _editId = null;
+};
+
+// ── Bonus rules persistence ───────────────────────────
+window.loadBonusRules = function() {
+    const rules = JSON.parse(localStorage.getItem('wella_bonus_rules') || '{}');
+    const earnEl = document.getElementById('rule-earn-rate');
+    const minEl  = document.getElementById('rule-min-visit');
+    const expEl  = document.getElementById('rule-expiry');
+    if (earnEl && rules.earnRate !== undefined) earnEl.value = rules.earnRate;
+    if (minEl  && rules.minVisit !== undefined) minEl.value  = rules.minVisit;
+    if (expEl  && rules.expiry   !== undefined) expEl.value  = rules.expiry;
+};
+
+window.saveRules = function() {
+    const earnRate = parseFloat(document.getElementById('rule-earn-rate')?.value) || 1;
+    const minVisit = parseInt(document.getElementById('rule-min-visit')?.value)   || 0;
+    const expiry   = parseInt(document.getElementById('rule-expiry')?.value)      || 0;
+    localStorage.setItem('wella_bonus_rules', JSON.stringify({ earnRate, minVisit, expiry }));
+    // Close modal
+    closeAllModals();
+    // Show brief confirmation
+    const btn = document.getElementById('save-rules-btn');
+    if (btn) { const orig=btn.innerHTML; btn.innerHTML='<i class="fa-solid fa-check"></i> Збережено'; setTimeout(()=>btn.innerHTML=orig, 1500); }
 };
 
 // ── Helpers ───────────────────────────────────────────

@@ -28,6 +28,19 @@ window.monthStep=function(dir){
     window.dispatchEvent(new Event('monthchange'));
 };
 
+function getSelectedYM(){
+    const ym=localStorage.getItem('wella_current_month');
+    if(ym){const[y,m]=ym.split('-').map(Number);return{y,m};}
+    const n=new Date();return{y:n.getFullYear(),m:n.getMonth()+1};
+}
+function getPeriodRange(){
+    const{y,m}=getSelectedYM();
+    const start=new Date(y,m-1,1).toISOString().split('T')[0];
+    const end=new Date(y,m,0).toISOString().split('T')[0];
+    const days=new Date(y,m,0).getDate();
+    return{start,end,days};
+}
+
 // ── Profile ───────────────────────────────────────────
 function initSidebarProfile(){
     const name=localStorage.getItem('wella_staff_name')||'';
@@ -45,7 +58,13 @@ window.doLogout=function(){
     window.location.href='staff-login.html';
 };
 
-window.addEventListener('monthchange', async ()=>{ await loadDashboardStats(); });
+window.addEventListener('monthchange', async ()=>{
+    await Promise.all([
+        loadDashboardStats(),
+        loadStaffEfficiency(),
+        loadTopServices(),
+    ]);
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
     initSidebarMonth();
@@ -63,22 +82,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── Dashboard Stats ───────────────────────────────────
 async function loadDashboardStats() {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const {start, end, days} = getPeriodRange();
+    const {y,m} = getSelectedYM();
 
-    const [historyRes, clientsRes, allHistoryRes] = await Promise.all([
-        window.db.from('appointment_history').select('price, client_id').gte('visit_date', monthStart).lte('visit_date', monthEnd),
-        window.db.from('clients').select('*', { count: 'exact', head: true }).gte('created_at', monthStart),
+    const [historyRes, activeRes, clientsRes, allHistoryRes] = await Promise.all([
+        window.db.from('appointment_history').select('price, client_id, visit_date').gte('visit_date', start).lte('visit_date', end),
+        window.db.from('appointments').select('price, client_id, appointment_date').in('status',['done','completed','Виконано']).gte('appointment_date', start).lte('appointment_date', end),
+        window.db.from('clients').select('*', { count: 'exact', head: true }).gte('created_at', start),
         window.db.from('appointment_history').select('client_id')
     ]);
 
-    if (historyRes.data) {
-        const totalProfit = historyRes.data.reduce((sum, h) => sum + (parseFloat(h.price)||0), 0);
-        const totalVisits = historyRes.data.length;
+    const histRows   = historyRes.data || [];
+    const activeRows = activeRes.data  || [];
+    const allRows    = [...histRows, ...activeRows.map(r=>({price:r.price,client_id:r.client_id,visit_date:r.appointment_date}))];
+
+    if (allRows.length || true) {
+        const totalProfit = allRows.reduce((sum, h) => sum + (parseFloat(h.price)||0), 0);
+        const totalVisits = allRows.length;
 
         document.getElementById('kpi-profit').innerText = `₴${totalProfit.toLocaleString('uk-UA')}`;
-        // Progress bar: target ₴215,000/month
         const pct = Math.min(Math.round((totalProfit / 215000) * 100), 100);
         document.getElementById('kpi-profit-bar').style.width = `${pct}%`;
         const pctEl = document.getElementById('kpi-profit-pct');
@@ -90,6 +112,16 @@ async function loadDashboardStats() {
 
         const avgBill = totalVisits > 0 ? Math.round(totalProfit / totalVisits) : 0;
         document.getElementById('kpi-avg-bill').innerText = `₴${avgBill.toLocaleString('uk-UA')}`;
+
+        // Build real daily chart data
+        const incomeByDay = new Array(days).fill(0);
+        allRows.forEach(r => {
+            const dateStr = r.visit_date;
+            if (!dateStr) return;
+            const dayIdx = new Date(dateStr).getDate() - 1;
+            if (dayIdx >= 0 && dayIdx < days) incomeByDay[dayIdx] += parseFloat(r.price||0);
+        });
+        initProfitChart(incomeByDay, days);
     }
 
     if (allHistoryRes.data) {
@@ -102,7 +134,6 @@ async function loadDashboardStats() {
     }
 
     document.getElementById('kpi-new-clients').innerText = clientsRes.count || 0;
-    initProfitChart();
 }
 
 // ── Today Timeline (+ tomorrow if < 3 today) ─────────
@@ -178,14 +209,12 @@ async function loadTodayTimeline() {
 
 // ── Staff Efficiency (real computed data) ─────────────
 async function loadStaffEfficiency() {
-    const now = new Date();
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-    const monthEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().split('T')[0];
+    const {start: monthStart, end: monthEnd} = getPeriodRange();
 
     const [{ data: masters }, { data: histAppts }, { data: activeAppts }] = await Promise.all([
-        window.db.from('staff').select('id,name,commission_rate').eq('role','master'),
+        window.db.from('staff').select('id,name,commission_rate').neq('role','').neq('role','owner'),
         window.db.from('appointment_history').select('master_id,price').gte('visit_date',monthStart).lte('visit_date',monthEnd),
-        window.db.from('appointments').select('master_id,price').gte('appointment_date',monthStart).lte('appointment_date',monthEnd).in('status',['done','completed']),
+        window.db.from('appointments').select('master_id,price').gte('appointment_date',monthStart).lte('appointment_date',monthEnd).in('status',['done','completed','Виконано']),
     ]);
 
     const map = {};
@@ -199,7 +228,9 @@ async function loadStaffEfficiency() {
     const tbody = document.getElementById('staff-efficiency-body');
     if (!masters || !tbody) return;
 
-    const sorted = [...masters].sort((a,b) => (map[b.id]?.revenue||0) - (map[a.id]?.revenue||0));
+    // Only show masters who have activity OR all masters with role='master' or 'admin'
+    const activeMasters = masters.filter(m => map[m.id] || m.role === 'master');
+    const sorted = [...activeMasters].sort((a,b) => (map[b.id]?.revenue||0) - (map[a.id]?.revenue||0));
 
     if (!sorted.length) {
         tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-zinc-700 text-xs font-bold uppercase tracking-widest">Немає даних</td></tr>`;
@@ -224,26 +255,29 @@ async function loadStaffEfficiency() {
 
 // ── Stock Status ──────────────────────────────────────
 async function loadStockStatus() {
-    const { data: rawItems, error } = await window.db.from('inventory').select('*');
+    const { data: rawItems, error } = await window.db.from('inventory_items').select('*');
     const container = document.getElementById('stock-status-list');
     if (!container) return;
     if (error || !rawItems?.length) { container.innerHTML = '<p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Склад порожній</p>'; return; }
-    // Sort by stock level ascending (lowest first) in JS to avoid column-name mismatch
+
+    // Sort by stock level ascending (lowest first)
     const items = [...rawItems].sort((a,b) => {
-        const aS = parseFloat(a.current_stock ?? a.quantity ?? a.stock ?? 0);
-        const bS = parseFloat(b.current_stock ?? b.quantity ?? b.stock ?? 0);
+        const aS = parseInt(a.quantity ?? 0);
+        const bS = parseInt(b.quantity ?? 0);
         return aS - bS;
     }).slice(0, 5);
+
     container.innerHTML = items.map(item => {
-        const itemName = item.name || item.item_name || item.title || 'Без назви';
-        const current = parseFloat(item.current_stock ?? item.quantity ?? item.stock ?? 0);
-        const max     = parseFloat(item.max_stock ?? item.max_quantity ?? item.capacity ?? 100);
-        const pct = max > 0 ? Math.min(Math.round((current / max) * 100), 100) : 0;
+        const itemName  = item.name || 'Без назви';
+        const current   = parseInt(item.quantity ?? 0);
+        const minQ      = parseInt(item.min_quantity ?? 0);
+        const maxDisplay = minQ > 0 ? minQ * 2 : 100;
+        const pct = maxDisplay > 0 ? Math.min(Math.round((current / maxDisplay) * 100), 100) : (current > 0 ? 100 : 0);
         let color = 'bg-emerald-500';
-        if (pct <= 20) color = 'bg-rose-500 animate-pulse';
-        else if (pct <= 50) color = 'bg-amber-500';
+        if (current <= 0 || (minQ > 0 && current <= minQ * 0.5)) color = 'bg-rose-500 animate-pulse';
+        else if (minQ > 0 && current <= minQ) color = 'bg-amber-500';
         return `<div class="space-y-1.5">
-            <div class="flex justify-between text-[9px] font-black uppercase text-zinc-400"><span class="truncate">${itemName}</span><span class="text-white ml-2 flex-shrink-0">${pct}%</span></div>
+            <div class="flex justify-between text-[9px] font-black uppercase text-zinc-400"><span class="truncate">${itemName}</span><span class="text-white ml-2 flex-shrink-0">${current} шт</span></div>
             <div class="h-1 w-full bg-zinc-900 rounded-full overflow-hidden"><div class="h-full ${color}" style="width:${pct}%"></div></div>
         </div>`;
     }).join('');
@@ -306,20 +340,18 @@ window.closeDashSettings = function() {
 
 // ── Top Services ──────────────────────────────────────
 async function loadTopServices() {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const monthEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().split('T')[0];
+    const {start: monthStart, end: monthEnd} = getPeriodRange();
 
-    const { data } = await window.db
-        .from('appointment_history')
-        .select('service_name, price')
-        .gte('visit_date', monthStart)
-        .lte('visit_date', monthEnd);
+    const [{ data: histData }, { data: activeData }] = await Promise.all([
+        window.db.from('appointment_history').select('service_name, price').gte('visit_date', monthStart).lte('visit_date', monthEnd),
+        window.db.from('appointments').select('service_name, price').in('status',['done','completed','Виконано']).gte('appointment_date', monthStart).lte('appointment_date', monthEnd),
+    ]);
 
     const container = document.getElementById('top-services-list');
     if (!container) return;
 
-    if (!data?.length) {
+    const data = [...(histData||[]), ...(activeData||[])];
+    if (!data.length) {
         container.innerHTML = '<p class="text-zinc-700 text-[10px] text-center py-4 font-bold uppercase">Немає даних</p>';
         return;
     }
@@ -384,7 +416,7 @@ async function loadRecentReviews() {
 }
 
 // ── Profit Chart ──────────────────────────────────────
-function initProfitChart() {
+function initProfitChart(incomeByDay, days) {
     const canvas = document.getElementById('profitChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -392,9 +424,44 @@ function initProfitChart() {
     gradient.addColorStop(0, 'rgba(244, 63, 94, 0.3)');
     gradient.addColorStop(1, 'rgba(244, 63, 94, 0)');
     if (window._profitChartInst) { window._profitChartInst.destroy(); }
+
+    // Labels: show every 5th day
+    const labels = Array.from({length: days||30}, (_,i) => (i+1) % 5 === 1 ? String(i+1).padStart(2,'0') : '');
+    const data   = incomeByDay || new Array(days||30).fill(0);
+
     window._profitChartInst = new Chart(ctx, {
         type: 'line',
-        data: { labels: ['01', '05', '10', '15', '20', '25', '30'], datasets: [{ data: [15000, 22000, 18000, 31000, 28000, 42000, 38000], borderColor: '#f43f5e', borderWidth: 3, fill: true, backgroundColor: gradient, tension: 0.4, pointRadius: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#52525b', font: { size: 9 } } }, x: { grid: { display: false }, ticks: { color: '#52525b', font: { size: 9 } } } } }
+        data: {
+            labels,
+            datasets: [{
+                data,
+                borderColor: '#f43f5e',
+                borderWidth: 3,
+                fill: true,
+                backgroundColor: gradient,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(10,10,12,0.9)',
+                    borderColor: 'rgba(255,255,255,0.06)',
+                    borderWidth: 1,
+                    titleColor: '#71717a',
+                    bodyColor: '#e2e8f0',
+                    callbacks: { label: ctx => ` ₴${Math.round(ctx.parsed.y).toLocaleString('uk-UA')}` }
+                }
+            },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#52525b', font: { size: 9 }, callback: v => v > 0 ? `₴${(v/1000).toFixed(0)}к` : '' } },
+                x: { grid: { display: false }, ticks: { color: '#52525b', font: { size: 9 } } }
+            }
+        }
     });
 }

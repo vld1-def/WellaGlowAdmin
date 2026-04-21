@@ -162,17 +162,55 @@ function allAppts(){ return [...appts,...histAppts]; }
 
 // ══ Mobile swipe to navigate days ════════════════════
 (function(){
-    let _tx=0,_ty=0;
+    let _tx=0,_ty=0,_tEl=null;
     document.addEventListener('touchstart',e=>{
         const t=e.touches[0];
         _tx=t.clientX; _ty=t.clientY;
+        _tEl=e.target;
     },{passive:true});
     document.addEventListener('touchend',e=>{
+        // Don't swipe if touch started on interactive element or inside a drawer
+        if(_tEl&&(_tEl.closest('.drawer,.modal,button,input,select,textarea,a'))) return;
         const t=e.changedTouches[0];
         const dx=t.clientX-_tx, dy=t.clientY-_ty;
-        // Only horizontal swipes > 60px that are more horizontal than vertical
-        if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){
+        // Only horizontal swipes > 70px that are more horizontal than vertical
+        if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.8){
             if(dx<0) navNext(); else navPrev();
+        }
+    },{passive:true});
+})();
+
+// ══ Touch drag-to-select (mobile cells) ═════════════
+(function(){
+    let _touchDragging=false;
+    document.addEventListener('touchstart',e=>{
+        const cell=e.target.closest('.tl-cell');
+        if(!cell||cell.classList.contains('blocked')||cell.classList.contains('past-cell')) return;
+        _touchDragging=true;
+        const{dataset:{day,hour,min}}=cell;
+        dragBegin({preventDefault:()=>{}},day,parseInt(hour),parseInt(min||0));
+    },{passive:true});
+    document.addEventListener('touchmove',e=>{
+        if(!_touchDragging) return;
+        const touch=e.touches[0];
+        const el=document.elementFromPoint(touch.clientX,touch.clientY);
+        const cell=el?.closest?.('.tl-cell');
+        if(cell&&!cell.classList.contains('blocked')&&!cell.classList.contains('past-cell')){
+            const{dataset:{day,hour,min}}=cell;
+            dragMove({},day,parseInt(hour),parseInt(min||0));
+        }
+    },{passive:true});
+    document.addEventListener('touchend',e=>{
+        if(!_touchDragging) return;
+        _touchDragging=false;
+        const touch=e.changedTouches[0];
+        const el=document.elementFromPoint(touch.clientX,touch.clientY);
+        const cell=el?.closest?.('.tl-cell');
+        if(cell){
+            const{dataset:{day,hour,min}}=cell;
+            dragEnd_({},day,parseInt(hour),parseInt(min||0));
+        } else {
+            dragCancel();
         }
     },{passive:true});
 })();
@@ -245,7 +283,8 @@ window.navNext=function(){ step(1);  };
 window.goToday=function(){ curDate=new Date(); Promise.all([refreshAppts(),loadShifts()]).then(()=>{render();renderKPIs();}); };
 function step(dir){
     const isMobile=window.innerWidth<640;
-    if(view==='week' && isMobile) curDate=new Date(curDate.getTime()+dir*3*86400000);
+    // Mobile 3-day only when a specific master is selected; full week for "all"
+    if(view==='week' && isMobile && filterMId) curDate=new Date(curDate.getTime()+dir*3*86400000);
     else if(view==='week') curDate=new Date(curDate.getTime()+dir*7*86400000);
     else curDate=new Date(curDate.getFullYear(),curDate.getMonth()+dir,1);
     Promise.all([refreshAppts(),loadShifts()]).then(()=>{render();renderKPIs();});
@@ -313,13 +352,14 @@ function renderWeek(){
     const isMobile=window.innerWidth<640;
     const today=localDate(new Date());
     let days;
-    if(isMobile){
-        // 3-day view: start from curDate directly
+    if(isMobile && filterMId){
+        // 3-day view when specific master selected on mobile
         days=Array.from({length:3},(_,i)=>{
             const d=new Date(curDate.getFullYear(),curDate.getMonth(),curDate.getDate()+i);
             return {d,str:localDate(d)};
         });
     } else {
+        // Full 7-day week (mobile "all masters" + desktop always)
         const ws=weekStart(curDate);
         days=Array.from({length:7},(_,i)=>{
             const d=new Date(ws.getTime()+i*86400000);
@@ -990,7 +1030,11 @@ window.openDetail=function(id,tbl){
     document.getElementById('d-cancel').style.display='';
     document.getElementById('d-edit').onclick=()=>{ closeAllDrawers(); openEditDrawer(a,tbl); };
     document.getElementById('d-done').onclick=()=>updateStatus(id,tbl,'completed');
-    document.getElementById('d-cancel').onclick=()=>updateStatus(id,tbl,'cancelled');
+    document.getElementById('d-cancel').onclick=()=>openConfirmModal(
+        'Скасувати запис?',
+        'Запис буде позначено як скасований. Цю дію неможливо відмінити.',
+        ()=>updateStatus(id,tbl,'cancelled')
+    );
     const isDone=a.status==='completed'||a.status==='Виконано';
     const isCancelled=a.status==='cancelled'||a.status==='Скасовано';
     document.getElementById('d-done').style.display=(isDone||isCancelled)?'none':'';
@@ -1054,6 +1098,26 @@ async function updateStatus(id,tbl,status){
         :(status);
     const {error}=await window.db.from(table).update({[field]:val}).eq('id',id);
     if(error){alert(error.message);return;}
+    // Apply bonus if marking as completed
+    if (!error && status === 'completed') {
+        try {
+            const src = tbl === 'appointment_history' ? histAppts : appts;
+            const a = src.find(x => x.id === id);
+            if (a && a.client_id && a.price) {
+                const rules = JSON.parse(localStorage.getItem('wella_bonus_rules') || '{}');
+                const earnRate = parseFloat(rules.earnRate) || 1;
+                const bonusToAdd = Math.round(parseFloat(a.price) * earnRate / 100);
+                if (bonusToAdd > 0) {
+                    // Get current bonus balance
+                    const { data: clientData } = await window.db.from('clients').select('bonus_balance, bonuses').eq('id', a.client_id).single();
+                    if (clientData) {
+                        const currentBonus = clientData.bonus_balance || clientData.bonuses || 0;
+                        await window.db.from('clients').update({ bonus_balance: currentBonus + bonusToAdd, bonuses: currentBonus + bonusToAdd }).eq('id', a.client_id);
+                    }
+                }
+            }
+        } catch(e) { console.warn('Bonus accrual error:', e); }
+    }
     closeAllDrawers(); await refreshAppts(); render(); renderKPIs();
 }
 
@@ -1110,6 +1174,20 @@ function showDayList(dStr,da){
     document.getElementById('detail-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
 }
+
+// ══ Confirm modal ════════════════════════════════════
+window.openConfirmModal=function(title,msg,onOk){
+    const modal=document.getElementById('confirm-modal');
+    document.getElementById('confirm-title').textContent=title;
+    document.getElementById('confirm-msg').textContent=msg||'Цю дію неможливо скасувати';
+    document.getElementById('confirm-ok').onclick=()=>{ closeConfirmModal(); onOk(); };
+    modal.style.display='flex';
+    requestAnimationFrame(()=>{modal.style.opacity='1';});
+};
+window.closeConfirmModal=function(){
+    const modal=document.getElementById('confirm-modal');
+    modal.style.display='none';
+};
 
 // ══ Close ════════════════════════════════════════════
 function closeAllDrawers(){
