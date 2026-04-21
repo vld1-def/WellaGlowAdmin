@@ -552,14 +552,15 @@
                 <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">Дата</label>
                 <input id="sh-date" type="date" class="cal-input">
             </div>
-            <!-- Day of week placeholder (kept for layout, hidden) -->
+            <!-- Day of week (shown when "Завжди" selected) -->
             <div id="sh-dow-wrap" class="hidden">
+                <label class="text-[9px] text-zinc-500 font-black uppercase tracking-widest block mb-2">День тижня <span style="font-weight:500;text-transform:none;letter-spacing:0;color:#3f3f46">(необов'язково)</span></label>
                 <div class="grid grid-cols-7 gap-1">
-                    <button type="button" data-dow="1" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Пн</button>
-                    <button type="button" data-dow="2" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Вт</button>
-                    <button type="button" data-dow="3" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Ср</button>
-                    <button type="button" data-dow="4" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Чт</button>
-                    <button type="button" data-dow="5" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500">Пт</button>
+                    <button type="button" data-dow="1" onclick="selectShiftDow(1)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Пн</button>
+                    <button type="button" data-dow="2" onclick="selectShiftDow(2)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Вт</button>
+                    <button type="button" data-dow="3" onclick="selectShiftDow(3)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Ср</button>
+                    <button type="button" data-dow="4" onclick="selectShiftDow(4)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Чт</button>
+                    <button type="button" data-dow="5" onclick="selectShiftDow(5)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Пт</button>
                     <button type="button" data-dow="6" onclick="selectShiftDow(6)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Сб</button>
                     <button type="button" data-dow="7" onclick="selectShiftDow(7)" class="dow-btn py-2 rounded-lg text-[9px] font-black border border-white/8 text-zinc-500 hover:text-white transition">Нд</button>
                 </div>
