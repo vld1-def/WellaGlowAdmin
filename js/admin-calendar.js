@@ -1265,6 +1265,7 @@ window.openShiftModal=function(dayStr='',hour=null,masterId=''){
     document.getElementById('sh-date-wrap').classList.remove('hidden');
     document.getElementById('sh-note').value='';
     document.getElementById('sh-dow-wrap').classList.add('hidden');
+    selectedDow=null; _renderDow();
 
     const modal=document.getElementById('shift-modal');
     modal.style.opacity='1'; modal.style.pointerEvents='all';
@@ -1286,6 +1287,30 @@ window.selectShiftRec=function(rec){
     shiftRec=rec;
     document.querySelectorAll('.shift-type-btn[data-rec]').forEach(b=>b.classList.toggle('active',b.dataset.rec===rec));
     document.getElementById('sh-date-wrap').classList.toggle('hidden', rec!=='once');
+    // Show day-of-week picker only when "Завжди" selected
+    const dowWrap=document.getElementById('sh-dow-wrap');
+    if(rec==='always'){
+        dowWrap.classList.remove('hidden');
+    } else {
+        dowWrap.classList.add('hidden');
+        selectedDow=null; _renderDow();
+    }
+};
+
+let selectedDow=null;
+function _renderDow(){
+    document.querySelectorAll('.dow-btn').forEach(b=>{
+        const active=selectedDow!==null&&parseInt(b.dataset.dow)===selectedDow;
+        b.classList.toggle('bg-rose-500/15',active);
+        b.classList.toggle('border-rose-500/40',active);
+        b.classList.toggle('text-rose-400',active);
+        b.classList.toggle('text-zinc-500',!active);
+    });
+}
+window.selectShiftDow=function(dow){
+    // toggle — click same day again to deselect
+    selectedDow=(selectedDow===dow)?null:dow;
+    _renderDow();
 };
 
 window.toggleShiftAllDay=function(){
@@ -1321,9 +1346,15 @@ window.saveShift=async function(){
         if(!dateVal){ alert('Вкажіть дату'); return; }
         payload.shift_date=dateVal;
         payload.day_of_week=null;
-    } else { // always — no specific date or weekday
-        payload.day_of_week=null;
+    } else { // always — optionally on a specific weekday
         payload.shift_date=null;
+        if(selectedDow){
+            // block every [day of week] — store as weekly recurrence
+            payload.recurrence='weekly';
+            payload.day_of_week=selectedDow;
+        } else {
+            payload.day_of_week=null;
+        }
     }
 
     const {error}=await window.db.from('staff_shifts').insert([payload]);
