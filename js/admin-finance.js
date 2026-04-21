@@ -112,7 +112,7 @@ async function loadSettings() {
 async function loadKPIs() {
     const { start, end } = getPeriodRange();
 
-    const [incomeRes, expensesRes, manualIncomeRes, bonusRes] = await Promise.all([
+    const [incomeRes, expensesRes, manualIncomeRes, bonusRes, activeIncomeRes] = await Promise.all([
         window.db.from('appointment_history')
             .select('price, visit_date')
             .gte('visit_date', start)
@@ -128,10 +128,18 @@ async function loadKPIs() {
             .gte('date', start)
             .lte('date', end),
         window.db.from('clients')
-            .select('bonus_balance')
+            .select('bonus_balance'),
+        window.db.from('appointments')
+            .select('price, appointment_date')
+            .in('status', ['done','completed','Виконано'])
+            .gte('appointment_date', start)
+            .lte('appointment_date', end),
     ]);
 
-    const incomeRows       = incomeRes.data       || [];
+    const incomeRows       = [
+        ...(incomeRes.data || []),
+        ...(activeIncomeRes.data || []).map(r => ({ price: r.price, visit_date: r.appointment_date }))
+    ];
     const expenseRows      = expensesRes.data      || [];
     const manualIncomeRows = manualIncomeRes.data  || [];
 

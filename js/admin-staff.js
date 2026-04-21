@@ -478,20 +478,27 @@ document.addEventListener('click', e => {
 });
 
 async function buildMonthReportData() {
-    const now = new Date();
-    const monthStart = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
-    const monthEnd   = localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-    const { data: appts } = await window.db
-        .from('appointment_history').select('master_id, price')
-        .gte('visit_date', monthStart).lte('visit_date', monthEnd);
+    const selYM = localStorage.getItem('wella_current_month');
+    let y, m;
+    if (selYM) { [y,m] = selYM.split('-').map(Number); }
+    else { const n=new Date(); y=n.getFullYear(); m=n.getMonth()+1; }
+    const monthStart = `${y}-${String(m).padStart(2,'0')}-01`;
+    const monthEnd   = localDate(new Date(y, m, 0));
+    const monthLabel = new Date(y, m-1, 1).toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+
+    const [{ data: histAppts }, { data: activeAppts }] = await Promise.all([
+        window.db.from('appointment_history').select('master_id, price').gte('visit_date', monthStart).lte('visit_date', monthEnd),
+        window.db.from('appointments').select('master_id, price').in('status',['done','completed','Виконано']).gte('appointment_date', monthStart).lte('appointment_date', monthEnd),
+    ]);
+
     const apptMap = {};
-    (appts || []).forEach(a => {
+    [...(histAppts||[]), ...(activeAppts||[])].forEach(a => {
         if (!a.master_id) return;
         if (!apptMap[a.master_id]) apptMap[a.master_id] = { count: 0, revenue: 0 };
         apptMap[a.master_id].count++;
         apptMap[a.master_id].revenue += parseFloat(a.price || 0);
     });
-    return { apptMap, month: now.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' }) };
+    return { apptMap, month: monthLabel };
 }
 
 window.downloadLastMonthCSV = async function() {

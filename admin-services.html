@@ -65,6 +65,11 @@
         .svc-toggle input:checked + .svc-slider:before { transform:translateX(16px); background:#818cf8; }
     </style>
     <style>@media(max-width:767px){input[placeholder*="Пошук"],input[placeholder*="пошук"],input[placeholder*="пошу"]{font-size:9px!important;padding-top:6px!important;padding-bottom:6px!important}}</style>
+    <style>
+        @media (max-width:640px){input,select,textarea{font-size:16px!important;}}
+        @keyframes pgFadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+        main,#main-content,.main-content{animation:pgFadeIn .25s ease}
+    </style>
     <style>html{visibility:hidden}</style>
 </head>
 <body class="flex min-h-screen">
@@ -139,7 +144,15 @@
 <main class="flex-1 min-w-0 lg:ml-64 pb-20 lg:pb-0 p-5 lg:p-8">
 
     <!-- HEADER -->
-    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <!-- Mobile: title + button in one row -->
+    <div class="flex items-center justify-between mb-3 lg:hidden">
+        <h1 class="text-lg font-black text-white">Послуги</h1>
+        <button onclick="openNew()" class="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 flex-shrink-0">
+            <i class="fa-solid fa-plus text-xs"></i> Нова
+        </button>
+    </div>
+    <!-- Desktop header -->
+    <header class="hidden lg:flex lg:flex-row lg:items-center justify-between gap-4 mb-8">
         <div>
             <h2 class="text-2xl font-extrabold text-white tracking-tight">Послуги</h2>
             <p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">
@@ -149,11 +162,11 @@
         <div class="flex items-center gap-3 flex-wrap">
             <button id="export-svc-btn" onclick="exportServicesCSV()" class="hidden glass-panel px-4 py-3 rounded-xl text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition">
                 <i class="fa-solid fa-file-csv text-zinc-500"></i>
-                <span class="hidden sm:inline">Експорт CSV</span>
+                <span>Експорт CSV</span>
             </button>
             <button onclick="openNew()" class="neo-gradient px-5 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2 hover:opacity-90 transition">
                 <i class="fa-solid fa-plus"></i>
-                <span class="hidden sm:inline">Нова послуга</span>
+                <span>Нова послуга</span>
             </button>
         </div>
     </header>
