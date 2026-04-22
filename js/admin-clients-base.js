@@ -90,30 +90,49 @@ async function loadClients() {
         return;
     }
 
-    // 2. Fetch all appointment_history for LTV/visits/last date
-    const { data: history } = await window.db
-        .from('appointment_history')
-        .select('client_id, price, visit_date');
+    // 2. Fetch appointment_history + completed appointments + staff names in parallel
+    const [histRes, completedRes, staffRes] = await Promise.all([
+        window.db.from('appointment_history').select('client_id, price, visit_date, master_id'),
+        window.db.from('appointments').select('client_id, price, appointment_date, master_id')
+            .in('status', ['done','completed','Виконано']),
+        window.db.from('staff').select('id, name')
+    ]);
 
-    // Build lookup: client_id → { ltv, visits, lastDate }
+    // Staff name lookup
+    const staffNameMap = Object.fromEntries((staffRes.data || []).map(s => [s.id, s.name]));
+
+    // Build lookup: client_id → { ltv, visits, lastDate, masterCount:{id:n} }
     const statsMap = {};
-    (history || []).forEach(h => {
-        if (!statsMap[h.client_id]) statsMap[h.client_id] = { ltv: 0, visits: 0, lastDate: null };
-        statsMap[h.client_id].ltv    += (h.price || 0);
-        statsMap[h.client_id].visits += 1;
-        if (!statsMap[h.client_id].lastDate || h.visit_date > statsMap[h.client_id].lastDate)
-            statsMap[h.client_id].lastDate = h.visit_date;
-    });
+    function addRow(clientId, price, date, masterId) {
+        if (!clientId) return;
+        if (!statsMap[clientId]) statsMap[clientId] = { ltv: 0, visits: 0, lastDate: null, masterCount: {} };
+        statsMap[clientId].ltv    += (price || 0);
+        statsMap[clientId].visits += 1;
+        if (!statsMap[clientId].lastDate || date > statsMap[clientId].lastDate)
+            statsMap[clientId].lastDate = date;
+        if (masterId) statsMap[clientId].masterCount[masterId] = (statsMap[clientId].masterCount[masterId] || 0) + 1;
+    }
+    (histRes.data || []).forEach(h => addRow(h.client_id, h.price, h.visit_date, h.master_id));
+    (completedRes.data || []).forEach(a => addRow(a.client_id, a.price, a.appointment_date, a.master_id));
+
+    // Determine favorite master per client
+    function getFavMaster(clientId) {
+        const mc = statsMap[clientId]?.masterCount || {};
+        let bestId = null, bestCount = 0;
+        Object.entries(mc).forEach(([id, count]) => { if (count > bestCount) { bestCount = count; bestId = id; } });
+        return bestId ? { id: bestId, name: staffNameMap[bestId] || '—' } : null;
+    }
 
     // Determine "new this month" threshold
     const selYM = localStorage.getItem('wella_current_month') || `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
 
     _allClients = clients.map(c => ({
         ...c,
-        _ltv:      statsMap[c.id]?.ltv      || 0,
-        _visits:   statsMap[c.id]?.visits   || 0,
-        _lastDate: statsMap[c.id]?.lastDate || null,
-        _isNew:    (c.created_at || '').startsWith(selYM)
+        _ltv:       statsMap[c.id]?.ltv      || 0,
+        _visits:    statsMap[c.id]?.visits   || 0,
+        _lastDate:  statsMap[c.id]?.lastDate || null,
+        _isNew:     (c.created_at || '').startsWith(selYM),
+        _favMaster: getFavMaster(c.id)
     }));
 
     // Header counters
@@ -175,6 +194,7 @@ function renderTable() {
         const initials = (c.full_name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
         const lastStr  = c._lastDate ? formatDate(c._lastDate) : '—';
         const vipHtml  = c.vip_status ? `<span class="vip-badge ml-2">VIP</span>` : '';
+        const favHtml  = c._favMaster ? `<span class="text-[8px] text-rose-400 font-bold mt-0.5 flex items-center gap-1"><i class="fa-solid fa-heart text-[7px]"></i>${c._favMaster.name}</span>` : '';
         return `
         <tr class="client-row" onclick="openClientModal('${c.id}')">
             <td class="px-6">
@@ -183,6 +203,7 @@ function renderTable() {
                     <div>
                         <p class="text-xs font-bold text-white flex items-center gap-1.5">${c.full_name || '—'}${vipHtml}</p>
                         <p class="text-[9px] text-zinc-600 mt-0.5">${c.instagram || c.phone || '—'}</p>
+                        ${favHtml}
                     </div>
                 </div>
             </td>
@@ -370,20 +391,43 @@ function fillForm(c) {
     document.getElementById('modal-avg').textContent     = `₴${avg.toLocaleString()}`;
     document.getElementById('modal-last-date').textContent = c._lastDate ? formatDate(c._lastDate) : '—';
     document.getElementById('modal-visits-count').textContent = `${c._visits} візитів`;
+
+    // Favorite master
+    const favEl = document.getElementById('modal-fav-master');
+    if (favEl) {
+        if (c._favMaster) {
+            favEl.innerHTML = `<i class="fa-solid fa-heart text-rose-400 text-[9px]"></i><span>${c._favMaster.name}</span>`;
+            favEl.classList.remove('hidden');
+        } else {
+            favEl.classList.add('hidden');
+        }
+    }
 }
 
 async function renderHistoryPanel(client) {
     const histList = document.getElementById('history-list');
     histList.innerHTML = `<p class="text-zinc-600 text-xs font-bold text-center py-6">Завантаження...</p>`;
 
-    const { data: hist } = await window.db
-        .from('appointment_history')
-        .select('*, staff(name)')
-        .eq('client_id', client.id)
-        .order('visit_date', { ascending: false })
-        .limit(30);
+    // Query both tables + staff names in parallel
+    const [histRes2, activeRes, staffRes2] = await Promise.all([
+        window.db.from('appointment_history')
+            .select('service_name, price, visit_date, master_id, payment_method')
+            .eq('client_id', client.id),
+        window.db.from('appointments')
+            .select('service_name, price, appointment_date, master_id, payment_method')
+            .eq('client_id', client.id)
+            .in('status', ['done','completed','Виконано']),
+        window.db.from('staff').select('id, name')
+    ]);
+    const sMap = Object.fromEntries((staffRes2.data || []).map(s => [s.id, s.name]));
+    const combined = [
+        ...(histRes2.data || []).map(h => ({ service_name: h.service_name, price: h.price, _date: h.visit_date, master_id: h.master_id, payment_method: h.payment_method })),
+        ...(activeRes.data || []).map(a => ({ service_name: a.service_name, price: a.price, _date: a.appointment_date, master_id: a.master_id, payment_method: a.payment_method }))
+    ].sort((a, b) => (b._date || '').localeCompare(a._date || '')).slice(0, 30);
 
-    if (!hist || hist.length === 0) {
+    const hist = combined; // reuse variable name below
+
+    if (!hist.length) {
         histList.innerHTML = `<p class="text-zinc-700 text-xs font-bold text-center py-10 uppercase tracking-widest">Немає записів</p>`;
         return;
     }
@@ -392,7 +436,7 @@ async function renderHistoryPanel(client) {
         <div class="hist-item py-3 flex justify-between items-start gap-3">
             <div class="flex-1 min-w-0">
                 <p class="text-[11px] font-bold text-white truncate">${h.service_name || '—'}</p>
-                <p class="text-[9px] text-zinc-600 mt-0.5">${h.staff?.name || '—'} · ${formatDate(h.visit_date)}</p>
+                <p class="text-[9px] text-zinc-600 mt-0.5">${sMap[h.master_id] || '—'} · ${formatDate(h._date)}</p>
             </div>
             <div class="text-right flex-shrink-0">
                 <p class="text-xs font-black text-white">₴${(h.price || 0).toLocaleString()}</p>

@@ -76,6 +76,7 @@
         .tab-btn { padding:8px 18px; border-radius:8px; font-size:11px; font-weight:800; text-transform:uppercase;
             letter-spacing:0.08em; cursor:pointer; transition:all 0.2s; color:#52525b; border:1px solid transparent; }
         .tab-btn.active { background:rgba(244,63,94,0.12); border-color:rgba(244,63,94,0.3); color:#f43f5e; }
+        .mrev-filter-btn.active { background:rgba(244,63,94,0.12); border-color:rgba(244,63,94,0.3); color:#f43f5e; }
 
         /* Toggle */
         .perm-toggle { position:relative; display:inline-block; width:40px; height:22px; }
@@ -619,6 +620,20 @@
             </div>
             <!-- Reviews tab -->
             <div id="modal-reviews-tab" class="hidden">
+                <!-- Rating filter + date sort -->
+                <div class="flex items-center gap-2 mb-3 flex-wrap">
+                    <div class="flex items-center gap-1">
+                        <button onclick="filterModalReviews(0)" id="mrev-f-0" class="mrev-filter-btn active px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-white/8 text-zinc-400 hover:text-white transition">Всі</button>
+                        <button onclick="filterModalReviews(5)" id="mrev-f-5" class="mrev-filter-btn px-2.5 py-1 rounded-lg text-[9px] font-black border border-white/8 text-zinc-400 hover:text-white transition">★5</button>
+                        <button onclick="filterModalReviews(4)" id="mrev-f-4" class="mrev-filter-btn px-2.5 py-1 rounded-lg text-[9px] font-black border border-white/8 text-zinc-400 hover:text-white transition">★4</button>
+                        <button onclick="filterModalReviews(3)" id="mrev-f-3" class="mrev-filter-btn px-2.5 py-1 rounded-lg text-[9px] font-black border border-white/8 text-zinc-400 hover:text-white transition">★3</button>
+                        <button onclick="filterModalReviews(2)" id="mrev-f-2" class="mrev-filter-btn px-2.5 py-1 rounded-lg text-[9px] font-black border border-white/8 text-zinc-400 hover:text-white transition">★2</button>
+                        <button onclick="filterModalReviews(1)" id="mrev-f-1" class="mrev-filter-btn px-2.5 py-1 rounded-lg text-[9px] font-black border border-white/8 text-zinc-400 hover:text-white transition">★1</button>
+                    </div>
+                    <button onclick="toggleModalRevSort()" id="mrev-sort-btn" class="ml-auto px-2.5 py-1 rounded-lg text-[9px] font-black border border-white/8 text-zinc-400 hover:text-white transition flex items-center gap-1">
+                        <i class="fa-solid fa-arrow-down-wide-short text-[9px]"></i> Новіші
+                    </button>
+                </div>
                 <div id="modal-reviews-list" class="space-y-3"></div>
             </div>
             <!-- Payments tab -->
