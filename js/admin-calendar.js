@@ -427,8 +427,8 @@ function renderWeek(){
     const today=localDate(new Date());
     let days;
     if(isMobile && filterMId){
-        // 4-day view when specific master selected on mobile
-        days=Array.from({length:4},(_,i)=>{
+        // 3-day view when specific master selected on mobile
+        days=Array.from({length:3},(_,i)=>{
             const d=new Date(curDate.getFullYear(),curDate.getMonth(),curDate.getDate()+i);
             return {d,str:localDate(d)};
         });

@@ -60,7 +60,11 @@
       "Bash(grep -rln \"mob-more-itm\" *.html)",
       "Bash(gh pr create --title 'Mobile UX fixes, permissions system, help modal, client features' --body ' *)",
       "Bash(gh pr create --title 'Admin panel: notifications bell, chart fixes, mobile UX, shift blocking & more' --body ' *)",
-      "PowerShell(gh auth status 2>&1)"
+      "PowerShell(gh auth status 2>&1)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh pr *)"
     ]
   }
 }

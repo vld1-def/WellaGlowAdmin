@@ -203,7 +203,6 @@ function renderTable() {
             <td class="px-6">
                 <div>
                     <p class="text-xs font-bold text-white flex items-center gap-1.5">${c.full_name || '—'}${vipHtml}</p>
-                    <p class="text-[9px] text-zinc-600 mt-0.5">${c.instagram || c.phone || '—'}</p>
                     ${favHtml}
                 </div>
             </td>
@@ -422,14 +421,10 @@ async function renderHistoryPanel(client) {
     const sMap = Object.fromEntries((staffRes2.data || []).map(s => [s.id, s.name]));
     const svcMap = Object.fromEntries((svcRes.data || []).map(s => [s.id, s.name]));
     const pickName = r => r.service_name || r.service || svcMap[r.service_id] || '—';
-    // Include all appointments except cancelled
-    const activeFiltered = (activeRes.data || []).filter(a => {
-        const s = (a.status || '').toLowerCase();
-        return s !== 'cancelled' && s !== 'скасовано' && a.status !== 'Скасовано';
-    });
+    // Include all appointments (including cancelled/no-show) so status is visible
     const combined = [
-        ...(histRes2.data || []).map(h => ({ service_name: pickName(h), price: h.price, _date: h.visit_date, master_id: h.master_id, payment_method: h.payment_method || h.payment || '' })),
-        ...activeFiltered.map(a => ({ service_name: pickName(a), price: a.price, _date: a.appointment_date, master_id: a.master_id, payment_method: a.payment_method || a.payment || '' }))
+        ...(histRes2.data || []).map(h => ({ service_name: pickName(h), price: h.price, _date: h.visit_date, master_id: h.master_id, payment_method: h.payment_method || h.payment || '', status: h.status || 'done' })),
+        ...(activeRes.data || []).map(a => ({ service_name: pickName(a), price: a.price, _date: a.appointment_date, master_id: a.master_id, payment_method: a.payment_method || a.payment || '', status: a.status || '' }))
     ].sort((a, b) => (b._date || '').localeCompare(a._date || '')).slice(0, 30);
 
     const hist = combined; // reuse variable name below
@@ -439,11 +434,25 @@ async function renderHistoryPanel(client) {
         return;
     }
 
+    const statusBadge = (st) => {
+        const s = String(st || '').toLowerCase();
+        if (s === 'cancelled' || s === 'скасовано' || st === 'Скасовано')
+            return `<span class="inline-block text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-rose-500/12 text-rose-400 border border-rose-500/20">Скасовано</span>`;
+        if (s === 'no_show' || s === 'noshow' || s === 'не зявився' || st === 'Не зявився' || st === "Не з'явився")
+            return `<span class="inline-block text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-amber-500/12 text-amber-400 border border-amber-500/25">Не зявився</span>`;
+        if (s === 'confirmed' || s === 'підтверджено' || st === 'Підтверджено')
+            return `<span class="inline-block text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-amber-400/12 text-amber-300 border border-amber-400/20">Підтверджено</span>`;
+        if (s === 'wait' || s === 'pending' || s === 'очікування' || st === 'Очікування')
+            return `<span class="inline-block text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-indigo-500/12 text-indigo-300 border border-indigo-500/20">Очікування</span>`;
+        return `<span class="inline-block text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-emerald-500/12 text-emerald-400 border border-emerald-500/20">Виконано</span>`;
+    };
+
     histList.innerHTML = hist.map(h => `
         <div class="hist-item py-3 flex justify-between items-start gap-3">
             <div class="flex-1 min-w-0">
                 <p class="text-[11px] font-bold text-white truncate">${h.service_name || '—'}</p>
                 <p class="text-[9px] text-zinc-600 mt-0.5">${sMap[h.master_id] || '—'} · ${formatDate(h._date)}</p>
+                <div class="mt-1">${statusBadge(h.status)}</div>
             </div>
             <div class="text-right flex-shrink-0">
                 <p class="text-xs font-black text-white">₴${(h.price || 0).toLocaleString()}</p>
