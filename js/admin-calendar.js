@@ -571,14 +571,21 @@ function apptBlockHTML(a){
     const textColor=isNoShow?'#fcd34d':(isDone?'#a1a1aa':'#fff');
     const sh=startHour(a),sm=startMin(a),eh=endHour(a),em=endMin(a);
     const durMin=(eh!==null&&sh!==null)?((eh*60+em)-(sh*60+sm)):60;
+    const isMob=window.innerWidth<=639;
     // Match CSS: @media(max-width:639px) .tl-cell { min-height:36px }
-    const cellPx = window.innerWidth <= 639 ? 43 : 38;
+    const cellPx = isMob ? 43 : 38;
     const height = Math.max(Math.round(durMin / 30 * cellPx) - 2, cellPx * 0.7);
-    const t=a._start?a._start.slice(0,5):'';
+    const startStr=a._start?a._start.slice(0,5):'';
+    const endStr=(eh!==null)?`${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}`:'';
+    const timeRange=endStr?`${startStr} – ${endStr}`:startStr;
+    const fsTime=isMob?11:12;
+    const fsName=isMob?11:12;
+    const fsSvc=isMob?10:11;
     return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}28;border-left-color:${color};z-index:3;overflow:hidden"
         onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
-        <p style="font-size:11px;font-weight:800;color:${textColor};line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t} ${client?.full_name?.split(' ')[0]||'—'}</p>
-        ${durMin>30?`<p style="font-size:10px;color:${color}cc;line-height:1.3;word-break:break-word;white-space:normal;margin-top:2px">${a.service_name||svc?.name||''}</p>`:''}
+        <p style="font-size:${fsTime}px;font-weight:800;color:${textColor};line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${timeRange}${isNoShow?' ⚠':''}</p>
+        ${durMin>30?`<p style="font-size:${fsName}px;font-weight:700;color:${textColor};line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">${client?.full_name?.split(' ')[0]||'—'}</p>`:''}
+        ${durMin>60?`<p style="font-size:${fsSvc}px;color:${color}cc;line-height:1.3;word-break:break-word;white-space:normal;margin-top:1px">${a.service_name||svc?.name||''}</p>`:''}
     </div>`;
 }
 
@@ -598,6 +605,10 @@ function renderLanes(days, today){
         const color=mColor(s.id);
         const cells=days.map(({str})=>{
             const da=allAppts().filter(a=>a.master_id===s.id&&a._date===str);
+            const isMob=window.innerWidth<=639;
+            const fsTime=isMob?11:12;
+            const fsName=isMob?11:12;
+            const fsSvc=isMob?10:11;
             const cards=da.map(a=>{
                 const cl=clients.find(c=>c.id===a.client_id);
                 const sv=services.find(x=>x.id===a.service_id);
@@ -605,11 +616,15 @@ function renderLanes(days, today){
                 const isDone=a.status==='done'||a.status==='completed'||a.status==='Виконано';
                 const co=isNoShow?'#f59e0b':(isDone?'#52525b':mColor(a.master_id));
                 const mainCol=isNoShow?'#fcd34d':'#fff';
-                const t=a._start?a._start.slice(0,5):'';
+                const sh=startHour(a),sm=startMin(a),eh=endHour(a),em=endMin(a);
+                const startStr=a._start?a._start.slice(0,5):'';
+                const endStr=(eh!==null)?`${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}`:'';
+                const timeRange=endStr?`${startStr} – ${endStr}`:startStr;
                 return `<div class="appt-card" style="background:${co}18;border-left-color:${co};padding:6px 8px"
                     onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
-                    <p style="font-size:11px;font-weight:800;color:${mainCol};line-height:1.25" class="truncate">${t} ${cl?.full_name?.split(' ')[0]||'—'}${isNoShow?' ⚠':''}</p>
-                    <p style="font-size:10px;color:${co}cc;line-height:1.3" class="truncate">${a.service_name||sv?.name||''}</p>
+                    <p style="font-size:${fsTime}px;font-weight:800;color:${mainCol};line-height:1.25" class="truncate">${timeRange}${isNoShow?' ⚠':''}</p>
+                    <p style="font-size:${fsName}px;font-weight:700;color:${mainCol};line-height:1.25" class="truncate">${cl?.full_name?.split(' ')[0]||'—'}</p>
+                    <p style="font-size:${fsSvc}px;color:${co}cc;line-height:1.3" class="truncate">${a.service_name||sv?.name||''}</p>
                 </div>`;
             }).join('');
             return `<div class="lane-cell" style="height:auto;min-height:72px" ondblclick="openApptDrawer('${str}','','${s.id}')">${cards}</div>`;
@@ -1419,7 +1434,9 @@ window.openShiftModal=function(dayStr='',hour=null,masterId=''){
     document.getElementById('sh-date-wrap').classList.remove('hidden');
     document.getElementById('sh-note').value='';
     document.getElementById('sh-dow-wrap').classList.add('hidden');
-    selectedDow=null; _renderDow();
+    selectedDows.clear(); _renderDow();
+    // Reset all-day wrapper visibility (for cases where "Перерва" was last selected)
+    document.getElementById('sh-allday-wrap').classList.remove('hidden');
 
     const modal=document.getElementById('shift-modal');
     modal.style.opacity='1'; modal.style.pointerEvents='all';
@@ -1435,6 +1452,22 @@ window.closeShiftModal=function(){
 window.selectShiftType=function(type){
     shiftType=type;
     document.querySelectorAll('.shift-type-btn[data-type]').forEach(b=>b.classList.toggle('active',b.dataset.type===type));
+    // "Перерва" is always a time-range, so hide the all-day toggle and force time wrap visible
+    const alldayWrap=document.getElementById('sh-allday-wrap');
+    const alldayInput=document.getElementById('sh-allday');
+    const timeWrap=document.getElementById('sh-time-wrap');
+    if(type==='break'){
+        if(alldayInput.checked){ alldayInput.checked=false; }
+        alldayWrap.classList.add('hidden');
+        timeWrap.classList.remove('hidden');
+        // ensure hour options are built
+        const sh=document.getElementById('sh-start-h');
+        if(!sh.options.length){ buildHourOptions('sh-start-h',9); buildHourOptions('sh-end-h',10); }
+    } else {
+        alldayWrap.classList.remove('hidden');
+        // restore correct visibility of time wrap based on current all-day state
+        timeWrap.classList.toggle('hidden', alldayInput.checked);
+    }
 };
 
 window.selectShiftRec=function(rec){
@@ -1447,14 +1480,14 @@ window.selectShiftRec=function(rec){
         dowWrap.classList.remove('hidden');
     } else {
         dowWrap.classList.add('hidden');
-        selectedDow=null; _renderDow();
+        selectedDows.clear(); _renderDow();
     }
 };
 
-let selectedDow=null;
+let selectedDows=new Set();
 function _renderDow(){
     document.querySelectorAll('.dow-btn').forEach(b=>{
-        const active=selectedDow!==null&&parseInt(b.dataset.dow)===selectedDow;
+        const active=selectedDows.has(parseInt(b.dataset.dow));
         b.classList.toggle('bg-rose-500/15',active);
         b.classList.toggle('border-rose-500/40',active);
         b.classList.toggle('text-rose-400',active);
@@ -1462,8 +1495,9 @@ function _renderDow(){
     });
 }
 window.selectShiftDow=function(dow){
-    // toggle — click same day again to deselect
-    selectedDow=(selectedDow===dow)?null:dow;
+    // multi-select toggle — click same day again to deselect
+    if(selectedDows.has(dow)) selectedDows.delete(dow);
+    else selectedDows.add(dow);
     _renderDow();
 };
 
@@ -1496,22 +1530,22 @@ window.saveShift=async function(){
         note:document.getElementById('sh-note').value.trim()||null,
     };
     const dateVal=document.getElementById('sh-date').value;
+    let rows=[];
     if(shiftRec==='once'){
         if(!dateVal){ alert('Вкажіть дату'); return; }
-        payload.shift_date=dateVal;
-        payload.day_of_week=null;
-    } else { // always — optionally on a specific weekday
-        payload.shift_date=null;
-        if(selectedDow){
-            // block every [day of week] — store as weekly recurrence
-            payload.recurrence='weekly';
-            payload.day_of_week=selectedDow;
+        rows.push({...payload, shift_date:dateVal, day_of_week:null});
+    } else { // always — optionally on one or more weekdays
+        if(selectedDows.size){
+            // one row per selected weekday
+            for(const dow of selectedDows){
+                rows.push({...payload, recurrence:'weekly', shift_date:null, day_of_week:dow});
+            }
         } else {
-            payload.day_of_week=null;
+            rows.push({...payload, shift_date:null, day_of_week:null});
         }
     }
 
-    const {error}=await window.db.from('staff_shifts').insert([payload]);
+    const {error}=await window.db.from('staff_shifts').insert(rows);
     if(error){ alert('Помилка: '+error.message); return; }
     closeShiftModal();
     await loadShifts();

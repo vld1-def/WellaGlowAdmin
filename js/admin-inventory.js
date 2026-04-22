@@ -267,6 +267,12 @@ window.openAddItem=function(){
     document.getElementById('f-unit').value='шт.';
     document.getElementById('f-purchase-row').classList.remove('hidden');
     document.getElementById('f-purchase-amt').value='';
+    // Populate name datalist with existing unique names (so repeated names suggest)
+    const dl=document.getElementById('f-name-datalist');
+    if(dl){
+        const unique=[...new Set((items||[]).map(i=>i.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uk'));
+        dl.innerHTML=unique.map(n=>`<option value="${String(n).replace(/"/g,'&quot;')}"></option>`).join('');
+    }
     onModalCatChange();
     document.getElementById('item-modal').classList.add('open');
 };
