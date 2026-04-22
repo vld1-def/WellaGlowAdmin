@@ -9,6 +9,7 @@ let staffFilterId = new URLSearchParams(window.location.search).get('staff') || 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     await loadData();
+    populateMasterFilter();
     renderStaffFilterBanner();
     render();
     // show export button for owner
@@ -36,8 +37,27 @@ window.clearStaffFilter = function() {
     staffFilterId = '';
     history.replaceState({}, '', 'admin-services.html');
     document.getElementById('staff-filter-banner')?.classList.add('hidden');
+    const sel = document.getElementById('svc-master-filter');
+    if (sel) sel.value = '';
     render();
 };
+
+window.setStaffFilter = function(id) {
+    staffFilterId = id || '';
+    if (staffFilterId) {
+        renderStaffFilterBanner();
+    } else {
+        document.getElementById('staff-filter-banner')?.classList.add('hidden');
+    }
+    render();
+};
+
+function populateMasterFilter() {
+    const sel = document.getElementById('svc-master-filter');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Всі майстри</option>' +
+        allStaff.map(s => `<option value="${s.id}" ${s.id === staffFilterId ? 'selected' : ''}>${s.name}</option>`).join('');
+}
 
 async function loadData() {
     const [r1, r2, r3] = await Promise.all([
