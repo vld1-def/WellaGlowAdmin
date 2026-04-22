@@ -195,20 +195,16 @@ function renderTable() {
     }
 
     tbody.innerHTML = list.map(c => {
-        const initials = (c.full_name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
         const lastStr  = c._lastDate ? formatDate(c._lastDate) : '—';
         const vipHtml  = c.vip_status ? `<span class="vip-badge ml-2">VIP</span>` : '';
         const favHtml  = c._favMaster ? `<span class="text-[8px] text-rose-400 font-bold mt-0.5 flex items-center gap-1"><i class="fa-solid fa-heart text-[7px]"></i>${c._favMaster.name}</span>` : '';
         return `
         <tr class="client-row" onclick="openClientModal('${c.id}')">
             <td class="px-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-black text-xs text-white neo-gradient">${initials}</div>
-                    <div>
-                        <p class="text-xs font-bold text-white flex items-center gap-1.5">${c.full_name || '—'}${vipHtml}</p>
-                        <p class="text-[9px] text-zinc-600 mt-0.5">${c.instagram || c.phone || '—'}</p>
-                        ${favHtml}
-                    </div>
+                <div>
+                    <p class="text-xs font-bold text-white flex items-center gap-1.5">${c.full_name || '—'}${vipHtml}</p>
+                    <p class="text-[9px] text-zinc-600 mt-0.5">${c.instagram || c.phone || '—'}</p>
+                    ${favHtml}
                 </div>
             </td>
             <td class="px-4"><span class="text-xs font-black text-white">₴${c._ltv.toLocaleString()}</span></td>
@@ -422,8 +418,8 @@ async function renderHistoryPanel(client) {
             .eq('client_id', client.id),
         window.db.from('staff').select('id, name')
     ]);
-    if (histRes2.error) console.error('history panel: appointment_history err', histRes2.error);
-    if (activeRes.error) console.error('history panel: appointments err', activeRes.error);
+    if (histRes2.error) console.error('history panel: appointment_history err', histRes2.error.message, histRes2.error.details, histRes2.error.hint, histRes2.error.code);
+    if (activeRes.error) console.error('history panel: appointments err', activeRes.error.message, activeRes.error.details, activeRes.error.hint, activeRes.error.code);
     console.log('[history panel] client', client.id, 'hist rows:', (histRes2.data||[]).length, 'appts rows:', (activeRes.data||[]).length);
 
     const sMap = Object.fromEntries((staffRes2.data || []).map(s => [s.id, s.name]));

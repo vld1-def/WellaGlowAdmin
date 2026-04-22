@@ -216,7 +216,7 @@ window.toggleDot=function(e, itemId){
     portal.innerHTML =
         dotItem('fa-solid fa-pen',              'Редагувати',  `openEditItem('${itemId}')`) +
         dotItem('fa-solid fa-plus',             'Поповнити',   `openRestockModal('${itemId}')`) +
-        dotItem('fa-solid fa-arrow-down-to-bracket','Списати', `openWriteoffModal('${itemId}')`) +
+        dotItem('fa-solid fa-circle-minus',     'Списати',     `openWriteoffModal('${itemId}')`) +
         dotItem('fa-solid fa-cart-plus',        'Замовити',    `openOrderModal('${itemId}')`) +
         dotItem('fa-solid fa-trash',            'Видалити',    `deleteItem('${itemId}')`, true);
 
