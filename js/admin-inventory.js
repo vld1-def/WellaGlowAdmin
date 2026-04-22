@@ -537,9 +537,18 @@ function saveProcList(){
 }
 
 function renderProcList(){
+    // Update badge counts (desktop + mobile)
+    const cnt = procList.length;
+    ['proc-count-badge','proc-count-badge-m'].forEach(bid=>{
+        const b=document.getElementById(bid);
+        if(!b) return;
+        b.textContent = cnt>99?'99+':cnt;
+        b.classList.toggle('hidden', cnt===0);
+    });
     const el=document.getElementById('proc-list');
+    if(!el) return;
     if(!procList.length){
-        el.innerHTML='<p class="text-xs text-zinc-600 py-2">Список порожній</p>'; return;
+        el.innerHTML='<p class="text-xs text-zinc-600 text-center py-6">Список порожній</p>'; return;
     }
     el.innerHTML=procList.map((p,idx)=>`
         <div class="proc-item">
@@ -569,6 +578,13 @@ window.updateProcQty=function(id,val){
 };
 window.removeFromProc=function(id){
     procList=procList.filter(p=>p.id!==id); saveProcList(); renderProcList();
+};
+window.openProcModal=function(){
+    renderProcList();
+    document.getElementById('proc-modal').classList.add('open');
+};
+window.closeProcModal=function(){
+    document.getElementById('proc-modal').classList.remove('open');
 };
 
 // ══ PDF ═══════════════════════════════════════════════

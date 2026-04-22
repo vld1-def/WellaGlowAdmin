@@ -53,6 +53,13 @@
             text-transform:uppercase;letter-spacing:.08em;cursor:pointer;transition:all .2s;
             border:1.5px solid rgba(255,255,255,.07);color:#52525b;white-space:nowrap}
         .master-pill.all-pill{font-size:11px;padding:7px 16px;letter-spacing:.1em}
+        /* Current-time indicator */
+        .tl-now-line{position:absolute;left:0;right:0;height:0;pointer-events:none;z-index:5;display:flex;align-items:center}
+        .tl-now-label{width:44px;margin-right:4px;font-size:9px;font-weight:900;color:#fff;background:#f43f5e;
+            padding:2px 4px;border-radius:5px;text-align:center;box-shadow:0 2px 6px rgba(244,63,94,.55);line-height:1}
+        .tl-now-dot{width:8px;height:8px;background:#f43f5e;border-radius:50%;flex-shrink:0;
+            box-shadow:0 0 0 3px rgba(244,63,94,.2);margin-left:-6px}
+        .tl-now-rule{flex:1;height:2px;background:#f43f5e;box-shadow:0 0 8px rgba(244,63,94,.5)}
 
         /* Drawers */
         #appt-drawer,#detail-drawer{transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
@@ -121,6 +128,7 @@
         .s-wait   {background:rgba(99,102,241,.12);color:#818cf8;border:1px solid rgba(99,102,241,.2)}
         .s-confirm{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.2)}
         .s-cancel {background:rgba(244,63,94,.08);color:#f43f5e;border:1px solid rgba(244,63,94,.15)}
+        .s-noshow {background:rgba(251,191,36,.12);color:#f59e0b;border:1px solid rgba(251,191,36,.25)}
 
         /* Drag hint */
         #drag-hint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
@@ -465,6 +473,7 @@
             <button id="d-done"   class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-400/10 border border-emerald-400/20 transition flex items-center justify-center gap-2"><i class="fa-solid fa-check text-xs"></i> Виконано</button>
             <button id="d-cancel" class="py-3 px-3 rounded-xl text-[10px] font-black text-rose-500 hover:bg-rose-500/10 border border-rose-500/15 transition"><i class="fa-solid fa-xmark text-xs"></i></button>
         </div>
+        <button id="d-noshow" class="w-full mt-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-amber-400 hover:bg-amber-400/10 border border-amber-400/20 transition flex items-center justify-center gap-2"><i class="fa-solid fa-user-slash text-xs"></i> Не з'явився</button>
     </div>
 </div>
 
