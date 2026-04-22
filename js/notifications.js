@@ -252,7 +252,7 @@
                 body:  a.service_name || 'Запис',
                 time:  new Date().toISOString(),
                 read:  false,
-                link:  'admin-calendar.html',
+                link:  `admin-calendar.html?openAppt=${a.id}`,
             });
         });
         saveKnownAppts(knownAppts);
