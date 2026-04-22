@@ -90,13 +90,17 @@ async function loadClients() {
         return;
     }
 
-    // 2. Fetch appointment_history + completed appointments + staff names in parallel
+    // 2. Fetch appointment_history + non-cancelled appointments + staff names in parallel
     const [histRes, completedRes, staffRes] = await Promise.all([
         window.db.from('appointment_history').select('client_id, price, visit_date, master_id'),
-        window.db.from('appointments').select('client_id, price, appointment_date, master_id')
-            .in('status', ['done','completed','Виконано']),
+        window.db.from('appointments').select('client_id, price, appointment_date, master_id, status'),
         window.db.from('staff').select('id, name')
     ]);
+    // Filter out cancelled appointments client-side (status values vary: 'cancelled'/'Скасовано')
+    const activeAppts = (completedRes.data || []).filter(a => {
+        const s = (a.status || '').toLowerCase();
+        return s !== 'cancelled' && s !== 'скасовано' && a.status !== 'Скасовано';
+    });
 
     // Staff name lookup
     const staffNameMap = Object.fromEntries((staffRes.data || []).map(s => [s.id, s.name]));
@@ -113,7 +117,7 @@ async function loadClients() {
         if (masterId) statsMap[clientId].masterCount[masterId] = (statsMap[clientId].masterCount[masterId] || 0) + 1;
     }
     (histRes.data || []).forEach(h => addRow(h.client_id, h.price, h.visit_date, h.master_id));
-    (completedRes.data || []).forEach(a => addRow(a.client_id, a.price, a.appointment_date, a.master_id));
+    activeAppts.forEach(a => addRow(a.client_id, a.price, a.appointment_date, a.master_id));
 
     // Determine favorite master per client
     function getFavMaster(clientId) {
@@ -414,15 +418,23 @@ async function renderHistoryPanel(client) {
             .select('service_name, price, visit_date, master_id, payment_method')
             .eq('client_id', client.id),
         window.db.from('appointments')
-            .select('service_name, price, appointment_date, master_id, payment_method')
-            .eq('client_id', client.id)
-            .in('status', ['done','completed','Виконано']),
+            .select('service_name, price, appointment_date, master_id, payment_method, status')
+            .eq('client_id', client.id),
         window.db.from('staff').select('id, name')
     ]);
+    if (histRes2.error) console.error('history panel: appointment_history err', histRes2.error);
+    if (activeRes.error) console.error('history panel: appointments err', activeRes.error);
+    console.log('[history panel] client', client.id, 'hist rows:', (histRes2.data||[]).length, 'appts rows:', (activeRes.data||[]).length);
+
     const sMap = Object.fromEntries((staffRes2.data || []).map(s => [s.id, s.name]));
+    // Include all appointments except cancelled (so scheduled + completed both show)
+    const activeFiltered = (activeRes.data || []).filter(a => {
+        const s = (a.status || '').toLowerCase();
+        return s !== 'cancelled' && s !== 'скасовано' && a.status !== 'Скасовано';
+    });
     const combined = [
         ...(histRes2.data || []).map(h => ({ service_name: h.service_name, price: h.price, _date: h.visit_date, master_id: h.master_id, payment_method: h.payment_method })),
-        ...(activeRes.data || []).map(a => ({ service_name: a.service_name, price: a.price, _date: a.appointment_date, master_id: a.master_id, payment_method: a.payment_method }))
+        ...activeFiltered.map(a => ({ service_name: a.service_name, price: a.price, _date: a.appointment_date, master_id: a.master_id, payment_method: a.payment_method }))
     ].sort((a, b) => (b._date || '').localeCompare(a._date || '')).slice(0, 30);
 
     const hist = combined; // reuse variable name below
