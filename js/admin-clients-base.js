@@ -408,29 +408,28 @@ async function renderHistoryPanel(client) {
     const histList = document.getElementById('history-list');
     histList.innerHTML = `<p class="text-zinc-600 text-xs font-bold text-center py-6">Завантаження...</p>`;
 
-    // Query both tables + staff names in parallel
-    const [histRes2, activeRes, staffRes2] = await Promise.all([
-        window.db.from('appointment_history')
-            .select('service_name, price, visit_date, master_id, payment_method')
-            .eq('client_id', client.id),
-        window.db.from('appointments')
-            .select('service_name, price, appointment_date, master_id, payment_method, status')
-            .eq('client_id', client.id),
-        window.db.from('staff').select('id, name')
+    // Query both tables with SELECT * so we don't break on per-env schema differences
+    const [histRes2, activeRes, staffRes2, svcRes] = await Promise.all([
+        window.db.from('appointment_history').select('*').eq('client_id', client.id),
+        window.db.from('appointments').select('*').eq('client_id', client.id),
+        window.db.from('staff').select('id, name'),
+        window.db.from('services').select('id, name')
     ]);
     if (histRes2.error) console.error('history panel: appointment_history err', histRes2.error.message, histRes2.error.details, histRes2.error.hint, histRes2.error.code);
     if (activeRes.error) console.error('history panel: appointments err', activeRes.error.message, activeRes.error.details, activeRes.error.hint, activeRes.error.code);
     console.log('[history panel] client', client.id, 'hist rows:', (histRes2.data||[]).length, 'appts rows:', (activeRes.data||[]).length);
 
     const sMap = Object.fromEntries((staffRes2.data || []).map(s => [s.id, s.name]));
-    // Include all appointments except cancelled (so scheduled + completed both show)
+    const svcMap = Object.fromEntries((svcRes.data || []).map(s => [s.id, s.name]));
+    const pickName = r => r.service_name || r.service || svcMap[r.service_id] || '—';
+    // Include all appointments except cancelled
     const activeFiltered = (activeRes.data || []).filter(a => {
         const s = (a.status || '').toLowerCase();
         return s !== 'cancelled' && s !== 'скасовано' && a.status !== 'Скасовано';
     });
     const combined = [
-        ...(histRes2.data || []).map(h => ({ service_name: h.service_name, price: h.price, _date: h.visit_date, master_id: h.master_id, payment_method: h.payment_method })),
-        ...activeFiltered.map(a => ({ service_name: a.service_name, price: a.price, _date: a.appointment_date, master_id: a.master_id, payment_method: a.payment_method }))
+        ...(histRes2.data || []).map(h => ({ service_name: pickName(h), price: h.price, _date: h.visit_date, master_id: h.master_id, payment_method: h.payment_method || h.payment || '' })),
+        ...activeFiltered.map(a => ({ service_name: pickName(a), price: a.price, _date: a.appointment_date, master_id: a.master_id, payment_method: a.payment_method || a.payment || '' }))
     ].sort((a, b) => (b._date || '').localeCompare(a._date || '')).slice(0, 30);
 
     const hist = combined; // reuse variable name below
