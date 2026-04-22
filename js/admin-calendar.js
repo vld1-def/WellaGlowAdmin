@@ -221,8 +221,10 @@ function allAppts(){ return [...appts,...histAppts]; }
     },{passive:true});
 })();
 
-// ══ Touch drag-to-select (mobile cells) ═════════════
+// ══ Touch drag-to-select (mobile cells) — DISABLED ═══
+// Single tap on a cell now opens the appointment drawer via onclick="cellClick(...)".
 (function(){
+    if(true) return; // disabled: no drag-select
     let _touchDragging=false;
     let _touchStartX=0,_touchStartY=0,_touchStartTime=0;
     const DRAG_THRESHOLD=10; // px movement before we consider it a drag
@@ -467,7 +469,7 @@ function renderTimeline(days, today){
             const isPast=str<today||(str===today&&toMinutes(h,m)+30<=nowTotalMin);
             const handlers=blocked||isPast
                 ?(blocked?`onclick="openShiftCell('${str}',${h},'${masterId}')"`:'' )
-                :`onmousedown="dragBegin(event,'${str}',${h},${m})" onmouseenter="dragMove(event,'${str}',${h},${m})" onmouseup="dragEnd_(event,'${str}',${h},${m})"`;
+                :`onclick="cellClick('${str}',${h},${m},'${masterId}')"`;
             const cls='tl-cell'+(blocked?' blocked':'')+(isPast&&!blocked?' past-cell':'');
             return `<div class="${cls}" data-day="${str}" data-hour="${h}" data-min="${m}" ${handlers}>${shiftOverlay}${blockAppts.map(a=>apptBlockHTML(a)).join('')}</div>`;
         }).join('');
@@ -591,8 +593,16 @@ function renderLanes(days, today){
     document.getElementById('week-content').innerHTML=`<div>${rows}</div>`;
 }
 
-// ══ Drag-to-select (30-min cells) ════════════════════
-// m is passed directly from data-min of each half-hour cell — no Y-detection needed
+// ══ Click single 30-min cell ═════════════════════════
+window.cellClick=function(dayStr,h,m,masterId){
+    const startTotal=toMinutes(h,m);
+    const endTotal=startTotal+30;
+    const startH=Math.floor(startTotal/60), startMM=startTotal%60;
+    const endH=Math.floor(endTotal/60),     endMM=endTotal%60;
+    openApptDrawer(dayStr,'',masterId||'',startH,endH,startMM,endMM);
+};
+
+// ══ Drag-to-select (deprecated — kept as no-op for touch handlers) ══
 window.dragBegin=function(e,dayStr,h,m){
     e.preventDefault();
     isDragging=true;
