@@ -187,6 +187,10 @@
                 animation:_nbFloat 3.5s ease-in-out infinite;
                 transition:transform .15s;
             }
+            @media (max-width:639px){
+                #_nb-btn{width:47px;height:47px;bottom:30px}
+                #_nb-btn i{font-size:16px !important}
+            }
             #_nb-btn:hover { animation:none; transform:scale(1.1); box-shadow:0 12px 36px rgba(244,63,94,.7); }
             #_nb-btn._nb-shake { animation:_nbShake .6s ease; }
             #_nb-badge {

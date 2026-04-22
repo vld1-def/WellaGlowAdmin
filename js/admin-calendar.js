@@ -427,8 +427,8 @@ function renderWeek(){
     const today=localDate(new Date());
     let days;
     if(isMobile && filterMId){
-        // 3-day view when specific master selected on mobile
-        days=Array.from({length:3},(_,i)=>{
+        // 4-day view when specific master selected on mobile
+        days=Array.from({length:4},(_,i)=>{
             const d=new Date(curDate.getFullYear(),curDate.getMonth(),curDate.getDate()+i);
             return {d,str:localDate(d)};
         });
@@ -446,9 +446,11 @@ function renderWeek(){
 // ── A) Timeline (single master) ───────────────────────
 function renderTimeline(days, today){
     const masterId=filterMId;
+    const isMobile=window.innerWidth<640;
+    const hourColW=isMobile?30:48;
     // Headers
     document.getElementById('week-day-headers').innerHTML=`
-        <div class="tl-wrap" style="grid-template-columns:48px repeat(${days.length},1fr);margin-bottom:2px">
+        <div class="tl-wrap" style="grid-template-columns:${hourColW}px repeat(${days.length},1fr);margin-bottom:2px">
             <div class="tl-hour-label" style="cursor:default"></div>
             ${days.map(({d,str},i)=>`
                 <div class="tl-col-header ${str===today?'today-hdr':''}" onclick="openShiftModal('${str}',null,'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну">
@@ -481,7 +483,7 @@ function renderTimeline(days, today){
         const label=m===0
             ?`<div class="tl-hour-label" data-hour="${h}" onclick="openShiftModal('',${h},'${masterId}')" style="cursor:pointer" title="Додати вихідний/зміну">${hhmm(h)}</div>`
             :`<div class="tl-hour-half-pad"></div>`;
-        return `<div class="tl-wrap" style="grid-template-columns:48px repeat(${days.length},1fr)">${label}${cells}</div>`;
+        return `<div class="tl-wrap" style="grid-template-columns:${hourColW}px repeat(${days.length},1fr)">${label}${cells}</div>`;
     }).join('');
 
     // Now-line: red horizontal line + time label on left col, only shown if "today" is within visible week

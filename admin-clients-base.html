@@ -246,7 +246,7 @@
 <div id="modal-overlay" class="fixed inset-0 bg-black/70 z-40 backdrop-blur-sm" onclick="closeClientModal()"></div>
 
 <!-- ══════════════ CLIENT MODAL (3-panel) ══════════════ -->
-<div id="client-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+<div id="client-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeClientModal()">
     <div class="w-full max-w-5xl glass-panel rounded-3xl overflow-hidden flex flex-col lg:flex-row" style="max-height:90vh;">
 
         <!-- LEFT: Avatar + Contacts -->
@@ -361,28 +361,26 @@
                 </div>
             </div>
 
-            <!-- Allergies / Preferences -->
-            <div>
-                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Алергії / Особливості</label>
-                <textarea id="f-allergies" class="cl-input" placeholder="Алергія на..."></textarea>
-            </div>
-            <div>
-                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Побажання</label>
-                <textarea id="f-preferences" class="cl-input" placeholder="Побажання клієнта..."></textarea>
-            </div>
-
-            <!-- Color formula -->
-            <div>
-                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">
-                    <i class="fa-solid fa-flask text-rose-400 mr-1"></i>Колірна формула
-                </label>
-                <textarea id="f-formula" class="cl-input" placeholder="Wellacolor 9/1 + Oxoderm 6%..."></textarea>
-            </div>
-
-            <!-- Internal note -->
-            <div>
-                <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Нотатка</label>
-                <textarea id="f-notes" class="cl-input" placeholder="Внутрішні нотатки..."></textarea>
+            <!-- Allergies / Preferences / Formula / Note (compact group) -->
+            <div class="flex flex-col gap-2">
+                <div>
+                    <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Алергії / Особливості</label>
+                    <textarea id="f-allergies" class="cl-input" placeholder="Алергія на..."></textarea>
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Побажання</label>
+                    <textarea id="f-preferences" class="cl-input" placeholder="Побажання клієнта..."></textarea>
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">
+                        <i class="fa-solid fa-flask text-rose-400 mr-1"></i>Колірна формула
+                    </label>
+                    <textarea id="f-formula" class="cl-input" placeholder="Wellacolor 9/1 + Oxoderm 6%..."></textarea>
+                </div>
+                <div>
+                    <label class="text-[9px] text-zinc-600 uppercase font-black tracking-widest block mb-1.5">Нотатка</label>
+                    <textarea id="f-notes" class="cl-input" placeholder="Внутрішні нотатки..."></textarea>
+                </div>
             </div>
 
             <!-- Notes + Bonus section -->
