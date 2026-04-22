@@ -593,6 +593,24 @@ function renderLanes(days, today){
     document.getElementById('week-content').innerHTML=`<div>${rows}</div>`;
 }
 
+// ══ Hover hour-label when pointing at any cell in that hour ══
+(function(){
+    document.addEventListener('mouseover', e=>{
+        const cell=e.target.closest?.('.tl-cell');
+        if(!cell) return;
+        const h=cell.dataset.hour;
+        if(h==null) return;
+        document.querySelectorAll(`.tl-hour-label[data-hour="${h}"]`).forEach(l=>l.classList.add('hover-hl'));
+    });
+    document.addEventListener('mouseout', e=>{
+        const cell=e.target.closest?.('.tl-cell');
+        if(!cell) return;
+        const h=cell.dataset.hour;
+        if(h==null) return;
+        document.querySelectorAll(`.tl-hour-label[data-hour="${h}"]`).forEach(l=>l.classList.remove('hover-hl'));
+    });
+})();
+
 // ══ Click single 30-min cell ═════════════════════════
 window.cellClick=function(dayStr,h,m,masterId){
     const startTotal=toMinutes(h,m);
