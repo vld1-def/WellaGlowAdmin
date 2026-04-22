@@ -99,7 +99,17 @@
     window._nbRead = function (id, link) {
         markRead(id);
         document.getElementById('_nb-panel')?.remove();
-        if (link) window.location.href = link;
+        // Migrate old-format links: if id is "appt-<N>" but link has no ?openAppt=, rebuild it
+        let finalLink = link || '';
+        const m = /^appt-(.+)$/.exec(id || '');
+        if (m && finalLink && !/openAppt=/.test(finalLink)) {
+            const sep = finalLink.includes('?') ? '&' : '?';
+            finalLink = `${finalLink}${sep}openAppt=${m[1]}`;
+        }
+        if (finalLink) {
+            // If already on target page, force reload by setting location (browsers reload when search changes)
+            window.location.href = finalLink;
+        }
     };
 
     window._nbToggle = function () {
@@ -248,6 +258,7 @@
             push({
                 id:    `appt-${a.id}`,
                 type:  'appointment',
+                apptId: a.id,
                 title: isOnline ? '🌐 Онлайн запис' : '📋 Новий запис',
                 body:  a.service_name || 'Запис',
                 time:  new Date().toISOString(),

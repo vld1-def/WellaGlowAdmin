@@ -58,7 +58,9 @@
       "Bash(grep -l \"permissions-guard\" *.html)",
       "Bash(grep -rn \"placeholder.*[Пп]ошук\\\\|id.*search\\\\|type.*search\" *.html)",
       "Bash(grep -rln \"mob-more-itm\" *.html)",
-      "Bash(gh pr create --title 'Mobile UX fixes, permissions system, help modal, client features' --body ' *)"
+      "Bash(gh pr create --title 'Mobile UX fixes, permissions system, help modal, client features' --body ' *)",
+      "Bash(gh pr create --title 'Admin panel: notifications bell, chart fixes, mobile UX, shift blocking & more' --body ' *)",
+      "PowerShell(gh auth status 2>&1)"
     ]
   }
 }

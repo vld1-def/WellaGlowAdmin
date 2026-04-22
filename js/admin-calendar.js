@@ -117,20 +117,34 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     // Auto-open appointment detail if ?openAppt=<id> in URL (from notifications)
     const openId = new URLSearchParams(window.location.search).get('openAppt');
     if(openId){
-        // Try active appointments first, then history
-        const found = appts.find(a=>String(a.id)===String(openId))
-                   || histAppts.find(a=>String(a.id)===String(openId));
-        if(found) openDetail(found.id, found._tbl);
-        else {
-            // Fetch directly if not in current view (e.g. date outside current week)
-            window.db.from('appointments').select('*').eq('id', openId).single()
-                .then(({data})=>{
-                    if(!data) return;
-                    const a = {...data, _tbl:'appointments', _date:data.appointment_date, _start:data.appointment_time, _end:data.end_time};
-                    appts.push(a);
-                    openDetail(a.id, 'appointments');
-                });
-        }
+        console.log('[calendar] openAppt param =', openId);
+        setTimeout(async ()=>{
+            // Try active appointments first, then history
+            let found = appts.find(a=>String(a.id)===String(openId))
+                     || histAppts.find(a=>String(a.id)===String(openId));
+            if(!found){
+                // Fetch directly if not in current view (e.g. date outside current week)
+                const res = await window.db.from('appointments').select('*').eq('id', openId).maybeSingle();
+                if(res.error) console.error('[calendar] fetch openAppt err', res.error);
+                if(res.data){
+                    found = {...res.data, _tbl:'appointments', _date:res.data.appointment_date, _start:res.data.appointment_time, _end:res.data.end_time};
+                    appts.push(found);
+                } else {
+                    // Try history
+                    const hres = await window.db.from('appointment_history').select('*').eq('id', openId).maybeSingle();
+                    if(hres.data){
+                        found = {...hres.data, _tbl:'appointment_history', _date:hres.data.visit_date, _start:hres.data.start_time, _end:hres.data.end_time};
+                        histAppts.push(found);
+                    }
+                }
+            }
+            if(found){
+                console.log('[calendar] opening detail for', found.id, found._tbl);
+                openDetail(found.id, found._tbl);
+            } else {
+                console.warn('[calendar] openAppt: record not found', openId);
+            }
+        }, 100);
     }
 });
 
