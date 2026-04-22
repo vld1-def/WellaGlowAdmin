@@ -9,19 +9,19 @@
             #__wg_toast_wrap{position:fixed;top:20px;left:50%;transform:translateX(-50%);
                 z-index:100000;display:flex;flex-direction:column;gap:8px;align-items:center;
                 pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
-            .__wg_toast{pointer-events:all;min-width:260px;max-width:440px;
-                background:#0d0d0f;border:1px solid rgba(255,255,255,.08);border-radius:14px;
-                padding:12px 14px;display:flex;align-items:flex-start;gap:10px;
+            .__wg_toast{pointer-events:all;min-width:300px;max-width:500px;
+                background:#0d0d0f;border:1px solid rgba(255,255,255,.08);border-radius:16px;
+                padding:16px 18px;display:flex;align-items:center;gap:12px;
                 box-shadow:0 24px 60px rgba(0,0,0,.7);
                 font-family:'Manrope',sans-serif;color:#e2e8f0;
                 animation:__wg_toast_in .22s cubic-bezier(.34,1.56,.64,1)}
             .__wg_toast.leaving{animation:__wg_toast_out .18s ease forwards}
-            .__wg_toast_ic{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;
-                justify-content:center;flex-shrink:0;font-size:12px}
-            .__wg_toast_tx{flex:1;font-size:11px;font-weight:700;line-height:1.45;color:#fff;
-                word-break:break-word}
+            .__wg_toast_ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;
+                justify-content:center;flex-shrink:0;font-size:14px}
+            .__wg_toast_tx{flex:1;font-size:13px;font-weight:700;line-height:1.45;color:#fff;
+                word-break:break-word;display:flex;align-items:center;min-height:34px}
             .__wg_toast_x{color:#52525b;background:none;border:none;cursor:pointer;
-                font-size:11px;padding:2px 4px;flex-shrink:0;transition:color .15s}
+                font-size:13px;padding:4px 6px;flex-shrink:0;transition:color .15s;align-self:center}
             .__wg_toast_x:hover{color:#fff}
             .__wg_toast.err .__wg_toast_ic{background:rgba(244,63,94,.14);color:#f43f5e;border:1px solid rgba(244,63,94,.3)}
             .__wg_toast.ok  .__wg_toast_ic{background:rgba(16,185,129,.14);color:#10b981;border:1px solid rgba(16,185,129,.3)}
