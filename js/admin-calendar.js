@@ -604,13 +604,13 @@ function renderLanes(days, today){
                 const co=isNoShow?'#f59e0b':(isDone?'#52525b':mColor(a.master_id));
                 const mainCol=isNoShow?'#fcd34d':'#fff';
                 const t=a._start?a._start.slice(0,5):'';
-                return `<div class="appt-card" style="background:${co}18;border-left-color:${co}"
+                return `<div class="appt-card" style="background:${co}18;border-left-color:${co};padding:6px 8px"
                     onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
-                    <p style="font-size:9px;font-weight:800;color:${mainCol};line-height:1.2" class="truncate">${t} ${cl?.full_name?.split(' ')[0]||'—'}${isNoShow?' ⚠':''}</p>
-                    <p style="font-size:8px;color:${co}aa" class="truncate">${a.service_name||sv?.name||''}</p>
+                    <p style="font-size:11px;font-weight:800;color:${mainCol};line-height:1.25" class="truncate">${t} ${cl?.full_name?.split(' ')[0]||'—'}${isNoShow?' ⚠':''}</p>
+                    <p style="font-size:10px;color:${co}cc;line-height:1.3" class="truncate">${a.service_name||sv?.name||''}</p>
                 </div>`;
             }).join('');
-            return `<div class="lane-cell" style="height:auto;min-height:56px" ondblclick="openApptDrawer('${str}','','${s.id}')">${cards}</div>`;
+            return `<div class="lane-cell" style="height:auto;min-height:72px" ondblclick="openApptDrawer('${str}','','${s.id}')">${cards}</div>`;
         }).join('');
         return `<div class="lane-wrap">
             <div class="lane-master-label">
