@@ -84,6 +84,14 @@ window.monthStep=function(dir){
 };
 
 // ══ Boot ═════════════════════════════════════════════
+// Set date input value + sync flatpickr's internal state (so calendar popup highlights selected date)
+function setDateInput(val){
+    const el=document.getElementById('a-date');
+    if(!el) return;
+    if(el._flatpickr){ el._flatpickr.setDate(val,false); }
+    else { el.value=val; }
+}
+
 document.addEventListener('DOMContentLoaded', async ()=>{
     initSidebarMonth();
     await Promise.all([loadMasters(),loadClients(),loadServices(),loadStaffSvc()]);
@@ -105,6 +113,25 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     document.addEventListener('click', e=>{
         if(!e.target.closest('.ac-wrap')) { closeAcAll(); }
     });
+
+    // Auto-open appointment detail if ?openAppt=<id> in URL (from notifications)
+    const openId = new URLSearchParams(window.location.search).get('openAppt');
+    if(openId){
+        // Try active appointments first, then history
+        const found = appts.find(a=>String(a.id)===String(openId))
+                   || histAppts.find(a=>String(a.id)===String(openId));
+        if(found) openDetail(found.id, found._tbl);
+        else {
+            // Fetch directly if not in current view (e.g. date outside current week)
+            window.db.from('appointments').select('*').eq('id', openId).single()
+                .then(({data})=>{
+                    if(!data) return;
+                    const a = {...data, _tbl:'appointments', _date:data.appointment_date, _start:data.appointment_time, _end:data.end_time};
+                    appts.push(a);
+                    openDetail(a.id, 'appointments');
+                });
+        }
+    }
 });
 
 // Navigate calendar to selected month when month selector changes
@@ -814,7 +841,7 @@ window.openApptDrawer=function(prefillDate='',prefillTime='',prefillMasterId='',
     document.getElementById('service-search').value='';
     document.getElementById('a-client').value='';
     document.getElementById('a-price').value='';
-    document.getElementById('a-date').value=prefillDate||localDate(new Date());
+    setDateInput(prefillDate||localDate(new Date()));
     acState.client.selectedId='';
     // Reset multi-services
     selectedServices=[]; svcQuantities={};
@@ -1133,7 +1160,7 @@ function openEditDrawer(a,tbl){
     document.getElementById('a-client').value=a.client_id||'';
     document.getElementById('service-search').value='';
     document.getElementById('a-price').value=a.price||'';
-    document.getElementById('a-date').value=a._date||'';
+    setDateInput(a._date||'');
     acState.client.selectedId=a.client_id||'';
 
     // Restore services from appointment
