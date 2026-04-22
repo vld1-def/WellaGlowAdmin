@@ -1175,13 +1175,47 @@ window.switchModalTab = function(tab) {
 
     if (tab === 'chart'    && modalStaffData) renderModalChart(modalStaffData.id);
     if (tab === 'reviews'  && modalStaffData) {
-        const myRevs = allReviews.filter(r => r.staff_id === modalStaffData.id);
-        document.getElementById('modal-reviews-list').innerHTML = myRevs.length
-            ? myRevs.map(r => reviewCard(r, false)).join('')
-            : `<p class="text-[11px] text-zinc-600 text-center py-6 font-semibold">Відгуків немає</p>`;
+        _modalRevRating = 0; _modalRevAsc = false;
+        document.querySelectorAll('.mrev-filter-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('mrev-f-0')?.classList.add('active');
+        if (document.getElementById('mrev-sort-btn')) document.getElementById('mrev-sort-btn').innerHTML = '<i class="fa-solid fa-arrow-down-wide-short text-[9px]"></i> Новіші';
+        _renderModalReviews();
     }
     if (tab === 'shifts'   && modalStaffData) renderModalShifts(modalStaffData.id);
     if (tab === 'payments' && modalStaffData) renderModalPayments(modalStaffData.id);
+};
+
+// ── Modal reviews filter/sort ─────────────────────────
+let _modalRevRating = 0;   // 0 = all
+let _modalRevAsc   = false; // false = newest first
+
+function _renderModalReviews() {
+    if (!modalStaffData) return;
+    let list = allReviews.filter(r => r.staff_id === modalStaffData.id);
+    if (_modalRevRating) list = list.filter(r => r.rating === _modalRevRating);
+    list = [...list].sort((a, b) => {
+        const cmp = (a.created_at || '').localeCompare(b.created_at || '');
+        return _modalRevAsc ? cmp : -cmp;
+    });
+    document.getElementById('modal-reviews-list').innerHTML = list.length
+        ? list.map(r => reviewCard(r, false)).join('')
+        : `<p class="text-[11px] text-zinc-600 text-center py-6 font-semibold">Відгуків немає</p>`;
+}
+
+window.filterModalReviews = function(rating) {
+    _modalRevRating = rating;
+    document.querySelectorAll('.mrev-filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('mrev-f-' + rating)?.classList.add('active');
+    _renderModalReviews();
+};
+
+window.toggleModalRevSort = function() {
+    _modalRevAsc = !_modalRevAsc;
+    const btn = document.getElementById('mrev-sort-btn');
+    if (btn) btn.innerHTML = _modalRevAsc
+        ? '<i class="fa-solid fa-arrow-up-wide-short text-[9px]"></i> Старіші'
+        : '<i class="fa-solid fa-arrow-down-wide-short text-[9px]"></i> Новіші';
+    _renderModalReviews();
 };
 
 async function renderModalPayments(staffId) {

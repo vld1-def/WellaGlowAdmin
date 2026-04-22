@@ -868,11 +868,13 @@ window.onMasterOrDateChange=async function(){
     const date=document.getElementById('a-date').value;
     if(!masterId||!date){ renderSlotGrid([],selStartHour,selStartMin,selEndHour,selEndMin); return; }
 
-    // Fetch booked slots for this master+date
-    const {data}=await window.db.from('appointments')
+    // Fetch booked slots for this master+date (exclude current appointment when editing)
+    let slotQ=window.db.from('appointments')
         .select('appointment_time,end_time')
         .eq('master_id',masterId).eq('appointment_date',date)
-        .neq('status','cancelled');
+        .neq('status','cancelled').neq('status','Скасовано');
+    if(editingId&&editingTable==='appointments') slotQ=slotQ.neq('id',editingId);
+    const {data}=await slotQ;
     const booked=new Set();
     function addHalfRange(sh,sm,eh,em){
         let ch=sh,cm=sm;
@@ -1000,6 +1002,33 @@ window.saveAppt=async function(){
     if(!selectedServices.length){ alert('Оберіть хоча б одну послугу'); return; }
     if(!date){ alert('Вкажіть дату'); return; }
     if(selStartHour===null){ alert('Оберіть час запису (клікніть на слот)'); return; }
+
+    // ── Conflict check ──────────────────────────────────
+    const newStartMin=toMinutes(selStartHour,selStartMin);
+    const newEndMin=toMinutes(selEndHour??selStartHour+1,selEndMin??0);
+    let conflQ=window.db.from('appointments')
+        .select('id,appointment_time,end_time')
+        .eq('master_id',masterId).eq('appointment_date',date)
+        .neq('status','cancelled').neq('status','Скасовано');
+    if(editingId&&editingTable==='appointments') conflQ=conflQ.neq('id',editingId);
+    const {data:conflRows}=await conflQ;
+    const hasApptConflict=(conflRows||[]).some(a=>{
+        if(!a.appointment_time) return false;
+        const [sh,sm]=a.appointment_time.split(':').map(Number);
+        const ep=a.end_time?a.end_time.split(':').map(Number):[sh+1,0];
+        return newStartMin<toMinutes(ep[0],ep[1])&&newEndMin>toMinutes(sh,sm);
+    });
+    if(hasApptConflict){alert('Цей час вже зайнятий. Оберіть інший слот.');return;}
+    const shiftConflict=shiftsForMasterDay(masterId,date)
+        .filter(s=>s.type!=='shift')
+        .some(s=>{
+            if(s.all_day) return true;
+            const [sh,sm]=(s.start_time||'0:0').split(':').map(Number);
+            const [eh,em]=(s.end_time||'0:0').split(':').map(Number);
+            return newStartMin<toMinutes(eh,em)&&newEndMin>toMinutes(sh,sm);
+        });
+    if(shiftConflict){alert('Цей час заблоковано (вихідний/перерва). Оберіть інший слот.');return;}
+    // ────────────────────────────────────────────────────
 
     const autoPrice=selectedServices.reduce((sum,s)=>sum+(parseFloat(s.price)||0),0);
     const payload={
