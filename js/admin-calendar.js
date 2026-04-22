@@ -148,6 +148,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     }
 });
 
+// Refresh now-line every minute
+setInterval(()=>{ try{ render(); }catch(e){} }, 60000);
+
 // Navigate calendar to selected month when month selector changes
 window.addEventListener('monthchange', async ()=>{
     const ym=localStorage.getItem('wella_current_month');
@@ -404,10 +407,12 @@ function sBadge(s){
     const m={'completed':'s-done','Виконано':'s-done','done':'s-done',
              'waiting':'s-wait','Новий':'s-wait',
              'confirmed':'s-confirm','Підтверджено':'s-confirm',
-             'cancelled':'s-cancel','Скасовано':'s-cancel'};
+             'cancelled':'s-cancel','Скасовано':'s-cancel',
+             'no_show':'s-noshow','noshow':'s-noshow','Не зявився':'s-noshow','Не з\'явився':'s-noshow'};
     const label={'completed':'Виконано','Виконано':'Виконано','waiting':'Новий','Новий':'Новий',
                  'confirmed':'Підтверджено','Підтверджено':'Підтверджено',
-                 'cancelled':'Скасовано','Скасовано':'Скасовано'};
+                 'cancelled':'Скасовано','Скасовано':'Скасовано',
+                 'no_show':'Не з\'явився','noshow':'Не з\'явився','Не зявився':'Не з\'явився','Не з\'явився':'Не з\'явився'};
     return {cls:m[s]||'s-wait', label:label[s]||s||'Новий'};
 }
 
@@ -479,7 +484,29 @@ function renderTimeline(days, today){
         return `<div class="tl-wrap" style="grid-template-columns:48px repeat(${days.length},1fr)">${label}${cells}</div>`;
     }).join('');
 
-    document.getElementById('week-content').innerHTML=`<div onmouseleave="dragCancel()">${rows}</div>`;
+    // Now-line: red horizontal line + time label on left col, only shown if "today" is within visible week
+    const todayIdx=days.findIndex(d=>d.str===today);
+    let nowLine='';
+    if(todayIdx>=0){
+        const firstH=HOURS[0];
+        const lastH=HOURS[HOURS.length-1];
+        const nowM=nowObj.getMinutes();
+        const nowH=nowObj.getHours();
+        // Show only if within timeline range (first hour .. last hour+1)
+        if(nowH>=firstH && nowH<=lastH){
+            const cellPx = window.innerWidth <= 639 ? 38 : 33;
+            const minsFromStart=(nowH-firstH)*60+nowM;
+            const topPx=Math.round(minsFromStart/30 * cellPx);
+            const nowStr=`${String(nowH).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`;
+            nowLine=`<div class="tl-now-line" style="top:${topPx}px">
+                <span class="tl-now-label">${nowStr}</span>
+                <span class="tl-now-dot"></span>
+                <span class="tl-now-rule"></span>
+            </div>`;
+        }
+    }
+
+    document.getElementById('week-content').innerHTML=`<div style="position:relative" onmouseleave="dragCancel()">${rows}${nowLine}</div>`;
 }
 
 function startHour(a){const t=a._start||a.appointment_time;return t?parseInt(t.split(':')[0]):null;}
@@ -1174,8 +1201,18 @@ window.openDetail=function(id,tbl){
     );
     const isDone=a.status==='completed'||a.status==='Виконано';
     const isCancelled=a.status==='cancelled'||a.status==='Скасовано';
-    document.getElementById('d-done').style.display=(isDone||isCancelled)?'none':'';
-    document.getElementById('d-cancel').style.display=isCancelled?'none':'';
+    const isNoShow=a.status==='no_show'||a.status==='noshow'||a.status==='Не зявився'||a.status==='Не з\'явився';
+    document.getElementById('d-done').style.display=(isDone||isCancelled||isNoShow)?'none':'';
+    document.getElementById('d-cancel').style.display=(isCancelled||isNoShow)?'none':'';
+    const noShowBtn=document.getElementById('d-noshow');
+    if(noShowBtn){
+        noShowBtn.style.display=(isDone||isCancelled||isNoShow)?'none':'';
+        noShowBtn.onclick=()=>openConfirmModal(
+            'Позначити як "Не з\'явився"?',
+            'Клієнта буде відмічено що він не прийшов. Надалі варто брати передоплату з цього клієнта.',
+            ()=>updateStatus(id,tbl,'no_show')
+        );
+    }
 
     document.getElementById('detail-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
@@ -1231,7 +1268,7 @@ async function updateStatus(id,tbl,status){
     const table=tbl==='appointment_history'?'appointment_history':'appointments';
     const field=tbl==='appointment_history'?'status':'status';
     const val=tbl==='appointment_history'
-        ?(status==='completed'?'Виконано':'Скасовано')
+        ?(status==='completed'?'Виконано':status==='no_show'?'Не зявився':'Скасовано')
         :(status);
     const {error}=await window.db.from(table).update({[field]:val}).eq('id',id);
     if(error){alert(error.message);return;}
