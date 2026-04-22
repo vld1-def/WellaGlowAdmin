@@ -52,7 +52,7 @@
         .master-pill{padding:5px 13px;border-radius:20px;font-size:9px;font-weight:800;
             text-transform:uppercase;letter-spacing:.08em;cursor:pointer;transition:all .2s;
             border:1.5px solid rgba(255,255,255,.07);color:#52525b;white-space:nowrap}
-        .master-pill.all-pill{font-size:11px;padding:7px 16px;letter-spacing:.1em}
+        .master-pill.all-pill{font-size:13px;padding:8px 20px;letter-spacing:.12em;font-weight:900}
         /* Current-time indicator */
         .tl-now-line{position:absolute;left:0;right:0;height:0;pointer-events:none;z-index:5;display:flex;align-items:center}
         .tl-now-label{width:44px;margin-right:4px;font-size:9px;font-weight:900;color:#fff;background:#f43f5e;
@@ -73,13 +73,13 @@
             text-transform:uppercase;letter-spacing:.1em;color:#52525b;line-height:1.1}
         .tl-col-header.today-hdr{color:#f43f5e}
         .tl-hour-label{padding:0 8px 0 2px;font-size:9px;font-weight:800;color:#3f3f46;
-            text-align:right;display:flex;align-items:center;justify-content:flex-end;height:33px;
+            text-align:right;display:flex;align-items:center;justify-content:flex-end;height:38px;
             transition:color .1s,background .1s;border-radius:6px}
         .tl-hour-label.drag-hl,.tl-hour-label.hover-hl{color:#f43f5e !important;background:rgba(244,63,94,.1)}
         /* Empty placeholder for :30 rows */
-        .tl-hour-half-pad{height:33px;width:48px}
+        .tl-hour-half-pad{height:38px;width:48px}
         /* Each cell = one 30-min slot */
-        .tl-cell{height:33px;border-left:1px solid rgba(255,255,255,.04);
+        .tl-cell{height:38px;border-left:1px solid rgba(255,255,255,.04);
             border-bottom:none;padding:1px 3px;
             position:relative;cursor:pointer;transition:background .1s;
             box-sizing:border-box}
@@ -199,7 +199,7 @@
         /* Mobile 3-day view: bigger cells */
         @media (max-width: 639px) {
             .tl-wrap { min-width: 0; }
-            .tl-cell { min-height: 38px !important; }
+            .tl-cell { min-height: 43px !important; }
             .appt-block { font-size: 10px !important; }
             #week-content { overflow-x: auto; }
         }
@@ -607,6 +607,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>window.PAGE_MODULE='calendar';</script>
     <script src="js/supabase-init.js"></script>
+    <script src="js/ui-toast.js"></script>
     <script src="js/permissions-guard.js"></script>
     <script src="js/sidebar-nav.js"></script>
 <script src="js/admin-calendar.js"></script>

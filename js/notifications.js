@@ -23,12 +23,14 @@
     function unreadCount() { return load().filter(n => !n.read).length; }
 
     function markRead(id) {
-        save(load().map(n => n.id === id ? { ...n, read: true } : n));
+        // Remove the notification entirely (user wants it to disappear on click)
+        save(load().filter(n => n.id !== id));
         updateBadge();
     }
 
     function markAllRead() {
-        save(load().map(n => ({ ...n, read: true })));
+        // Remove all notifications (user wants them to vanish, not stay as read)
+        save([]);
         updateBadge();
         renderList();
     }
