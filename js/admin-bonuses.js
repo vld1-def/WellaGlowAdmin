@@ -149,12 +149,9 @@ function renderTable() {
         return `
         <tr class="bonus-row" onclick="openEditModal('${c.id}')">
             <td class="px-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-black text-xs text-white neo-gradient">${initials}</div>
-                    <div>
-                        <p class="text-xs font-bold text-white flex items-center gap-1.5">${c.full_name||'—'}${vipHtml}</p>
-                        <p class="text-[9px] text-zinc-600 mt-0.5">${c.phone || c.instagram || '—'}</p>
-                    </div>
+                <div>
+                    <p class="text-xs font-bold text-white flex items-center gap-1.5">${c.full_name||'—'}${vipHtml}</p>
+                    <p class="text-[9px] text-zinc-600 mt-0.5">${c.phone || c.instagram || '—'}</p>
                 </div>
             </td>
             <td class="px-4 min-w-[120px]">
