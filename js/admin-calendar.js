@@ -494,7 +494,7 @@ function renderTimeline(days, today){
         const nowH=nowObj.getHours();
         // Show only if within timeline range (first hour .. last hour+1)
         if(nowH>=firstH && nowH<=lastH){
-            const cellPx = window.innerWidth <= 639 ? 38 : 33;
+            const cellPx = window.innerWidth <= 639 ? 43 : 38;
             const minsFromStart=(nowH-firstH)*60+nowM;
             const topPx=Math.round(minsFromStart/30 * cellPx);
             const nowStr=`${String(nowH).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`;
@@ -563,13 +563,14 @@ function shiftCellOverlay(dateStr,masterId,h){
 function apptBlockHTML(a){
     const client=clients.find(c=>c.id===a.client_id);
     const svc=services.find(s=>s.id===a.service_id);
-    const isDone=a.status==='done'||a.status==='completed'||a.status==='finished';
-    const color=isDone?'#52525b':mColor(a.master_id);
-    const textColor=isDone?'#a1a1aa':'#fff';
+    const isDone=a.status==='done'||a.status==='completed'||a.status==='finished'||a.status==='Виконано';
+    const isNoShow=a.status==='no_show'||a.status==='noshow'||a.status==='Не зявився'||a.status==='Не з\'явився';
+    const color=isNoShow?'#f59e0b':(isDone?'#52525b':mColor(a.master_id));
+    const textColor=isNoShow?'#fcd34d':(isDone?'#a1a1aa':'#fff');
     const sh=startHour(a),sm=startMin(a),eh=endHour(a),em=endMin(a);
     const durMin=(eh!==null&&sh!==null)?((eh*60+em)-(sh*60+sm)):60;
     // Match CSS: @media(max-width:639px) .tl-cell { min-height:36px }
-    const cellPx = window.innerWidth <= 639 ? 38 : 33;
+    const cellPx = window.innerWidth <= 639 ? 43 : 38;
     const height = Math.max(Math.round(durMin / 30 * cellPx) - 2, cellPx * 0.7);
     const t=a._start?a._start.slice(0,5):'';
     return `<div class="appt-block" style="top:2px;height:${height}px;background:${color}28;border-left-color:${color};z-index:3;overflow:hidden"
@@ -598,11 +599,14 @@ function renderLanes(days, today){
             const cards=da.map(a=>{
                 const cl=clients.find(c=>c.id===a.client_id);
                 const sv=services.find(x=>x.id===a.service_id);
-                const co=mColor(a.master_id);
+                const isNoShow=a.status==='no_show'||a.status==='noshow'||a.status==='Не зявився'||a.status==='Не з\'явився';
+                const isDone=a.status==='done'||a.status==='completed'||a.status==='Виконано';
+                const co=isNoShow?'#f59e0b':(isDone?'#52525b':mColor(a.master_id));
+                const mainCol=isNoShow?'#fcd34d':'#fff';
                 const t=a._start?a._start.slice(0,5):'';
                 return `<div class="appt-card" style="background:${co}18;border-left-color:${co}"
                     onclick="event.stopPropagation();openDetail('${a.id}','${a._tbl}')">
-                    <p style="font-size:9px;font-weight:800;color:#fff;line-height:1.2" class="truncate">${t} ${cl?.full_name?.split(' ')[0]||'—'}</p>
+                    <p style="font-size:9px;font-weight:800;color:${mainCol};line-height:1.2" class="truncate">${t} ${cl?.full_name?.split(' ')[0]||'—'}${isNoShow?' ⚠':''}</p>
                     <p style="font-size:8px;color:${co}aa" class="truncate">${a.service_name||sv?.name||''}</p>
                 </div>`;
             }).join('');
